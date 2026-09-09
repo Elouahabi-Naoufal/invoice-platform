@@ -184,7 +184,7 @@ function SignatureInput({ companyId, current }: { companyId?: string; current?: 
     <span className="flex items-center gap-3">
       {current ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={current} alt="Signature" className="h-10 rounded border border-ink-200 object-contain" />
+        <img src={current} alt="Signature" className="h-16 max-w-[220px] rounded border border-ink-200 bg-white object-contain px-2" />
       ) : null}
       <ImageUploadInput companyId={companyId} field="signature" action={uploadSignature} acceptLabel={current ? "Replace signature" : "Upload signature"} />
     </span>

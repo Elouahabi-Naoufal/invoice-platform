@@ -140,12 +140,12 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
               const sig = doc.seller.signatureData || doc.seller.signaturePath;
               return sig ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={String(sig)} alt="Signature" className="h-14 w-[150px] object-contain object-left" />
+                <img src={String(sig)} alt="Signature" className="h-16 w-[220px] object-contain object-left" />
               ) : (
-                <div className="h-14 w-[150px]" />
+                <div className="h-16 w-[220px]" />
               );
             })()}
-            <div className="mt-1.5 h-px w-[150px] bg-ink-400" />
+            <div className="mt-1.5 h-px w-[220px] bg-ink-400" />
           </div>
         </div>
         {doc.notes && <div className="mt-3"><div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Notes</div><div>{doc.notes}</div></div>}
