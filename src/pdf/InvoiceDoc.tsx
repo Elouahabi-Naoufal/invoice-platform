@@ -3,7 +3,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/render
 import { calcInvoice, formatMoney } from "@/domain/invoice";
 
 /**
- * Full-page A4 invoice stationery — PRESENTATION ONLY.
+ * Light premium stationery — PRESENTATION ONLY.
  * All money comes from calcInvoice() (same engine as web preview + server).
  */
 
@@ -42,78 +42,67 @@ export interface PdfInvoice {
 }
 
 const INK = "#1A1A1A";
-const MUTED = "#6B7280";
-const HAIR = "#E5E7EB";
-const FAINT = "#F7F7F5";
+const BODY = "#333333";
+const LIGHT = "#71717A";
+const BGLIGHT = "#F8FAFC";
+const BORDER = "#E2E8F0";
 
 function accentOf(seller: PdfInvoice["seller"]): string {
-  const a = String(seller.accentColor ?? "#1D4ED8");
-  return /^#[0-9A-Fa-f]{6}$/.test(a) ? a : "#1D4ED8";
+  const a = String(seller.accentColor ?? "#2563EB");
+  return /^#[0-9A-Fa-f]{6}$/.test(a) ? a : "#2563EB";
 }
 
 const s = StyleSheet.create({
   page: {
-    paddingTop: 0,
-    paddingBottom: 64, // room for fixed footer
-    paddingHorizontal: 0,
+    paddingTop: 34,
+    paddingBottom: 72, // room for fixed footer
+    paddingHorizontal: 44,
     fontSize: 9.5,
     fontFamily: "Helvetica",
-    color: INK,
-    lineHeight: 1.45,
+    color: BODY,
+    lineHeight: 1.5,
   },
-  topBar: { height: 5 },
-  body: { paddingHorizontal: 36, paddingTop: 26, flex: 1, flexDirection: "column" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logo: { width: 120, height: 56, objectFit: "contain" },
-  companyName: { fontSize: 13, fontWeight: "bold" },
-  companyLine: { color: MUTED, marginTop: 1 },
-  identity: { marginTop: 20, alignItems: "flex-start" },
-  docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5, textAlign: "left" },
-  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "left" },
-  metaCol: { marginTop: 4 },
-  metaCenter: { color: MUTED, marginTop: 1, textAlign: "left" },
-  metaRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 1 },
-  metaLabel: { color: MUTED, width: 62, textAlign: "right", marginRight: 6 },
-  metaValue: { fontWeight: "bold", minWidth: 80, textAlign: "right" },
-  parties: { flexDirection: "row", gap: 12, marginTop: 16 },
-  partyBox: { flex: 1, borderWidth: 1, borderColor: HAIR, borderRadius: 5, padding: 10 },
-  partyLabel: { fontSize: 7, color: MUTED, letterSpacing: 1, marginBottom: 4 },
-  partyName: { fontSize: 10, fontWeight: "bold" },
-  partyLine: { color: MUTED, marginTop: 1 },
-  clientLine: { marginTop: 12, backgroundColor: FAINT, borderRadius: 4, paddingVertical: 8, paddingHorizontal: 10, fontSize: 9.5 },
-  tableHead: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, marginTop: 16, borderRadius: 4 },
-  th: { color: "#FFFFFF", fontWeight: "bold", fontSize: 8.5 },
-  row: { flexDirection: "row", paddingVertical: 8.5, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: HAIR },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 26 },
+  logo: { width: 120, height: 56, objectFit: "contain", marginBottom: 8 },
+  brandName: { fontSize: 15, fontWeight: "bold", color: INK },
+  brandSub: { color: LIGHT, marginTop: 8, fontSize: 9 },
+  titleBlock: { textAlign: "right" },
+  docTitle: { fontSize: 30, fontWeight: "light", textTransform: "uppercase", letterSpacing: 1, color: INK },
+  metaLine: { color: LIGHT, marginTop: 2, fontSize: 9 },
+  metaStrong: { color: BODY, fontWeight: "bold" },
+  partySection: { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 18, marginBottom: 22 },
+  partyLabel: { fontSize: 8, textTransform: "uppercase", color: LIGHT, letterSpacing: 0.5, marginBottom: 6 },
+  partyName: { fontWeight: "bold", color: BODY, fontSize: 10.5 },
+  partyLine: { color: LIGHT, marginTop: 1, fontSize: 9 },
+  tableHead: { flexDirection: "row", backgroundColor: BGLIGHT, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 3 },
+  th: { color: LIGHT, fontWeight: "bold", fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  row: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
   cDesc: { flex: 1, paddingRight: 10 },
-  cQty: { width: 48, textAlign: "right" },
-  cPU: { width: 84, textAlign: "right" },
+  cQty: { width: 52, textAlign: "right" },
+  cPU: { width: 82, textAlign: "right" },
   cDisc: { width: 56, textAlign: "right" },
   cTVA: { width: 56, textAlign: "right" },
-  cTotal: { width: 88, textAlign: "right", fontWeight: "bold" },
-  descSub: { color: MUTED, fontSize: 8, marginTop: 1.5 },
-  totalsWrap: { alignItems: "flex-end", marginTop: 14 },
-  totalsBox: { width: 285 },
-  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  tLabel: { color: MUTED },
-  tValue: { fontWeight: "bold" },
-  tGrand: { flexDirection: "row", justifyContent: "space-between", marginTop: 6, paddingTop: 8, borderTopWidth: 2, alignItems: "center" },
-  tGrandLabel: { fontSize: 11, fontWeight: "bold" },
-  tGrandValue: { fontSize: 15.5, fontWeight: "bold" },
-  wordsBox: { marginTop: 14, backgroundColor: FAINT, borderRadius: 4, padding: 9 },
-  wordsLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 0.6, marginBottom: 3 },
-  wordsText: { fontStyle: "italic" },
-  taxMention: { marginTop: 8, fontWeight: "bold" },
-  bottomGrid: { flexDirection: "row", gap: 12, marginTop: 10 },
-  push: { flex: 1, minHeight: 12 },
-  bottomBox: { flex: 1, backgroundColor: FAINT, borderRadius: 4, padding: 10 },
-  bottomTitle: { fontSize: 8, letterSpacing: 1, marginBottom: 5, fontWeight: "bold" },
-  bottomLine: { marginTop: 2 },
-  notesBox: { marginTop: 10 },
-  footerFixed: { position: "absolute", bottom: 0, left: 0, right: 0 },
-  footerBar: { height: 3 },
-  footerInner: { paddingHorizontal: 36, paddingVertical: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  footerText: { fontSize: 8, color: MUTED, maxWidth: 440 },
-  pageNo: { fontSize: 8, color: MUTED },
+  cTotal: { width: 88, textAlign: "right", fontWeight: "bold", color: INK },
+  descMain: { fontWeight: "bold", color: BODY },
+  descSub: { color: LIGHT, fontSize: 8, marginTop: 3 },
+  totalsWrap: { alignItems: "flex-end", marginTop: 6, marginBottom: 20 },
+  totalsBox: { width: 270 },
+  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, paddingHorizontal: 12 },
+  tLabel: { color: BODY },
+  tValue: { fontWeight: "bold", color: INK },
+  tGrand: { flexDirection: "row", justifyContent: "space-between", marginTop: 4, paddingTop: 9, paddingHorizontal: 12, borderTopWidth: 2, borderTopColor: INK, alignItems: "center" },
+  tGrandLabel: { fontSize: 11, fontWeight: "bold", color: INK },
+  tGrandValue: { fontSize: 16, fontWeight: "bold" },
+  taxMention: { marginTop: 4, marginBottom: 12, fontWeight: "bold", textAlign: "right", fontSize: 9 },
+  infoGrid: { flexDirection: "row", gap: 24, marginBottom: 8 },
+  infoBox: { flex: 1 },
+  infoTitle: { fontSize: 8, textTransform: "uppercase", color: LIGHT, letterSpacing: 0.5, marginBottom: 5 },
+  infoLine: { marginTop: 1.5, fontSize: 9, color: BODY },
+  notesBox: { marginTop: 14, marginBottom: 8 },
+  footerFixed: { position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 44 },
+  footerInner: { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10, paddingBottom: 14, textAlign: "center" },
+  footerText: { fontSize: 8.5, color: LIGHT },
+  footerSmall: { fontSize: 7.5, color: LIGHT, marginTop: 4 },
 });
 
 function str(v: unknown): string {
@@ -129,7 +118,7 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
   const accent = accentOf(inv.seller);
   const locale = inv.locale.startsWith("en") ? "en-GB" : "fr-MA";
   const fmt = (m: number) => formatMoney(m, inv.currency, locale);
-  const title = inv.docType === "AVOIR" ? "AVOIR" : inv.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : "FACTURE";
+  const title = inv.docType === "AVOIR" ? "Avoir" : inv.docType === "RECTIFICATIVE" ? "Facture rectificative" : "Facture";
   const dateFmt = (iso: string) => {
     const [y, m, d] = iso.split("-");
     return y && m && d ? `${d}/${m}/${y}` : iso;
@@ -147,59 +136,52 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
   return (
     <Document>
       <Page size="A4" style={s.page}>
-        <View style={[s.topBar, { backgroundColor: accent }]} fixed />
-
-        <View style={s.body}>
-          {/* ── Header: logo + company identity ── */}
+        <View>
+          {/* ── Header ── */}
           <View style={s.header}>
             <View>
               {showLogo ? <Image src={logoSrc} style={s.logo} /> : null}
-              <Text style={s.companyName}>{str(inv.seller.legalName) || "Vendeur"}</Text>
-              {inv.seller.tradeName ? <Text style={s.companyLine}>{str(inv.seller.tradeName)}</Text> : null}
-              {inv.seller.legalForm ? <Text style={s.companyLine}>{str(inv.seller.legalForm)}</Text> : null}
+              <Text style={s.brandName}>{str(inv.seller.legalName) || "Vendeur"}</Text>
+              <Text style={s.brandSub}>
+                {str(inv.seller.address)}{inv.seller.city ? `, ${inv.seller.city}` : ""}
+                {[inv.seller.phone, inv.seller.email].filter(Boolean).length > 0
+                  ? `\n${[inv.seller.phone, inv.seller.email].filter(Boolean).map(str).join("\n")}`
+                  : ""}
+              </Text>
             </View>
-          </View>
-
-          {/* ── Invoice identity: centered block, left-aligned lines ── */}
-          <View style={s.identity}>
-            <View>
+            <View style={s.titleBlock}>
               <Text style={s.docTitle}>{title}</Text>
-              <Text style={s.docNumber}>{inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
-              {inv.linkedNumber ? (
-                <Text style={s.metaCenter}>
-                  {inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}
-                  {inv.correctionReason ? ` — Motif : ${inv.correctionReason}` : ""}
-                </Text>
-              ) : inv.correctionReason ? (
-                <Text style={s.metaCenter}>Motif : {inv.correctionReason}</Text>
-              ) : null}
-              <View style={s.metaCol}>
-                <Text style={s.metaCenter}>Date : {dateFmt(inv.issueDate)}</Text>
-                {inv.dueDate ? <Text style={s.metaCenter}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
-                <Text style={s.metaCenter}>Devise : {inv.currency}</Text>
-                {inv.poNumber ? <Text style={s.metaCenter}>Cde client : {inv.poNumber}</Text> : null}
+              <View style={{ marginTop: 8 }}>
+                <Text style={s.metaLine}><Text style={s.metaStrong}>{inv.invoiceNumber ?? "Brouillon — sans numéro"}</Text></Text>
+                {inv.linkedNumber ? (
+                  <Text style={s.metaLine}>{inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}{inv.correctionReason ? ` — ${inv.correctionReason}` : ""}</Text>
+                ) : null}
+                <Text style={s.metaLine}><Text style={s.metaStrong}>Date : </Text>{dateFmt(inv.issueDate)}</Text>
+                {inv.dueDate ? <Text style={s.metaLine}><Text style={s.metaStrong}>Échéance : </Text>{dateFmt(inv.dueDate)}</Text> : null}
+                <Text style={s.metaLine}><Text style={s.metaStrong}>Devise : </Text>{inv.currency}</Text>
+                {inv.poNumber ? <Text style={s.metaLine}><Text style={s.metaStrong}>Cde client : </Text>{inv.poNumber}</Text> : null}
               </View>
             </View>
           </View>
 
-          {/* ── Buyer: single compact line (art.145 requires client identification) ── */}
-          <Text style={s.clientLine}>
-            <Text>Client :  </Text>
-            <Text style={{ fontWeight: "bold" }}>{str(inv.buyer.companyName) || str(inv.buyer.name) || "—"}</Text>
-            {inv.buyer.address ? <Text>{`  ·  ${str(inv.buyer.address)}${inv.buyer.city ? `, ${inv.buyer.city}` : ""}`}</Text> : null}
-            {inv.buyer.ice ? <Text>{`  ·  ICE : ${str(inv.buyer.ice)}`}</Text> : null}
-            {inv.buyer.clientIF ? <Text>{`  ·  IF : ${str(inv.buyer.clientIF)}`}</Text> : null}
-            {inv.buyer.clientRC ? <Text>{`  ·  RC : ${str(inv.buyer.clientRC)}`}</Text> : null}
-          </Text>
+          {/* ── Bill-to ── */}
+          <View style={s.partySection}>
+            <Text style={s.partyLabel}>Facturé à</Text>
+            <Text style={s.partyName}>{str(inv.buyer.companyName) || str(inv.buyer.name) || "—"}</Text>
+            {inv.buyer.address ? <Text style={s.partyLine}>{str(inv.buyer.address)}{inv.buyer.city ? `, ${inv.buyer.city}` : ""}</Text> : null}
+            {[inv.buyer.ice && `ICE : ${inv.buyer.ice}`, inv.buyer.clientIF && `IF : ${inv.buyer.clientIF}`, inv.buyer.clientRC && `RC : ${inv.buyer.clientRC}`].filter(Boolean).map((t, i) => (
+              <Text key={i} style={s.partyLine}>{t}</Text>
+            ))}
+          </View>
 
-          {/* ── Lines table ── */}
-          <View style={[s.tableHead, { backgroundColor: accent }]}>
+          {/* ── Lines ── */}
+          <View style={s.tableHead}>
             <Text style={[s.th, s.cDesc]}>Désignation</Text>
             <Text style={[s.th, s.cQty]}>Qté</Text>
             <Text style={[s.th, s.cPU]}>P.U. HT</Text>
             <Text style={[s.th, s.cDisc]}>Remise</Text>
             <Text style={[s.th, s.cTVA]}>TVA</Text>
-            <Text style={[s.th, s.cTotal]}>Total HT</Text>
+            <Text style={[s.th, s.cTotal]}>Montant</Text>
           </View>
           {inv.lines.map((l, i) => {
             const gross = Math.floor((l.quantityMilli * l.unitPriceMinor + 500) / 1000);
@@ -207,8 +189,7 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
             return (
               <View key={i} style={s.row} wrap={false}>
                 <View style={s.cDesc}>
-                  <Text>{l.description || "—"}</Text>
-                  <Text style={s.descSub}>{`${l.quantityMilli / 1000} ${l.unit}`}{l.discountBps > 0 ? `  ·  remise ${l.discountBps / 100} %` : ""}</Text>
+                  <Text style={s.descMain}>{l.description || "—"}</Text>
                 </View>
                 <Text style={s.cQty}>{l.quantityMilli / 1000}</Text>
                 <Text style={s.cPU}>{fmt(l.unitPriceMinor)}</Text>
@@ -219,7 +200,7 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
             );
           })}
 
-          {/* ── Totals (kept together) ── */}
+          {/* ── Totals ── */}
           <View style={s.totalsWrap} wrap={false}>
             <View style={s.totalsBox}>
               <View style={s.tRow}><Text style={s.tLabel}>Total HT</Text><Text style={s.tValue}>{fmt(calc.subtotalHT)}</Text></View>
@@ -228,63 +209,60 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               ) : null}
               {calc.buckets.map((b, i) => (
                 <View key={i} style={s.tRow}>
-                  <Text style={s.tLabel}>TVA {b.rateBps / 100} % <Text style={{ color: MUTED }}>(base {fmt(b.taxable)})</Text></Text>
+                  <Text style={s.tLabel}>TVA {b.rateBps / 100} % (base {fmt(b.taxable)})</Text>
                   <Text style={s.tValue}>{fmt(b.tax)}</Text>
                 </View>
               ))}
-              <View style={[s.tGrand, { borderTopColor: accent }]}>
+              <View style={s.tGrand}>
                 <Text style={s.tGrandLabel}>{inv.docType === "AVOIR" ? "NET À DÉDUIRE" : "TOTAL TTC"}</Text>
                 <Text style={[s.tGrandValue, { color: accent }]}>{fmt(calc.totalTTC)}</Text>
               </View>
             </View>
           </View>
-
           {inv.taxMention ? <Text style={s.taxMention}>{inv.taxMention}</Text> : null}
+
+          {/* ── Payment / legal ── */}
+          <View style={s.infoGrid}>
+            <View style={s.infoBox}>
+              <Text style={s.infoTitle}>Paiement</Text>
+              {inv.paymentMode ? <Text style={s.infoLine}>Mode : {inv.paymentMode}</Text> : null}
+              {inv.dueDate ? <Text style={s.infoLine}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
+              {inv.seller.bankName ? <Text style={s.infoLine}>{str(inv.seller.bankName)}</Text> : null}
+              {inv.seller.rib ? <Text style={s.infoLine}>RIB : {str(inv.seller.rib)}</Text> : null}
+              {inv.seller.iban ? <Text style={s.infoLine}>IBAN : {str(inv.seller.iban)}</Text> : null}
+              {inv.seller.swift ? <Text style={s.infoLine}>SWIFT : {str(inv.seller.swift)}</Text> : null}
+            </View>
+            <View style={s.infoBox}>
+              <Text style={s.infoTitle}>Mentions légales</Text>
+              {sellerIds.map((t, i) => (
+                <Text key={i} style={s.infoLine}>{t}</Text>
+              ))}
+              {inv.seller.cnss ? <Text style={s.infoLine}>CNSS : {str(inv.seller.cnss)}</Text> : null}
+              {typeof inv.seller.capitalSocial === "number" ? (
+                <Text style={s.infoLine}>Capital : {fmt(inv.seller.capitalSocial as number)}</Text>
+              ) : null}
+            </View>
+          </View>
 
           {inv.notes ? (
             <View style={s.notesBox}>
-              <Text style={[s.bottomTitle, { color: accent }]}>NOTES</Text>
-              <Text>{inv.notes}</Text>
+              <Text style={s.infoTitle}>Notes</Text>
+              <Text style={s.infoLine}>{inv.notes}</Text>
             </View>
           ) : null}
-
-          {/* Spacer: pushes payment/legal to just above the footer when the page has room */}
-          <View style={s.push} />
-
-          {/* ── Payment + legal (legal left, payment right) ── */}
-          <View style={s.bottomGrid}>
-            <View style={s.bottomBox}>
-              <Text style={[s.bottomTitle, { color: accent }]}>MENTIONS LÉGALES</Text>
-              {sellerIds.map((t, i) => (
-                <Text key={i} style={s.bottomLine}>{t}</Text>
-              ))}
-              {inv.seller.cnss ? <Text style={s.bottomLine}>CNSS : {str(inv.seller.cnss)}</Text> : null}
-              {typeof inv.seller.capitalSocial === "number" ? (
-                <Text style={s.bottomLine}>Capital : {fmt(inv.seller.capitalSocial as number)}</Text>
-              ) : null}
-            </View>
-            <View style={s.bottomBox}>
-              <Text style={[s.bottomTitle, { color: accent }]}>PAIEMENT</Text>
-              {inv.paymentMode ? <Text style={s.bottomLine}>Mode : {inv.paymentMode}</Text> : null}
-              {inv.dueDate ? <Text style={s.bottomLine}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
-              {inv.seller.bankName ? <Text style={s.bottomLine}>{str(inv.seller.bankName)}</Text> : null}
-              {inv.seller.rib ? <Text style={s.bottomLine}>RIB : {str(inv.seller.rib)}</Text> : null}
-              {inv.seller.iban ? <Text style={s.bottomLine}>IBAN : {str(inv.seller.iban)}</Text> : null}
-              {inv.seller.swift ? <Text style={s.bottomLine}>SWIFT : {str(inv.seller.swift)}</Text> : null}
-              {!inv.paymentMode && !inv.seller.rib && !inv.seller.iban ? <Text style={[s.bottomLine, { color: MUTED }]}>—</Text> : null}
-            </View>
-          </View>
         </View>
 
-        {/* ── Anchored footer (every page) ── */}
+        {/* ── Footer ── */}
         <View style={s.footerFixed} fixed>
-          <View style={[s.footerBar, { backgroundColor: accent }]} />
           <View style={s.footerInner}>
             <Text style={s.footerText}>
-              {inv.footerText || `${str(inv.seller.legalName)}  ·  ${str(inv.seller.city)}  ·  ${[inv.seller.phone, inv.seller.email].filter(Boolean).map(str).join("  ·  ")}  ·  ICE ${str(inv.seller.ice)}`}
+              {inv.footerText || `Merci de votre confiance — paiement ${inv.paymentMode ? str(inv.paymentMode).toLowerCase() : "sous 30 jours"}`}
+            </Text>
+            <Text style={s.footerSmall}>
+              {`${str(inv.seller.legalName)}${inv.seller.city ? `, ${inv.seller.city}` : ""}  ·  ${sellerIds.join("  ·  ")}`}
               {"  ·  Conservation 10 ans (art. 211 CGI)"}
             </Text>
-            <Text style={s.pageNo} render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => `Page ${pageNumber} / ${totalPages}`} />
+            <Text style={s.footerSmall} render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => `Page ${pageNumber} / ${totalPages}`} />
           </View>
         </View>
       </Page>
