@@ -96,15 +96,32 @@ export async function deleteDraft(id: string) {
   return { ok: true };
 }
 
-export async function listInvoices(filter?: { status?: string; companyId?: string }) {
+export async function listInvoices(filter?: { status?: string; companyId?: string; q?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
   const u = await requireUser();
-  const rows = await prisma.invoice.findMany({
-    where: { ownerId: u.id, ...(filter?.status ? { status: filter.status } : {}), ...(filter?.companyId ? { companyId: filter.companyId } : {}) },
-    include: { payments: true, client: true, company: true },
-    orderBy: { updatedAt: "desc" },
-    take: 200,
-  });
-  return rows.map((r) => {
+  const page = Math.max(1, filter?.page ?? 1);
+  const pageSize = Math.min(100, Math.max(5, filter?.pageSize ?? 25));
+  const where = {
+    ownerId: u.id,
+    ...(filter?.status ? { status: filter.status } : {}),
+    ...(filter?.companyId ? { companyId: filter.companyId } : {}),
+    ...(filter?.from || filter?.to
+      ? { issueDate: { ...(filter.from ? { gte: new Date(filter.from) } : {}), ...(filter.to ? { lte: new Date(filter.to) } : {}) } }
+      : {}),
+    ...(filter?.q
+      ? { OR: [{ invoiceNumber: { contains: filter.q } }, { notes: { contains: filter.q } }, { poNumber: { contains: filter.q } }] }
+      : {}),
+  };
+  const [total, rows] = await Promise.all([
+    prisma.invoice.count({ where }),
+    prisma.invoice.findMany({
+      where,
+      include: { payments: true, client: true, company: true },
+      orderBy: { updatedAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+  const items = rows.map((r) => {
     const paid = r.payments.reduce((a, p) => a + p.amountMinor, 0);
     return {
       ...r,
@@ -113,6 +130,7 @@ export async function listInvoices(filter?: { status?: string; companyId?: strin
       display: deriveDisplayStatus({ status: r.status as "DRAFT" | "ISSUED" | "CANCELLED", totalTTC: r.totalTTC, paidAmount: paid, dueDate: r.dueDate, sentAt: r.sentAt }),
     };
   });
+  return { items, total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) };
 }
 
 export async function getInvoiceDetail(id: string) {

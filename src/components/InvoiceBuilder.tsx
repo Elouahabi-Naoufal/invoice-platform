@@ -1,56 +1,76 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, Plus, Trash2, Copy, GripVertical } from "lucide-react";
 import { calcInvoice } from "@/domain/invoice";
 import InvoicePreview, { PreviewLine } from "@/components/InvoicePreview";
 import ClientForm from "@/components/ClientForm";
-import { createDraft } from "@/server/invoice-ops";
+import { createDraft, updateDraft } from "@/server/invoice-ops";
 import { listClients } from "@/server/companies-clients";
+import { useToast, Modal } from "@/components/ui";
 
 type Company = Record<string, string | number | null | undefined> & { id: string; legalName: string };
 type Client = { id: string; type: string; name: string; companyName?: string | null; ice?: string | null; address?: string | null; city?: string | null; clientIF?: string | null; clientRC?: string | null };
+export type DraftInit = {
+  id: string; docType: string; currency: string; issueDate: string; dueDate: string | null;
+  paymentTerms: string; paymentMode: string | null; poNumber: string | null; notes: string | null;
+  invDiscountBps: number; companyId: string | null; clientId: string | null;
+  correctionReason: string | null; linkedInvoiceId: string | null;
+  lines: PreviewLine[];
+};
 
 const TVA_CHOICES = [
   { label: "20%", v: 2000 }, { label: "14%", v: 1400 }, { label: "10%", v: 1000 },
   { label: "7%", v: 700 }, { label: "0%", v: 0 }, { label: "Exonéré", v: -1 },
 ];
+const UNITS = ["piece", "heure", "jour", "kg", "service"];
 
-export default function InvoiceBuilder({ companies, initialClients, linked }: { companies: Company[]; initialClients: Client[]; linked?: { id: string; number: string | null } | null }) {
+function StepDot({ n, active, done }: { n: number; active: boolean; done: boolean }) {
+  return (
+    <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-semibold ${active ? "bg-ink-950 text-white" : done ? "bg-emerald-100 text-emerald-800" : "bg-ink-100 text-ink-500"}`}>
+      {n}
+    </span>
+  );
+}
+
+export default function InvoiceBuilder({ companies, initialClients, linked, draft }: {
+  companies: Company[]; initialClients: Client[];
+  linked?: { id: string; number: string | null } | null; draft?: DraftInit | null;
+}) {
   const r = useRouter();
+  const toast = useToast();
   const [step, setStep] = useState(0);
-  const [sellerId, setSellerId] = useState(companies[0]?.id ?? "");
+  const [sellerId, setSellerId] = useState(draft?.companyId ?? companies[0]?.id ?? "");
   const [clients, setClients] = useState<Client[]>(initialClients);
-  const [buyerId, setBuyerId] = useState("");
+  const [buyerId, setBuyerId] = useState(draft?.clientId ?? "");
   const [q, setQ] = useState("");
   const [showNew, setShowNew] = useState(false);
-  const [docType, setDocType] = useState("FACTURE");
-  const [issueDate, setIssueDate] = useState("2026-09-09");
-  const [dueDate, setDueDate] = useState("");
-  const [currency, setCurrency] = useState("MAD");
-  const [paymentMode, setPaymentMode] = useState("VIREMENT");
-  const [paymentTerms, setPaymentTerms] = useState("D30");
-  const [poNumber, setPoNumber] = useState("");
-  const [correctionReason, setCorrectionReason] = useState("");
-  const [notes, setNotes] = useState("");
-  const [invDiscPct, setInvDiscPct] = useState(0);
-  const [lines, setLines] = useState<PreviewLine[]>([
+  const [docType, setDocType] = useState(draft?.docType ?? "FACTURE");
+  const [issueDate, setIssueDate] = useState(draft?.issueDate ?? "2026-09-09");
+  const [dueDate, setDueDate] = useState(draft?.dueDate ?? "");
+  const [currency, setCurrency] = useState(draft?.currency ?? "MAD");
+  const [paymentMode, setPaymentMode] = useState(draft?.paymentMode ?? "VIREMENT");
+  const [paymentTerms, setPaymentTerms] = useState(draft?.paymentTerms ?? "D30");
+  const [poNumber, setPoNumber] = useState(draft?.poNumber ?? "");
+  const [correctionReason, setCorrectionReason] = useState(draft?.correctionReason ?? "");
+  const [notes, setNotes] = useState(draft?.notes ?? "");
+  const [invDiscPct, setInvDiscPct] = useState((draft?.invDiscountBps ?? 0) / 100);
+  const [lines, setLines] = useState<PreviewLine[]>(draft?.lines ?? [
     { description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false },
   ]);
   const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const seller = companies.find((c) => c.id === sellerId);
   const buyer = clients.find((c) => c.id === buyerId);
 
-  // Live totals via the ONE domain engine — no local money math.
   const calc = useMemo(() => {
-    try {
-      return calcInvoice({ lines, invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0 });
-    } catch { return null; }
+    try { return calcInvoice({ lines, invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0 }); }
+    catch { return null; }
   }, [lines, invDiscPct]);
 
   async function search() {
-    const res = await listClients(q);
-    setClients(res as Client[]);
+    setClients(await listClients(q) as Client[]);
   }
 
   function setLine(i: number, patch: Partial<PreviewLine>) {
@@ -67,20 +87,32 @@ export default function InvoiceBuilder({ companies, initialClients, linked }: { 
   }
 
   async function save() {
-    setErr("");
+    setErr(""); setSaving(true);
     try {
-      const inv = await createDraft({
+      const payload = {
         companyId: sellerId, clientId: buyerId, docType,
-        linkedInvoiceId: linked?.id ?? undefined,
+        linkedInvoiceId: linked?.id ?? draft?.linkedInvoiceId ?? undefined,
         correctionReason: (docType === "AVOIR" || docType === "RECTIFICATIVE") ? correctionReason : undefined,
         currency, invoiceLocale: "fr", issueDate,
         paymentTerms, paymentMode, poNumber: poNumber || undefined, notes: notes || undefined,
         invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
-        lines: lines.map((l) => ({ ...l, quantity: undefined })),
-      });
-      r.push(`/invoices/${(inv as { id: string }).id}`);
+        lines: lines.map((l) => ({ ...l })),
+      };
+      if (draft) {
+        await updateDraft(draft.id, payload);
+        toast({ kind: "ok", title: "Draft updated" });
+        r.push(`/invoices/${draft.id}`);
+      } else {
+        const inv = await createDraft(payload);
+        toast({ kind: "ok", title: "Draft saved" });
+        r.push(`/invoices/${(inv as { id: string }).id}`);
+      }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "error");
+      const msg = e instanceof Error ? e.message : "Save failed";
+      setErr(msg);
+      toast({ kind: "err", title: "Unable to save", body: msg });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -97,95 +129,130 @@ export default function InvoiceBuilder({ companies, initialClients, linked }: { 
     ice: buyer.ice ?? undefined, clientIF: buyer.clientIF ?? undefined, clientRC: buyer.clientRC ?? undefined,
   } : { name: "—" };
 
+  const canSave = sellerId && buyerId && lines.length > 0 && lines.every((l) => l.description.trim() && l.unitPriceMinor >= 0);
+
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        {["1 · Vendeur", "2 · Acheteur", "3 · Détails + lignes"].map((s, i) => (
-          <button key={s} onClick={() => setStep(i)} style={{ fontWeight: step === i ? 800 : 400 }}>{s}</button>
+      <div className="mb-5 flex items-center gap-5">
+        {[["Seller", 0], ["Buyer", 1], ["Details", 2]].map(([label, i]) => (
+          <button key={label as string} onClick={() => setStep(i as number)} className={`flex items-center gap-2 text-[13px] ${step === (i as number) ? "font-semibold text-ink-950" : "text-ink-400 hover:text-ink-700"}`}>
+            <StepDot n={(i as number) + 1} active={step === i} done={step > (i as number)} /> {label as string}
+          </button>
         ))}
-        <select value={docType} onChange={(e) => setDocType(e.target.value)} style={{ marginLeft: "auto" }}>
+        <select value={docType} onChange={(e) => setDocType(e.target.value)} disabled={!!draft} className="input ml-auto w-auto" aria-label="Document type">
           <option>FACTURE</option><option>AVOIR</option><option>RECTIFICATIVE</option>
         </select>
       </div>
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        <div style={{ flex: 1, background: "#fff", padding: 16, borderRadius: 8, display: "grid", gap: 12 }}>
+
+      <div className="flex items-start gap-6 max-xl:flex-col">
+        <div className="min-w-0 flex-1">
           {step === 0 && (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="card flex flex-col gap-2 p-3">
               {companies.map((c) => (
-                <label key={c.id} style={{ border: sellerId === c.id ? "2px solid #111" : "1px solid #ccc", padding: 10, borderRadius: 6 }}>
-                  <input type="radio" checked={sellerId === c.id} onChange={() => { setSellerId(c.id); setCurrency(String(c.defaultCurrency ?? "MAD")); }} />
-                  <strong> {String(c.legalName)}</strong> <span style={{ fontSize: 12 }}>· ICE {String(c.ice ?? "—")} · {String(c.defaultCurrency ?? "")}</span>
-                </label>
+                <button key={c.id} onClick={() => { setSellerId(c.id); setCurrency(String((c as Record<string, unknown>).defaultCurrency ?? "MAD")); setStep(1); }}
+                  className={`flex items-center gap-3 rounded-lg border p-3.5 text-left transition-colors ${sellerId === c.id ? "border-ink-950 bg-ink-50" : "border-ink-200 hover:border-ink-400"}`}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-ink-950 text-sm font-semibold text-white">{String(c.legalName).slice(0, 1)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14px] font-medium">{String(c.legalName)}</span>
+                    <span className="meta block">ICE {String((c as Record<string, unknown>).ice ?? "—")} · {String((c as Record<string, unknown>).defaultCurrency ?? "")}</span>
+                  </span>
+                </button>
               ))}
-              <button onClick={() => setStep(1)}>Continuer →</button>
             </div>
           )}
+
           {step === 1 && (
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher client…" style={{ flex: 1, padding: 8 }} />
-                <button onClick={search}>OK</button>
-                <button onClick={() => setShowNew(true)}>+ Nouveau client</button>
+            <div className="card p-4">
+              <div className="mb-3 flex gap-2">
+                <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} placeholder="Search clients…" className="input" />
+                <button onClick={search} className="btn-outline">Search</button>
+                <button onClick={() => setShowNew(true)} className="btn-outline whitespace-nowrap"><Plus size={14} /> New client</button>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {clients.map((c) => (
+                  <button key={c.id} onClick={() => { setBuyerId(c.id); setStep(2); }}
+                    className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${buyerId === c.id ? "border-ink-950 bg-ink-50" : "border-transparent hover:border-ink-200 hover:bg-ink-50"}`}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium">{c.companyName || c.name}</span>
+                      <span className="meta block">{c.type === "COMPANY" ? `B2B · ICE ${c.ice || "missing"}` : "Particulier"} · {c.city ?? ""}</span>
+                    </span>
+                  </button>
+                ))}
+                {clients.length === 0 && <p className="meta px-1 py-3">No clients match. Create one to continue.</p>}
               </div>
               {showNew && (
-                <div style={{ border: "1px dashed #888", padding: 12 }}>
-                  <ClientForm onDone={(id) => { setShowNew(false); listClients("").then((cs) => { setClients(cs as Client[]); setBuyerId(id); }); }} />
-                </div>
+                <Modal title="New client" onClose={() => setShowNew(false)}>
+                  <ClientForm onDone={(id) => { setShowNew(false); listClients("").then((cs) => { setClients(cs as Client[]); setBuyerId(id); setStep(2); }); }} />
+                </Modal>
               )}
-              {clients.map((c) => (
-                <label key={c.id} style={{ border: buyerId === c.id ? "2px solid #111" : "1px solid #ccc", padding: 8, borderRadius: 6 }}>
-                  <input type="radio" checked={buyerId === c.id} onChange={() => setBuyerId(c.id)} />
-                  <strong> {c.companyName || c.name}</strong> <span style={{ fontSize: 12 }}>· {c.type} · ICE {c.ice || "—"}</span>
-                </label>
-              ))}
-              <button onClick={() => setStep(2)}>Continuer →</button>
             </div>
           )}
+
           {step === 2 && (
-            <div style={{ display: "grid", gap: 10 }}>
+            <div className="flex flex-col gap-4">
               {(docType === "AVOIR" || docType === "RECTIFICATIVE") && (
-                <>
-                  <div>Facture d&apos;origine : <strong>{linked?.number ?? linked?.id ?? "—"}</strong></div>
-                  <input value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} placeholder="Motif (obligatoire) *" style={{ padding: 8 }} />
-                </>
-              )}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                <label>Date *<input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} /></label>
-                <label>Échéance<input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></label>
-                <label>Devise<select value={currency} onChange={(e) => setCurrency(e.target.value)}><option>MAD</option><option>EUR</option><option>USD</option><option>GBP</option></select></label>
-                <label>Paiement<select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}><option>VIREMENT</option><option>ESPECES</option><option>CHEQUE</option><option>EFFET</option></select></label>
-                <label>Conditions<select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)}><option value="ON_RECEIPT">À réception</option><option value="D7">7 j</option><option value="D15">15 j</option><option value="D30">30 j</option><option value="D60">60 j</option><option value="CUSTOM">Personnalisé</option></select></label>
-                <label>Bon de commande<input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /></label>
-                <label>Remise facture %<input type="number" min={0} max={100} value={invDiscPct} onChange={(e) => setInvDiscPct(Number(e.target.value))} /></label>
-              </div>
-              {lines.map((l, i) => (
-                <div key={i} style={{ border: "1px solid #ddd", padding: 8, borderRadius: 6, display: "grid", gap: 6 }}>
-                  <input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Ligne ${i + 1} — description *`} style={{ padding: 6 }} />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 6 }}>
-                    <label>Qté<input type="number" step="0.001" value={l.quantityMilli / 1000} onChange={(e) => setLine(i, { quantityMilli: Math.round(Number(e.target.value) * 1000) })} /></label>
-                    <label>Unité<select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })}><option value="piece">pièce</option><option value="heure">heure</option><option value="jour">jour</option><option value="kg">kg</option><option value="service">service</option></select></label>
-                    <label>P.U. HT (cent.)<input type="number" value={l.unitPriceMinor} onChange={(e) => setLine(i, { unitPriceMinor: Number(e.target.value) })} /></label>
-                    <label>Remise %<input type="number" min={0} max={100} value={l.discountBps / 100} onChange={(e) => setLine(i, { discountBps: Math.round(Number(e.target.value) * 100) })} /></label>
-                    <label>TVA<select value={l.taxExempt ? -1 : l.taxRateBps} onChange={(e) => { const v = Number(e.target.value); setLine(i, v === -1 ? { taxExempt: true, taxRateBps: 0 } : { taxExempt: false, taxRateBps: v }); }}>
-                      {TVA_CHOICES.map((t) => <option key={t.label} value={t.v}>{t.label}</option>)}
-                    </select></label>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => move(i, -1)}>↑</button>
-                    <button onClick={() => move(i, 1)}>↓</button>
-                    <button onClick={() => setLines((ls) => [...ls.slice(0, i + 1), { ...ls[i] }, ...ls.slice(i + 1)])}>Dupliquer</button>
-                    <button onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}>Supprimer</button>
+                <div className="card grid gap-3 p-4">
+                  <div className="text-[13px]">Original invoice: <strong>{linked?.number ?? draft?.linkedInvoiceId ?? "—"}</strong></div>
+                  <div>
+                    <label className="label" htmlFor="motif">Reason (required) *</label>
+                    <input id="motif" value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} placeholder="e.g. Returned goods" className="input" />
                   </div>
                 </div>
-              ))}
-              <button onClick={() => setLines((ls) => [...ls, { description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false }])}>+ Ajouter une ligne</button>
-              <label>Notes<textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
-              {err && <p style={{ color: "crimson" }}>{err}</p>}
-              <button onClick={save} style={{ padding: 12, fontWeight: 800 }}>Enregistrer le brouillon (numéro attribué à la finalisation)</button>
+              )}
+              <div className="card grid grid-cols-3 gap-3 p-4 max-md:grid-cols-2">
+                <div><label className="label">Issue date *</label><input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="input" /></div>
+                <div><label className="label">Due date</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" /><p className="hint">Empty = derived from terms</p></div>
+                <div><label className="label">Currency</label><select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input"><option>MAD</option><option>EUR</option><option>USD</option><option>GBP</option></select></div>
+                <div><label className="label">Payment</label><select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="input"><option>VIREMENT</option><option>ESPECES</option><option>CHEQUE</option><option>EFFET</option></select></div>
+                <div><label className="label">Terms</label><select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input"><option value="ON_RECEIPT">Due on receipt</option><option value="D7">7 days</option><option value="D15">15 days</option><option value="D30">30 days</option><option value="D60">60 days</option><option value="CUSTOM">Custom</option></select></div>
+                <div><label className="label">Purchase order</label><input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="BC-…" className="input" /></div>
+                <div><label className="label">Invoice discount %</label><input type="number" min={0} max={100} value={invDiscPct} onChange={(e) => setInvDiscPct(Number(e.target.value))} className="input" /></div>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="border-b border-ink-200 px-4 py-2.5"><span className="section-title">Line items</span></div>
+                {lines.map((l, i) => (
+                  <div key={i} className="border-b border-ink-100 px-4 py-3 last:border-b-0">
+                    <input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Line ${i + 1} — description *`} className="mb-2 w-full bg-transparent text-[13px] font-medium placeholder:text-ink-400 placeholder:font-normal focus:outline-none" aria-label={`Line ${i + 1} description`} />
+                    <div className="grid grid-cols-[70px_90px_1fr_70px_90px_34px] items-end gap-2 max-md:grid-cols-3">
+                      <div><label className="label">Qty</label><input type="number" step="0.001" min={0} value={l.quantityMilli / 1000} onChange={(e) => setLine(i, { quantityMilli: Math.max(1, Math.round(Number(e.target.value) * 1000)) })} className="input num" /></div>
+                      <div><label className="label">Unit</label><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className="input">{UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select></div>
+                      <div><label className="label">Unit price HT</label><input type="number" min={0} value={l.unitPriceMinor / 100} onChange={(e) => setLine(i, { unitPriceMinor: Math.round(Number(e.target.value) * 100) })} className="input num" /></div>
+                      <div><label className="label">Disc %</label><input type="number" min={0} max={100} value={l.discountBps / 100} onChange={(e) => setLine(i, { discountBps: Math.round(Number(e.target.value) * 100) })} className="input num" /></div>
+                      <div><label className="label">TVA</label><select value={l.taxExempt ? -1 : l.taxRateBps} onChange={(e) => { const v = Number(e.target.value); setLine(i, v === -1 ? { taxExempt: true, taxRateBps: 0 } : { taxExempt: false, taxRateBps: v }); }} className="input">
+                        {TVA_CHOICES.map((t) => <option key={t.label} value={t.v}>{t.label}</option>)}
+                      </select></div>
+                      <div className="flex gap-0.5 pb-0.5">
+                        <button onClick={() => move(i, -1)} className="btn-ghost btn-sm px-1.5" aria-label="Move up"><GripVertical size={13} /></button>
+                        <button onClick={() => setLines((ls) => [...ls.slice(0, i + 1), { ...ls[i] }, ...ls.slice(i + 1)])} className="btn-ghost btn-sm px-1.5" aria-label="Duplicate line"><Copy size={13} /></button>
+                        <button onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} className="btn-ghost btn-sm px-1.5 hover:text-red-700" aria-label="Delete line"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => setLines((ls) => [...ls, { description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false }])} className="flex w-full items-center gap-1.5 px-4 py-2.5 text-[13px] text-ink-500 hover:bg-ink-50 hover:text-ink-950">
+                  <Plus size={14} /> Add line
+                </button>
+              </div>
+
+              <div className="card p-4">
+                <label className="label" htmlFor="notes">Notes</label>
+                <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input" />
+              </div>
+
+              {err && <p className="field-err">{err}</p>}
+              <div className="flex items-center gap-2">
+                <button onClick={() => setStep(1)} className="btn-ghost"><ArrowLeft size={14} /> Back</button>
+                <button onClick={save} disabled={!canSave || saving} className="btn-primary ml-auto">
+                  {saving ? "Saving…" : draft ? "Save changes" : "Save draft"} <ArrowRight size={14} />
+                </button>
+              </div>
+              {!canSave && <p className="hint text-right">Seller, buyer and at least one described line are required.</p>}
             </div>
           )}
         </div>
-        <div>
+
+        <div className="sticky top-[68px] shrink-0 max-xl:static max-xl:w-full">
           <InvoicePreview doc={{
             docType, invoiceNumber: null, linkedNumber: linked?.number ?? null, correctionReason: correctionReason || null,
             issueDate, dueDate: dueDate || null, currency, locale: "fr",
@@ -193,7 +260,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked }: { 
             invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
             poNumber: poNumber || null, paymentMode, notes: notes || null,
           }} />
-          {!calc && <p style={{ color: "crimson" }}>Lignes invalides (montants ≥ 0 requis).</p>}
+          {!calc && <p className="field-err mt-2">Invalid lines — amounts must be ≥ 0.</p>}
         </div>
       </div>
     </div>

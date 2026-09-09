@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { calcInvoice, formatMoney } from "@/domain/invoice";
 
 const s = StyleSheet.create({
@@ -59,6 +59,9 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
       <Page size="A4" style={s.page}>
         <View style={s.header}>
           <View>
+            {inv.seller.logoPath && (inv.seller.logoPath.startsWith("http") || inv.seller.logoPath.startsWith("data:"))
+              ? <Image src={inv.seller.logoPath} style={{ width: 96, height: 48, objectFit: "contain", marginBottom: 6 }} />
+              : null}
             <Text style={s.sellerName}>{inv.seller.legalName || "Seller"}</Text>
             {inv.seller.tradeName ? <Text style={s.muted}>{inv.seller.tradeName}</Text> : null}
             <Text style={s.muted}>{inv.seller.address || ""}{inv.seller.city ? `, ${inv.seller.city}` : ""}</Text>
