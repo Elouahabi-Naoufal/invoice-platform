@@ -60,6 +60,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   ]);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [tried, setTried] = useState(false);
 
   const seller = companies.find((c) => c.id === sellerId);
   const buyer = clients.find((c) => c.id === buyerId);
@@ -89,11 +90,23 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   async function save() {
     setErr(""); setSaving(true);
     try {
+      if (!sellerId) throw new Error("Select a seller (step 1).");
+      if (!buyerId) throw new Error("Select a buyer (step 2).");
+      const badLine = lines.findIndex((l) => !l.description.trim());
+      if (lines.length === 0 || badLine >= 0) {
+        setTried(true);
+        // Focus the first undescribed line so the problem is obvious.
+        requestAnimationFrame(() => document.getElementById(`line-desc-${Math.max(0, badLine)}`)?.focus());
+        throw new Error(
+          lines.length === 0 ? "Add at least one line." : `Line ${badLine + 1} needs a description.`
+        );
+      }
       const payload = {
         companyId: sellerId, clientId: buyerId, docType,
         linkedInvoiceId: linked?.id ?? draft?.linkedInvoiceId ?? undefined,
         correctionReason: (docType === "AVOIR" || docType === "RECTIFICATIVE") ? correctionReason : undefined,
         currency, invoiceLocale: "fr", issueDate,
+        dueDate: dueDate || null,
         paymentTerms, paymentMode, poNumber: poNumber || undefined, notes: notes || undefined,
         invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
         lines: lines.map((l) => ({ ...l })),
@@ -130,7 +143,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
     ice: buyer.ice ?? undefined, clientIF: buyer.clientIF ?? undefined, clientRC: buyer.clientRC ?? undefined,
   } : { name: "—" };
 
-  const canSave = sellerId && buyerId && lines.length > 0 && lines.every((l) => l.description.trim() && l.unitPriceMinor >= 0);
+  const missingDesc = (i: number) => tried && !lines[i]?.description.trim();
 
   return (
     <div>
@@ -213,8 +226,10 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
               <div className="card overflow-hidden">
                 <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Line items</span></div>
                 {lines.map((l, i) => (
-                  <div key={i} className="border-b border-ink-100 dark:border-white/10 px-4 py-3 last:border-b-0">
-                    <input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Line ${i + 1} — description *`} className="mb-2 w-full bg-transparent text-[13px] font-medium placeholder:text-ink-400 dark:placeholder:text-stone-500 placeholder:font-normal focus:outline-none" aria-label={`Line ${i + 1} description`} />
+                  <div key={i} className={`border-b border-ink-100 dark:border-white/10 px-4 py-3 last:border-b-0 ${missingDesc(i) ? "bg-red-50/60 dark:bg-red-500/10" : ""}`}>
+                    <input id={`line-desc-${i}`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Line ${i + 1} — description *`} aria-label={`Line ${i + 1} description`} aria-invalid={missingDesc(i)}
+                      className={`mb-0.5 w-full rounded bg-transparent px-1 py-1 text-[13px] font-medium placeholder:font-normal focus:outline-none ${missingDesc(i) ? "placeholder:text-red-400 ring-1 ring-red-400" : "placeholder:text-ink-400 dark:placeholder:text-stone-500"}`} />
+                    {missingDesc(i) && <p className="field-err mb-1 px-1">Description is required.</p>}
                     <div className="grid grid-cols-[70px_90px_1fr_70px_90px_34px] items-end gap-2 max-md:grid-cols-3">
                       <div><label className="label">Qty</label><input type="number" step="0.001" min={0} value={l.quantityMilli / 1000} onChange={(e) => setLine(i, { quantityMilli: Math.max(1, Math.round(Number(e.target.value) * 1000)) })} className="input num" /></div>
                       <div><label className="label">Unit</label><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className="input">{UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select></div>
@@ -244,11 +259,10 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
               {err && <p className="field-err">{err}</p>}
               <div className="flex items-center gap-2">
                 <button onClick={() => setStep(1)} className="btn-ghost"><ArrowLeft size={14} /> Back</button>
-                <button onClick={save} disabled={!canSave || saving} className="btn-primary ml-auto">
+                <button onClick={save} disabled={saving} className="btn-primary ml-auto">
                   {saving ? "Saving…" : draft ? "Save changes" : "Save draft"} <ArrowRight size={14} />
                 </button>
               </div>
-              {!canSave && <p className="hint text-right">Seller, buyer and at least one described line are required.</p>}
             </div>
           )}
         </div>
