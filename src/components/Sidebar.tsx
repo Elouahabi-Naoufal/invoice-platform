@@ -14,10 +14,28 @@ const NAV = [
 export default function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="flex w-[216px] shrink-0 flex-col border-r border-ink-200 dark:border-white/10 bg-white dark:bg-[#1C1917] px-3 py-5 max-md:hidden">
+    <aside
+      className="flex w-[216px] shrink-0 flex-col px-3 py-5 max-md:hidden"
+      style={{
+        background: "linear-gradient(to bottom, #46586e 0%, #33414f 50%, #232f3e 100%)",
+        boxShadow: "inset -1px 0 0 rgba(255,255,255,0.15), 2px 0 6px rgba(20,40,70,0.35)",
+      }}
+    >
       <Link href="/" className="mb-6 flex items-center gap-2 px-2">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-ink-950 text-[13px] font-bold text-white">F</span>
-        <span className="text-[14px] font-semibold tracking-tight">Facturo</span>
+        <span
+          className="grid h-8 w-8 place-items-center rounded-[10px] text-[15px] font-bold text-white"
+          style={{
+            background: "linear-gradient(to bottom, #6db3e8 0%, #2273b8 50%, #17578f 100%)",
+            border: "1px solid #0f3d68",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 3px rgba(0,0,0,0.5)",
+            textShadow: "0 1px 1px rgba(0,0,0,0.5)",
+          }}
+        >
+          F
+        </span>
+        <span className="text-[15px] font-bold tracking-tight text-white" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
+          Facturo
+        </span>
       </Link>
       <nav className="flex flex-col gap-0.5">
         {NAV.map((n) => {
@@ -35,7 +53,9 @@ export default function Sidebar() {
         <Plus size={15} /> New invoice
       </Link>
       <div className="mt-auto px-2 pt-4">
-        <p className="meta">Conservation 10 ans · art. 211 CGI</p>
+        <p className="text-[11px]" style={{ color: "#93a5b8", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>
+          Conservation 10 ans · art. 211 CGI
+        </p>
       </div>
     </aside>
   );

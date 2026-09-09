@@ -3,21 +3,30 @@ import React, { createContext, useCallback, useContext, useState } from "react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 
 /* ---------- Status badge (restrained) ---------- */
-const STATUS_STYLE: Record<string, string> = {
-  DRAFT: "bg-ink-100 text-ink-700 dark:bg-white/10 dark:text-stone-300",
-  ISSUED: "bg-ink-100 text-ink-950 dark:bg-white/10 dark:text-stone-100",
-  SENT: "bg-brand-50 text-brand-700 dark:bg-brand-600/20 dark:text-blue-300",
-  VIEWED: "bg-brand-50 text-brand-700 dark:bg-brand-600/20 dark:text-blue-300",
-  PARTIALLY_PAID: "bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
-  PAID: "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
-  OVERDUE: "bg-red-50 text-red-800 dark:bg-red-500/15 dark:text-red-300",
-  CANCELLED: "bg-ink-100 text-ink-400 line-through dark:bg-white/5 dark:text-stone-500",
+const STATUS_STYLE: Record<string, React.CSSProperties> = {
+  DRAFT: { background: "linear-gradient(to bottom,#ffffff,#dfe6ee)", color: "#33506b", border: "1px solid #8fa6bd" },
+  ISSUED: { background: "linear-gradient(to bottom,#e8f0f9,#b9cfe6)", color: "#1f3a5f", border: "1px solid #7ba0c6" },
+  SENT: { background: "linear-gradient(to bottom,#6db3e8,#2273b8)", color: "#fff", border: "1px solid #17578f" },
+  VIEWED: { background: "linear-gradient(to bottom,#6db3e8,#2273b8)", color: "#fff", border: "1px solid #17578f" },
+  PARTIALLY_PAID: { background: "linear-gradient(to bottom,#ffd97a,#f5a623)", color: "#5f3d00", border: "1px solid #b97a00" },
+  PAID: { background: "linear-gradient(to bottom,#9ed69a,#4da64d)", color: "#fff", border: "1px solid #2f7a2f" },
+  OVERDUE: { background: "linear-gradient(to bottom,#f08a80,#c12e2a)", color: "#fff", border: "1px solid #8f1f1c" },
+  CANCELLED: { background: "linear-gradient(to bottom,#e2e2e2,#bdbdbd)", color: "#666", border: "1px solid #999", textDecoration: "line-through" },
 };
 
 export function StatusBadge({ value }: { value: string }) {
   const label = value.replace(/_/g, " ");
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium tracking-wide ${STATUS_STYLE[value] ?? "bg-ink-100 dark:bg-white/10 text-ink-700 dark:text-stone-300"}`}>
+    <span
+      className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold uppercase"
+      style={{
+        borderRadius: 999,
+        letterSpacing: "0.04em",
+        textShadow: "0 1px 0 rgba(255,255,255,0.5)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 2px rgba(20,40,70,0.35)",
+        ...(STATUS_STYLE[value] ?? STATUS_STYLE.DRAFT),
+      }}
+    >
       {label}
     </span>
   );
