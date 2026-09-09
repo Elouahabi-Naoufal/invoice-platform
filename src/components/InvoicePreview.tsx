@@ -33,7 +33,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
   const sellerIds = [doc.seller.ice && `ICE : ${doc.seller.ice}`, doc.seller.identifiantFiscal && `IF : ${doc.seller.identifiantFiscal}`, doc.seller.rc && `RC : ${doc.seller.rc}${doc.seller.rcCity ? ` ${doc.seller.rcCity}` : ""}`, doc.seller.patente && `TP : ${doc.seller.patente}`].filter(Boolean);
 
   return (
-    <div className="w-[600px] max-w-full bg-white text-[13px] leading-relaxed text-ink-950 shadow-doc max-md:w-full">
+    <div className="a4doc w-[600px] max-w-full bg-white text-[13px] leading-relaxed text-ink-950 shadow-doc max-md:w-full print:w-full print:max-w-none print:shadow-none">
       <div className="h-[5px]" style={{ backgroundColor: accent }} />
       <div className="px-10 py-6 max-md:px-6">
         <div className="flex items-start justify-between gap-6">
