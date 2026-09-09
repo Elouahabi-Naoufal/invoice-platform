@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import { calcInvoice, formatMoney, amountInWords, paymentTermsLabel } from "@/domain/invoice";
+import { calcInvoice, formatMoney } from "@/domain/invoice";
 
 /**
  * Full-page A4 invoice stationery — PRESENTATION ONLY.
@@ -64,7 +64,6 @@ const s = StyleSheet.create({
   body: { paddingHorizontal: 40, paddingTop: 22 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logo: { width: 120, height: 56, objectFit: "contain" },
-  companyBlock: { textAlign: "right", maxWidth: 250 },
   companyName: { fontSize: 12, fontWeight: "bold" },
   companyLine: { color: MUTED, marginTop: 1 },
   identity: { marginTop: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
@@ -79,6 +78,7 @@ const s = StyleSheet.create({
   partyLabel: { fontSize: 7, color: MUTED, letterSpacing: 1, marginBottom: 4 },
   partyName: { fontSize: 10, fontWeight: "bold" },
   partyLine: { color: MUTED, marginTop: 1 },
+  clientLine: { marginTop: 10, color: MUTED },
   tableHead: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, marginTop: 16, borderRadius: 4 },
   th: { color: "#FFFFFF", fontWeight: "bold", fontSize: 8 },
   row: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: HAIR },
@@ -155,15 +155,6 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               {inv.seller.tradeName ? <Text style={s.companyLine}>{str(inv.seller.tradeName)}</Text> : null}
               {inv.seller.legalForm ? <Text style={s.companyLine}>{str(inv.seller.legalForm)}</Text> : null}
             </View>
-            <View style={s.companyBlock}>
-              <Text style={s.companyLine}>{str(inv.seller.address)}{inv.seller.city ? `, ${inv.seller.city}` : ""}</Text>
-              {[inv.seller.phone, inv.seller.email].filter(Boolean).length > 0 ? (
-                <Text style={s.companyLine}>{[inv.seller.phone, inv.seller.email].filter(Boolean).map(str).join("  ·  ")}</Text>
-              ) : null}
-              {sellerIds.map((t, i) => (
-                <Text key={i} style={s.companyLine}>{t}</Text>
-              ))}
-            </View>
           </View>
 
           {/* ── Invoice identity ── */}
@@ -188,25 +179,14 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
             </View>
           </View>
 
-          {/* ── Seller / Buyer ── */}
-          <View style={s.parties}>
-            <View style={s.partyBox}>
-              <Text style={s.partyLabel}>ÉMETTEUR</Text>
-              <Text style={s.partyName}>{str(inv.seller.legalName)}</Text>
-              <Text style={s.partyLine}>{str(inv.seller.address)}{inv.seller.city ? `, ${inv.seller.city}` : ""}</Text>
-              {sellerIds.slice(0, 3).map((t, i) => (
-                <Text key={i} style={s.partyLine}>{t}</Text>
-              ))}
-            </View>
-            <View style={s.partyBox}>
-              <Text style={s.partyLabel}>FACTURÉ À</Text>
-              <Text style={s.partyName}>{str(inv.buyer.companyName) || str(inv.buyer.name) || "—"}</Text>
-              {inv.buyer.address ? <Text style={s.partyLine}>{str(inv.buyer.address)}{inv.buyer.city ? `, ${inv.buyer.city}` : ""}</Text> : null}
-              {inv.buyer.ice ? <Text style={s.partyLine}>ICE : {str(inv.buyer.ice)}</Text> : null}
-              {inv.buyer.clientIF ? <Text style={s.partyLine}>IF : {str(inv.buyer.clientIF)}</Text> : null}
-              {inv.buyer.clientRC ? <Text style={s.partyLine}>RC : {str(inv.buyer.clientRC)}</Text> : null}
-            </View>
-          </View>
+          {/* ── Buyer: single compact line (art.145 requires client identification) ── */}
+          <Text style={s.clientLine}>
+            Client : {str(inv.buyer.companyName) || str(inv.buyer.name) || "—"}
+            {inv.buyer.address ? `  ·  ${str(inv.buyer.address)}${inv.buyer.city ? `, ${inv.buyer.city}` : ""}` : ""}
+            {inv.buyer.ice ? `  ·  ICE : ${str(inv.buyer.ice)}` : ""}
+            {inv.buyer.clientIF ? `  ·  IF : ${str(inv.buyer.clientIF)}` : ""}
+            {inv.buyer.clientRC ? `  ·  RC : ${str(inv.buyer.clientRC)}` : ""}
+          </Text>
 
           {/* ── Lines table ── */}
           <View style={[s.tableHead, { backgroundColor: accent }]}>
@@ -255,26 +235,10 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
             </View>
           </View>
 
-          {/* ── Amount in words ── */}
-          <View style={s.wordsBox} wrap={false}>
-            <Text style={s.wordsLabel}>ARRÊTÉE LA PRÉSENTE FACTURE À LA SOMME DE</Text>
-            <Text style={s.wordsText}>{inv.amountInWords || amountInWords(calc.totalTTC, inv.currency)}</Text>
-          </View>
           {inv.taxMention ? <Text style={s.taxMention}>{inv.taxMention}</Text> : null}
 
-          {/* ── Payment + legal ── */}
+          {/* ── Payment + legal (legal left, payment right) ── */}
           <View style={s.bottomGrid}>
-            <View style={s.bottomBox}>
-              <Text style={[s.bottomTitle, { color: accent }]}>PAIEMENT</Text>
-              {inv.paymentMode ? <Text style={s.bottomLine}>Mode : {inv.paymentMode}</Text> : null}
-              {paymentTermsLabel(inv.paymentTerms, inv.locale) ? <Text style={s.bottomLine}>Conditions : {paymentTermsLabel(inv.paymentTerms, inv.locale)}</Text> : null}
-              {inv.dueDate ? <Text style={s.bottomLine}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
-              {inv.seller.bankName ? <Text style={s.bottomLine}>{str(inv.seller.bankName)}</Text> : null}
-              {inv.seller.rib ? <Text style={s.bottomLine}>RIB : {str(inv.seller.rib)}</Text> : null}
-              {inv.seller.iban ? <Text style={s.bottomLine}>IBAN : {str(inv.seller.iban)}</Text> : null}
-              {inv.seller.swift ? <Text style={s.bottomLine}>SWIFT : {str(inv.seller.swift)}</Text> : null}
-              {!inv.paymentMode && !inv.seller.rib && !inv.seller.iban ? <Text style={[s.bottomLine, { color: MUTED }]}>—</Text> : null}
-            </View>
             <View style={s.bottomBox}>
               <Text style={[s.bottomTitle, { color: accent }]}>MENTIONS LÉGALES</Text>
               {sellerIds.map((t, i) => (
@@ -284,6 +248,16 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               {typeof inv.seller.capitalSocial === "number" ? (
                 <Text style={s.bottomLine}>Capital : {fmt(inv.seller.capitalSocial as number)}</Text>
               ) : null}
+            </View>
+            <View style={s.bottomBox}>
+              <Text style={[s.bottomTitle, { color: accent }]}>PAIEMENT</Text>
+              {inv.paymentMode ? <Text style={s.bottomLine}>Mode : {inv.paymentMode}</Text> : null}
+              {inv.dueDate ? <Text style={s.bottomLine}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
+              {inv.seller.bankName ? <Text style={s.bottomLine}>{str(inv.seller.bankName)}</Text> : null}
+              {inv.seller.rib ? <Text style={s.bottomLine}>RIB : {str(inv.seller.rib)}</Text> : null}
+              {inv.seller.iban ? <Text style={s.bottomLine}>IBAN : {str(inv.seller.iban)}</Text> : null}
+              {inv.seller.swift ? <Text style={s.bottomLine}>SWIFT : {str(inv.seller.swift)}</Text> : null}
+              {!inv.paymentMode && !inv.seller.rib && !inv.seller.iban ? <Text style={[s.bottomLine, { color: MUTED }]}>—</Text> : null}
             </View>
           </View>
 

@@ -1,4 +1,4 @@
-import { calcInvoice, formatMoney, amountInWords, paymentTermsLabel } from "@/domain/invoice";
+import { calcInvoice, formatMoney } from "@/domain/invoice";
 
 export interface PreviewLine {
   description: string; quantityMilli: number; unit: string;
@@ -46,13 +46,6 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
             {doc.seller.tradeName && <div className="text-ink-500">{doc.seller.tradeName}</div>}
             {doc.seller.legalForm && <div className="text-ink-500">{doc.seller.legalForm}</div>}
           </div>
-          <div className="max-w-[240px] text-right text-ink-500">
-            <div>{doc.seller.address}{doc.seller.city ? `, ${doc.seller.city}` : ""}</div>
-            {[doc.seller.phone, doc.seller.email].filter(Boolean).length > 0 && (
-              <div>{[doc.seller.phone, doc.seller.email].filter(Boolean).join("  ·  ")}</div>
-            )}
-            {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
-          </div>
         </div>
 
         <div className="mt-4 flex items-end justify-between gap-6">
@@ -69,20 +62,12 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-3">
-          <div className="flex-1 rounded-md border border-ink-200 p-3">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-ink-500">Émetteur</div>
-            <div className="font-semibold">{doc.seller.legalName}</div>
-            {sellerIds.slice(0, 3).map((t, i) => <div key={i} className="text-ink-500">{t}</div>)}
-          </div>
-          <div className="flex-1 rounded-md border border-ink-200 p-3">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-ink-500">Facturé à</div>
-            <div className="font-semibold">{doc.buyer.companyName || doc.buyer.name || "—"}</div>
-            {doc.buyer.address && <div className="text-ink-500">{doc.buyer.address}{doc.buyer.city ? `, ${doc.buyer.city}` : ""}</div>}
-            {doc.buyer.ice && <div className="text-ink-500">ICE : {doc.buyer.ice}</div>}
-            {doc.buyer.clientIF && <div className="text-ink-500">IF : {doc.buyer.clientIF}</div>}
-            {doc.buyer.clientRC && <div className="text-ink-500">RC : {doc.buyer.clientRC}</div>}
-          </div>
+        <div className="mt-3 text-[13px] text-ink-500">
+          Client : <strong className="text-ink-950 dark:text-stone-100">{doc.buyer.companyName || doc.buyer.name || "—"}</strong>
+          {doc.buyer.address ? ` · ${doc.buyer.address}${doc.buyer.city ? `, ${doc.buyer.city}` : ""}` : ""}
+          {doc.buyer.ice ? ` · ICE : ${doc.buyer.ice}` : ""}
+          {doc.buyer.clientIF ? ` · IF : ${doc.buyer.clientIF}` : ""}
+          {doc.buyer.clientRC ? ` · RC : ${doc.buyer.clientRC}` : ""}
         </div>
 
         <table className="mt-4 w-full">
@@ -129,27 +114,22 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           </div>
         </div>
 
-        <div className="mt-3 rounded bg-ink-50 p-2.5 dark:bg-white/5">
-          <div className="text-[10px] uppercase tracking-widest text-ink-500">Arrêtée la présente facture à la somme de</div>
-          <div className="italic">{amountInWords(calc.totalTTC, doc.currency)}</div>
-        </div>
         {doc.taxMention && <div className="mt-2 font-semibold">{doc.taxMention}</div>}
 
         <div className="mt-3 flex gap-3">
           <div className="flex-1">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Mentions légales</div>
+            {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
+            {doc.seller.cnss && <div>CNSS : {doc.seller.cnss}</div>}
+          </div>
+          <div className="flex-1">
             <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Paiement</div>
             {doc.paymentMode && <div>Mode : {doc.paymentMode}</div>}
-            {paymentTermsLabel(doc.paymentTerms, doc.locale) && <div>Conditions : {paymentTermsLabel(doc.paymentTerms, doc.locale)}</div>}
             {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
             {doc.seller.bankName && <div>{doc.seller.bankName}</div>}
             {doc.seller.rib && <div>RIB : {doc.seller.rib}</div>}
             {doc.seller.iban && <div>IBAN : {doc.seller.iban}</div>}
             {doc.seller.swift && <div>SWIFT : {doc.seller.swift}</div>}
-          </div>
-          <div className="flex-1">
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Mentions légales</div>
-            {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
-            {doc.seller.cnss && <div>CNSS : {doc.seller.cnss}</div>}
           </div>
         </div>
         {doc.notes && <div className="mt-3"><div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Notes</div><div>{doc.notes}</div></div>}
