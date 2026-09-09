@@ -4,6 +4,7 @@ import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
+import { logoDataUri } from "@/server/companies-clients";
 import { InvoiceDoc } from "@/pdf/InvoiceDoc";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -19,6 +20,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const seller = inv.sellerSnapshot ? JSON.parse(inv.sellerSnapshot) : {};
   const buyer = inv.buyerSnapshot ? JSON.parse(inv.buyerSnapshot) : {};
+  const logoUri = seller.logoData && String(seller.logoData).startsWith("data:")
+    ? String(seller.logoData)
+    : await logoDataUri(seller.logoPath);
+  if (logoUri) seller.logoPath = logoUri;
   const lines = inv.linesSnapshot ? JSON.parse(inv.linesSnapshot) : inv.lines;
   const linkedNumber = inv.linkedInvoiceId
     ? (await prisma.invoice.findUnique({ where: { id: inv.linkedInvoiceId }, select: { invoiceNumber: true } }))?.invoiceNumber ?? null

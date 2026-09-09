@@ -37,10 +37,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: { q?
               {clients.map((c) => (
                 <tr key={c.id}>
                   <td className="font-medium">{c.companyName || c.name}{c.companyName && <span className="meta block">{c.name}</span>}</td>
-                  <td className="text-ink-500">{c.type === "COMPANY" ? "B2B" : "B2C"}</td>
-                  <td className="tabular-nums text-ink-500">{c.ice || "—"}</td>
-                  <td className="text-ink-500">{c.email || c.phone || "—"}</td>
-                  <td className="text-ink-500">{c.city || "—"}</td>
+                  <td className="text-ink-500 dark:text-stone-400">{c.type === "COMPANY" ? "B2B" : "B2C"}</td>
+                  <td className="tabular-nums text-ink-500 dark:text-stone-400">{c.ice || "—"}</td>
+                  <td className="text-ink-500 dark:text-stone-400">{c.email || c.phone || "—"}</td>
+                  <td className="text-ink-500 dark:text-stone-400">{c.city || "—"}</td>
                 </tr>
               ))}
             </tbody>

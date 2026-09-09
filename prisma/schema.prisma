@@ -36,6 +36,7 @@ model Company {
   invoicePrefix  String  @default("FAC")
   avoirPrefix    String  @default("AV")
   invoiceLocale  String  @default("fr")
+  accentColor    String  @default("#1D4ED8") // invoice theme accent (hex), user-customizable
   footerNotes    String?
   // Morocco legal (optional, first-class)
   ice            String?

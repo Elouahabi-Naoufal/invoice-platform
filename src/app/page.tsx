@@ -37,7 +37,7 @@ export default async function Dashboard() {
   return (
     <div className="max-w-3xl">
       <h1 className="page-title">{greet}</h1>
-      <p className="text-[13px] text-ink-500 mt-0.5 mb-6">Your business overview · {active.legalName}</p>
+      <p className="text-[13px] text-ink-500 dark:text-stone-400 mt-0.5 mb-6">Your business overview · {active.legalName}</p>
 
       <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
         <div className="card p-5">
@@ -60,7 +60,7 @@ export default async function Dashboard() {
 
       <div className="mt-8 mb-3 flex items-center justify-between">
         <h2 className="section-title">Recent invoices</h2>
-        <Link href="/invoices" className="flex items-center gap-1 text-[13px] text-ink-500 hover:text-ink-950">
+        <Link href="/invoices" className="flex items-center gap-1 text-[13px] text-ink-500 dark:text-stone-400 hover:text-ink-950 dark:hover:text-white">
           View all <ArrowRight size={14} />
         </Link>
       </div>
@@ -77,9 +77,9 @@ export default async function Dashboard() {
               {rows.slice(0, 8).map((r) => (
                 <tr key={r.id}>
                   <td className="font-medium">
-                    <Link href={`/invoices/${r.id}`} className="hover:text-brand-600">{r.invoiceNumber ?? <span className="text-ink-400">Draft</span>}</Link>
+                    <Link href={`/invoices/${r.id}`} className="hover:text-brand-600">{r.invoiceNumber ?? <span className="text-ink-400 dark:text-stone-500">Draft</span>}</Link>
                   </td>
-                  <td className="text-ink-500">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
+                  <td className="text-ink-500 dark:text-stone-400">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
                   <td className="num font-medium tabular-nums">{formatMoney(r.totalTTC, r.currency)}</td>
                   <td className="text-right"><StatusBadge value={r.display} /></td>
                 </tr>

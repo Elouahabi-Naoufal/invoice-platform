@@ -27,7 +27,7 @@ const UNITS = ["piece", "heure", "jour", "kg", "service"];
 
 function StepDot({ n, active, done }: { n: number; active: boolean; done: boolean }) {
   return (
-    <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-semibold ${active ? "bg-ink-950 text-white" : done ? "bg-emerald-100 text-emerald-800" : "bg-ink-100 text-ink-500"}`}>
+    <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-semibold ${active ? "bg-ink-950 text-white" : done ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-ink-100 dark:bg-white/10 text-ink-500 dark:text-stone-400"}`}>
       {n}
     </span>
   );
@@ -121,7 +121,8 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
     address: String(seller.address ?? ""), city: String(seller.city ?? ""),
     ice: String(seller.ice ?? ""), identifiantFiscal: String(seller.identifiantFiscal ?? ""),
     patente: String(seller.patente ?? ""), rc: String(seller.rc ?? ""), rcCity: String(seller.rcCity ?? ""),
-    cnss: String(seller.cnss ?? ""),
+    cnss: String(seller.cnss ?? ""), accentColor: String(seller.accentColor ?? "#1D4ED8"),
+    logoPath: String(seller.logoPath ?? ""),
   } : {};
   const buyerView = buyer ? {
     name: buyer.name, companyName: buyer.companyName ?? undefined,
@@ -135,7 +136,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
     <div>
       <div className="mb-5 flex items-center gap-5">
         {[["Seller", 0], ["Buyer", 1], ["Details", 2]].map(([label, i]) => (
-          <button key={label as string} onClick={() => setStep(i as number)} className={`flex items-center gap-2 text-[13px] ${step === (i as number) ? "font-semibold text-ink-950" : "text-ink-400 hover:text-ink-700"}`}>
+          <button key={label as string} onClick={() => setStep(i as number)} className={`flex items-center gap-2 text-[13px] ${step === (i as number) ? "font-semibold text-ink-950 dark:text-stone-100" : "text-ink-400 dark:text-stone-500 hover:text-ink-700 dark:hover:text-stone-200"}`}>
             <StepDot n={(i as number) + 1} active={step === i} done={step > (i as number)} /> {label as string}
           </button>
         ))}
@@ -150,7 +151,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
             <div className="card flex flex-col gap-2 p-3">
               {companies.map((c) => (
                 <button key={c.id} onClick={() => { setSellerId(c.id); setCurrency(String((c as Record<string, unknown>).defaultCurrency ?? "MAD")); setStep(1); }}
-                  className={`flex items-center gap-3 rounded-lg border p-3.5 text-left transition-colors ${sellerId === c.id ? "border-ink-950 bg-ink-50" : "border-ink-200 hover:border-ink-400"}`}>
+                  className={`flex items-center gap-3 rounded-lg border p-3.5 text-left transition-colors ${sellerId === c.id ? "border-ink-950 dark:border-stone-100 bg-ink-50 dark:bg-white/5" : "border-ink-200 dark:border-white/10 hover:border-ink-400 dark:hover:border-white/30"}`}>
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-ink-950 text-sm font-semibold text-white">{String(c.legalName).slice(0, 1)}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-[14px] font-medium">{String(c.legalName)}</span>
@@ -171,7 +172,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
               <div className="flex flex-col gap-1.5">
                 {clients.map((c) => (
                   <button key={c.id} onClick={() => { setBuyerId(c.id); setStep(2); }}
-                    className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${buyerId === c.id ? "border-ink-950 bg-ink-50" : "border-transparent hover:border-ink-200 hover:bg-ink-50"}`}>
+                    className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${buyerId === c.id ? "border-ink-950 dark:border-stone-100 bg-ink-50 dark:bg-white/5" : "border-transparent hover:border-ink-200 dark:hover:border-white/20 hover:bg-ink-50 dark:hover:bg-white/5"}`}>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-medium">{c.companyName || c.name}</span>
                       <span className="meta block">{c.type === "COMPANY" ? `B2B · ICE ${c.ice || "missing"}` : "Particulier"} · {c.city ?? ""}</span>
@@ -210,10 +211,10 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
               </div>
 
               <div className="card overflow-hidden">
-                <div className="border-b border-ink-200 px-4 py-2.5"><span className="section-title">Line items</span></div>
+                <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Line items</span></div>
                 {lines.map((l, i) => (
-                  <div key={i} className="border-b border-ink-100 px-4 py-3 last:border-b-0">
-                    <input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Line ${i + 1} — description *`} className="mb-2 w-full bg-transparent text-[13px] font-medium placeholder:text-ink-400 placeholder:font-normal focus:outline-none" aria-label={`Line ${i + 1} description`} />
+                  <div key={i} className="border-b border-ink-100 dark:border-white/10 px-4 py-3 last:border-b-0">
+                    <input value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Line ${i + 1} — description *`} className="mb-2 w-full bg-transparent text-[13px] font-medium placeholder:text-ink-400 dark:placeholder:text-stone-500 placeholder:font-normal focus:outline-none" aria-label={`Line ${i + 1} description`} />
                     <div className="grid grid-cols-[70px_90px_1fr_70px_90px_34px] items-end gap-2 max-md:grid-cols-3">
                       <div><label className="label">Qty</label><input type="number" step="0.001" min={0} value={l.quantityMilli / 1000} onChange={(e) => setLine(i, { quantityMilli: Math.max(1, Math.round(Number(e.target.value) * 1000)) })} className="input num" /></div>
                       <div><label className="label">Unit</label><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className="input">{UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select></div>
@@ -230,7 +231,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
                     </div>
                   </div>
                 ))}
-                <button onClick={() => setLines((ls) => [...ls, { description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false }])} className="flex w-full items-center gap-1.5 px-4 py-2.5 text-[13px] text-ink-500 hover:bg-ink-50 hover:text-ink-950">
+                <button onClick={() => setLines((ls) => [...ls, { description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false }])} className="flex w-full items-center gap-1.5 px-4 py-2.5 text-[13px] text-ink-500 dark:text-stone-400 hover:bg-ink-50 dark:hover:bg-white/5 hover:text-ink-950 dark:hover:text-white">
                   <Plus size={14} /> Add line
                 </button>
               </div>
@@ -258,7 +259,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
             issueDate, dueDate: dueDate || null, currency, locale: "fr",
             seller: sellerView, buyer: buyerView, lines,
             invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
-            poNumber: poNumber || null, paymentMode, notes: notes || null,
+            poNumber: poNumber || null, paymentMode, paymentTerms, notes: notes || null,
           }} />
           {!calc && <p className="field-err mt-2">Invalid lines — amounts must be ≥ 0.</p>}
         </div>

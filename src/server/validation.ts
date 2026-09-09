@@ -14,6 +14,7 @@ export const companySchema = z.object({
   defaultTaxBps: z.number().int().min(0).max(10000).default(2000),
   invoicePrefix: z.string().min(2).max(8).default("FAC"),
   avoirPrefix: z.string().min(2).max(8).default("AV"),
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "accent must be #RRGGBB").default("#1D4ED8"),
   invoiceLocale: z.string().default("fr"),
   footerNotes: z.string().optional(),
   ice: z.string().regex(/^\d{15}$/, "ICE = 15 chiffres").optional().or(z.literal("")),

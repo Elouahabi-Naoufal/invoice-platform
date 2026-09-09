@@ -43,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="flex min-h-screen">
               <Sidebar />
               <div className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink-200 bg-ink-50/90 px-6 py-3 backdrop-blur">
+                <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink-200 dark:border-white/10 bg-ink-50 dark:bg-white/5/90 dark:bg-[#121110]/90 px-6 py-3 backdrop-blur">
                   <div className="ml-auto flex items-center gap-3">
                     <CompanySwitcher companies={companies} activeId={activeId} />
                     <form action={signOut}>

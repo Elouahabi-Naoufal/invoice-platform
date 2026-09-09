@@ -1,8 +1,36 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createCompany, updateCompany } from "@/server/companies-clients";
+import { createCompany, updateCompany, uploadLogo } from "@/server/companies-clients";
 import { useToast, Modal } from "@/components/ui";
+
+const ACCENTS = ["#1D4ED8", "#0F766E", "#334155", "#7C2D12", "#581C87", "#0E7490"];
+
+function AccentPicker({ initial }: { initial?: string }) {
+  const [val, setVal] = useState(initial || "#1D4ED8");
+  return (
+    <div>
+      <span className="label">Invoice accent color</span>
+      <div className="flex items-center gap-2">
+        {ACCENTS.map((a) => (
+          <button
+            key={a} type="button" aria-label={`Accent ${a}`} title={a}
+            onClick={() => setVal(a)}
+            className={`h-7 w-7 rounded-full border-2 ${val.toUpperCase() === a ? "border-ink-950 dark:border-white" : "border-transparent"}`}
+            style={{ backgroundColor: a }}
+          />
+        ))}
+        <input
+          type="color" value={/^#[0-9A-Fa-f]{6}$/.test(val) ? val : "#1D4ED8"}
+          onChange={(e) => setVal(e.target.value)} className="h-7 w-9 cursor-pointer rounded border border-ink-200 bg-transparent p-0.5"
+          title="Custom color"
+        />
+      </div>
+      <input type="hidden" name="accentColor" value={val} />
+      <p className="hint">Table header, totals and footer bars on your invoices.</p>
+    </div>
+  );
+}
 
 type C = Record<string, string | number | undefined | null>;
 
@@ -30,6 +58,20 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
   return (
     <div className="grid gap-6">
       <Section title="Business identity">
+        <div className="col-span-2 flex items-center gap-4">
+          {(initial?.logoPath as string) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={initial?.logoPath as string} alt="Company logo" className="h-12 w-12 rounded-md border border-ink-200 dark:border-white/10 object-contain" />
+          ) : (
+            <span className="grid h-12 w-12 place-items-center rounded-md bg-ink-950 text-lg font-semibold text-white">
+              {(v("legalName") || "?").slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <div>
+            <span className="label">Logo (PNG/JPG/WebP, ≤ 2 MB)</span>
+            <LogoInput companyId={(initial?.id as string | undefined)} />
+          </div>
+        </div>
         <F label="Legal name *"><input name="legalName" required minLength={2} defaultValue={v("legalName")} className="input" /></F>
         <F label="Trade name"><input name="tradeName" defaultValue={v("tradeName")} className="input" /></F>
         <F label="Registered address *"><input name="address" required minLength={3} defaultValue={v("address")} className="input" /></F>
@@ -64,6 +106,7 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
         <F label="Invoice prefix"><input name="invoicePrefix" defaultValue={v("invoicePrefix") || "FAC"} className="input" /></F>
         <F label="Credit-note prefix"><input name="avoirPrefix" defaultValue={v("avoirPrefix") || "AV"} className="input" /></F>
         <F label="Invoice language"><input name="invoiceLocale" defaultValue={v("invoiceLocale") || "fr"} className="input" /></F>
+        <div className="col-span-2"><AccentPicker initial={v("accentColor")} /></div>
       </Section>
       <Section title="Bank">
         <F label="Bank"><input name="bankName" defaultValue={v("bankName")} className="input" /></F>
@@ -74,6 +117,41 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
         <F label="Footer notes"><input name="footerNotes" defaultValue={v("footerNotes")} className="input" /></F>
       </Section>
     </div>
+  );
+}
+
+function LogoInput({ companyId }: { companyId?: string }) {
+  const toast = useToast();
+  const r = useRouter();
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  if (!companyId) return <p className="hint">Save the company first, then add a logo.</p>;
+  return (
+    <span className="flex items-center gap-2">
+      <input
+        ref={ref} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          setBusy(true);
+          try {
+            const fd = new FormData();
+            fd.set("logo", f);
+            await uploadLogo(companyId, fd);
+            toast({ kind: "ok", title: "Logo updated" });
+            r.refresh();
+          } catch (err) {
+            toast({ kind: "err", title: "Logo upload failed", body: err instanceof Error ? err.message : undefined });
+          } finally {
+            setBusy(false);
+            if (ref.current) ref.current.value = "";
+          }
+        }}
+      />
+      <button type="button" disabled={busy} onClick={() => ref.current?.click()} className="btn-outline btn-sm">
+        {busy ? "Uploading…" : "Upload logo"}
+      </button>
+    </span>
   );
 }
 

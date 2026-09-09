@@ -4,20 +4,20 @@ import { CheckCircle2, AlertCircle, X } from "lucide-react";
 
 /* ---------- Status badge (restrained) ---------- */
 const STATUS_STYLE: Record<string, string> = {
-  DRAFT: "bg-ink-100 text-ink-700",
-  ISSUED: "bg-ink-100 text-ink-950",
-  SENT: "bg-brand-50 text-brand-700",
-  VIEWED: "bg-brand-50 text-brand-700",
-  PARTIALLY_PAID: "bg-amber-50 text-amber-800",
-  PAID: "bg-emerald-50 text-emerald-800",
-  OVERDUE: "bg-red-50 text-red-800",
-  CANCELLED: "bg-ink-100 text-ink-400 line-through",
+  DRAFT: "bg-ink-100 text-ink-700 dark:bg-white/10 dark:text-stone-300",
+  ISSUED: "bg-ink-100 text-ink-950 dark:bg-white/10 dark:text-stone-100",
+  SENT: "bg-brand-50 text-brand-700 dark:bg-brand-600/20 dark:text-blue-300",
+  VIEWED: "bg-brand-50 text-brand-700 dark:bg-brand-600/20 dark:text-blue-300",
+  PARTIALLY_PAID: "bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+  PAID: "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
+  OVERDUE: "bg-red-50 text-red-800 dark:bg-red-500/15 dark:text-red-300",
+  CANCELLED: "bg-ink-100 text-ink-400 line-through dark:bg-white/5 dark:text-stone-500",
 };
 
 export function StatusBadge({ value }: { value: string }) {
   const label = value.replace(/_/g, " ");
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium tracking-wide ${STATUS_STYLE[value] ?? "bg-ink-100 text-ink-700"}`}>
+    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium tracking-wide ${STATUS_STYLE[value] ?? "bg-ink-100 dark:bg-white/10 text-ink-700 dark:text-stone-300"}`}>
       {label}
     </span>
   );
@@ -67,7 +67,7 @@ export function Toaster({ children }: { children: React.ReactNode }) {
               : <AlertCircle size={16} className="text-red-700 mt-0.5 shrink-0" />}
             <div>
               <div className="text-[13px] font-medium">{t.title}</div>
-              {t.body && <div className="text-xs text-ink-500 mt-0.5">{t.body}</div>}
+              {t.body && <div className="text-xs text-ink-500 dark:text-stone-400 mt-0.5">{t.body}</div>}
             </div>
           </div>
         ))}
@@ -81,7 +81,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
   return (
     <div className="card flex flex-col items-center px-6 py-14 text-center">
       <div className="page-title mb-1">{title}</div>
-      <p className="text-[13px] text-ink-500 max-w-sm mb-5">{body}</p>
+      <p className="text-[13px] text-ink-500 dark:text-stone-400 max-w-sm mb-5">{body}</p>
       {action}
     </div>
   );
@@ -89,7 +89,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
 
 /* ---------- Skeleton ---------- */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-ink-100 ${className ?? "h-4 w-full"}`} />;
+  return <div className={`animate-pulse rounded bg-ink-100 dark:bg-white/10 ${className ?? "h-4 w-full"}`} />;
 }
 
 /* ---------- Submit button with loading guard ---------- */

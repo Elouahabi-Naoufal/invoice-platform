@@ -14,7 +14,7 @@ const NAV = [
 export default function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="flex w-[216px] shrink-0 flex-col border-r border-ink-200 bg-white px-3 py-5 max-md:hidden">
+    <aside className="flex w-[216px] shrink-0 flex-col border-r border-ink-200 dark:border-white/10 bg-white dark:bg-[#1C1917] px-3 py-5 max-md:hidden">
       <Link href="/" className="mb-6 flex items-center gap-2 px-2">
         <span className="grid h-7 w-7 place-items-center rounded-md bg-ink-950 text-[13px] font-bold text-white">F</span>
         <span className="text-[14px] font-semibold tracking-tight">Facturo</span>

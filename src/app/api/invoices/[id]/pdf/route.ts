@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoiceDoc } from "@/pdf/InvoiceDoc";
+import { logoDataUri } from "@/server/companies-clients";
 import React from "react";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -24,6 +25,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const linkedNumber = inv.linkedInvoiceId
     ? (await prisma.invoice.findUnique({ where: { id: inv.linkedInvoiceId }, select: { invoiceNumber: true } }))?.invoiceNumber ?? null
     : null;
+
+  // Historical logo: frozen bytes in snapshot first; disk fallback only for pre-freeze invoices.
+  const logoUri = seller.logoData && String(seller.logoData).startsWith("data:")
+    ? String(seller.logoData)
+    : await logoDataUri(seller.logoPath);
+  if (logoUri) seller.logoPath = logoUri;
 
   const buf = await renderToBuffer(
     React.createElement(InvoiceDoc, {

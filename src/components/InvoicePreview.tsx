@@ -1,4 +1,4 @@
-import { calcInvoice, formatMoney, amountInWords } from "@/domain/invoice";
+import { calcInvoice, formatMoney, amountInWords, paymentTermsLabel } from "@/domain/invoice";
 
 export interface PreviewLine {
   description: string; quantityMilli: number; unit: string;
@@ -8,98 +8,157 @@ export interface PreviewLine {
 export interface PreviewDoc {
   docType: string; invoiceNumber: string | null; linkedNumber?: string | null; correctionReason?: string | null;
   issueDate: string; dueDate?: string | null; currency: string; locale: string;
-  seller: Record<string, string | null | undefined>; buyer: Record<string, string | null | undefined>;
+  seller: Record<string, string | number | null | undefined>; buyer: Record<string, string | null | undefined>;
   lines: PreviewLine[]; invDiscountBps: number; invDiscountFixedMinor: number;
-  poNumber?: string | null; paymentMode?: string | null; taxMention?: string | null; notes?: string | null; footerText?: string | null;
+  poNumber?: string | null; clientRef?: string | null; paymentMode?: string | null; paymentTerms?: string | null;
+  taxMention?: string | null; notes?: string | null; footerText?: string | null;
 }
 
-/** A4 document — same calcInvoice() engine as the PDF. No local money math. */
+function accentOf(seller: PreviewDoc["seller"]): string {
+  const a = String(seller.accentColor ?? "#1D4ED8");
+  return /^#[0-9A-Fa-f]{6}$/.test(a) ? a : "#1D4ED8";
+}
+
+const ddmmyyyy = (iso: string) => {
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : iso;
+};
+
+/** A4 stationery preview — same calcInvoice() engine and same composition as the PDF. */
 export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
   const calc = calcInvoice({ lines: doc.lines, invDiscountBps: doc.invDiscountBps, invDiscountFixedMinor: doc.invDiscountFixedMinor });
+  const accent = accentOf(doc.seller);
   const fmt = (m: number) => formatMoney(m, doc.currency, doc.locale.startsWith("en") ? "en-GB" : "fr-MA");
   const title = doc.docType === "AVOIR" ? "AVOIR" : doc.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : "FACTURE";
-  const sellerIds = [doc.seller.ice && `ICE ${doc.seller.ice}`, doc.seller.identifiantFiscal && `IF ${doc.seller.identifiantFiscal}`, doc.seller.patente && `TP ${doc.seller.patente}`, doc.seller.rc && `RC ${doc.seller.rc}${doc.seller.rcCity ? ` ${doc.seller.rcCity}` : ""}`].filter(Boolean).join(" · ");
+  const sellerIds = [doc.seller.ice && `ICE : ${doc.seller.ice}`, doc.seller.identifiantFiscal && `IF : ${doc.seller.identifiantFiscal}`, doc.seller.rc && `RC : ${doc.seller.rc}${doc.seller.rcCity ? ` ${doc.seller.rcCity}` : ""}`, doc.seller.patente && `TP : ${doc.seller.patente}`].filter(Boolean);
 
   return (
-    <div className="w-[600px] max-w-full bg-white px-10 py-9 text-[12px] leading-relaxed text-ink-950 shadow-doc max-md:w-full max-md:px-6">
-      <div className="flex justify-between gap-6">
-        <div>
-          <div className="text-[15px] font-semibold tracking-tight">{doc.seller.legalName || "Vendeur"}</div>
-          {doc.seller.tradeName && <div className="text-ink-500">{doc.seller.tradeName}</div>}
-          <div className="mt-1 text-ink-500">{doc.seller.address}{doc.seller.city ? `, ${doc.seller.city}` : ""}</div>
-          <div className="mt-2 text-[11px] text-ink-500">{sellerIds}</div>
+    <div className="w-[600px] max-w-full bg-white text-[12px] leading-relaxed text-ink-950 shadow-doc max-md:w-full">
+      <div className="h-[5px]" style={{ backgroundColor: accent }} />
+      <div className="px-10 py-6 max-md:px-6">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            {doc.seller.logoPath ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={String(doc.seller.logoPath)} alt="" className="mb-2 h-14 object-contain object-left" />
+            ) : null}
+            <div className="text-[15px] font-semibold tracking-tight">{doc.seller.legalName || "Vendeur"}</div>
+            {doc.seller.tradeName && <div className="text-ink-500">{doc.seller.tradeName}</div>}
+            {doc.seller.legalForm && <div className="text-ink-500">{doc.seller.legalForm}</div>}
+          </div>
+          <div className="max-w-[240px] text-right text-ink-500">
+            <div>{doc.seller.address}{doc.seller.city ? `, ${doc.seller.city}` : ""}</div>
+            {[doc.seller.phone, doc.seller.email].filter(Boolean).length > 0 && (
+              <div>{[doc.seller.phone, doc.seller.email].filter(Boolean).join("  ·  ")}</div>
+            )}
+            {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
+          </div>
         </div>
-        <div className="text-right">
-          <div className="text-[24px] font-semibold tracking-tight">{title}</div>
-          <div className="mt-0.5 font-medium">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
-          {doc.linkedNumber && <div className="text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}</div>}
-          {doc.correctionReason && <div className="text-ink-500">Motif : {doc.correctionReason}</div>}
-          <div className="mt-1 text-ink-500">Émise le {doc.issueDate}{doc.dueDate ? ` · Échéance ${doc.dueDate}` : ""}</div>
-          {doc.paymentMode && <div className="text-ink-500">Paiement : {doc.paymentMode}</div>}
+
+        <div className="mt-4 flex items-end justify-between gap-6">
+          <div>
+            <div className="text-[26px] font-semibold leading-none tracking-tight">{title}</div>
+            <div className="mt-1 text-[13px] font-bold">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
+            {doc.linkedNumber && <div className="text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}{doc.correctionReason ? ` — Motif : ${doc.correctionReason}` : ""}</div>}
+          </div>
+          <div className="text-right">
+            <div className="flex justify-end gap-2"><span className="w-16 text-ink-500">Date</span><strong className="min-w-[80px] text-right">{ddmmyyyy(doc.issueDate)}</strong></div>
+            {doc.dueDate && <div className="flex justify-end gap-2"><span className="w-16 text-ink-500">Échéance</span><strong className="min-w-[80px] text-right">{ddmmyyyy(doc.dueDate)}</strong></div>}
+            <div className="flex justify-end gap-2"><span className="w-16 text-ink-500">Devise</span><strong className="min-w-[80px] text-right">{doc.currency}</strong></div>
+            {doc.poNumber && <div className="flex justify-end gap-2"><span className="w-16 text-ink-500">Cde client</span><strong className="min-w-[80px] text-right">{doc.poNumber}</strong></div>}
+          </div>
         </div>
+
+        <div className="mt-4 flex gap-3">
+          <div className="flex-1 rounded-md border border-ink-200 p-3">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-ink-500">Émetteur</div>
+            <div className="font-semibold">{doc.seller.legalName}</div>
+            {sellerIds.slice(0, 3).map((t, i) => <div key={i} className="text-ink-500">{t}</div>)}
+          </div>
+          <div className="flex-1 rounded-md border border-ink-200 p-3">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-ink-500">Facturé à</div>
+            <div className="font-semibold">{doc.buyer.companyName || doc.buyer.name || "—"}</div>
+            {doc.buyer.address && <div className="text-ink-500">{doc.buyer.address}{doc.buyer.city ? `, ${doc.buyer.city}` : ""}</div>}
+            {doc.buyer.ice && <div className="text-ink-500">ICE : {doc.buyer.ice}</div>}
+            {doc.buyer.clientIF && <div className="text-ink-500">IF : {doc.buyer.clientIF}</div>}
+            {doc.buyer.clientRC && <div className="text-ink-500">RC : {doc.buyer.clientRC}</div>}
+          </div>
+        </div>
+
+        <table className="mt-4 w-full">
+          <thead>
+            <tr className="text-white" style={{ backgroundColor: accent }}>
+              <th className="px-2 py-2 text-left font-medium">Désignation</th>
+              <th className="px-2 py-2 text-right font-medium">Qté</th>
+              <th className="px-2 py-2 text-right font-medium">P.U. HT</th>
+              <th className="px-2 py-2 text-right font-medium">Remise</th>
+              <th className="px-2 py-2 text-right font-medium">TVA</th>
+              <th className="px-2 py-2 text-right font-medium">Total HT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {doc.lines.map((l, i) => {
+              const gross = Math.floor((l.quantityMilli * l.unitPriceMinor + 500) / 1000);
+              const net = gross - Math.floor((gross * l.discountBps + 5000) / 10000);
+              return (
+                <tr key={i} className="border-b border-ink-100 align-top">
+                  <td className="px-2 py-2">
+                    {l.description || <span className="text-ink-400">—</span>}
+                    <div className="text-[11px] text-ink-400">{l.quantityMilli / 1000} {l.unit}{l.discountBps > 0 ? ` · remise ${l.discountBps / 100} %` : ""}</div>
+                  </td>
+                  <td className="num px-2 py-2">{l.quantityMilli / 1000}</td>
+                  <td className="num px-2 py-2">{fmt(l.unitPriceMinor)}</td>
+                  <td className="num px-2 py-2">{l.discountBps > 0 ? `${l.discountBps / 100} %` : "—"}</td>
+                  <td className="num px-2 py-2">{l.taxExempt ? "Exo." : `${l.taxRateBps / 100} %`}</td>
+                  <td className="num px-2 py-2 font-semibold">{fmt(net)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="ml-auto mt-3 w-64">
+          <div className="flex justify-between py-0.5"><span className="text-ink-500">Total HT</span><strong className="tabular-nums">{fmt(calc.subtotalHT)}</strong></div>
+          {calc.invDiscountTotal > 0 && <div className="flex justify-between py-0.5"><span className="text-ink-500">Remise globale</span><strong className="tabular-nums">−{fmt(calc.invDiscountTotal)}</strong></div>}
+          {calc.buckets.map((b, i) => (
+            <div key={i} className="flex justify-between py-0.5"><span className="text-ink-500">TVA {b.rateBps / 100} % <span className="text-ink-400">(base {fmt(b.taxable)})</span></span><strong className="tabular-nums">{fmt(b.tax)}</strong></div>
+          ))}
+          <div className="mt-1 flex items-center justify-between border-t-2 pt-2" style={{ borderColor: accent }}>
+            <span className="text-[13px] font-bold">{doc.docType === "AVOIR" ? "NET À DÉDUIRE" : "TOTAL TTC"}</span>
+            <span className="text-[17px] font-bold tabular-nums" style={{ color: accent }}>{fmt(calc.totalTTC)}</span>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded bg-ink-50 p-2.5 dark:bg-white/5">
+          <div className="text-[10px] uppercase tracking-widest text-ink-500">Arrêtée la présente facture à la somme de</div>
+          <div className="italic">{amountInWords(calc.totalTTC, doc.currency)}</div>
+        </div>
+        {doc.taxMention && <div className="mt-2 font-semibold">{doc.taxMention}</div>}
+
+        <div className="mt-3 flex gap-3">
+          <div className="flex-1">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Paiement</div>
+            {doc.paymentMode && <div>Mode : {doc.paymentMode}</div>}
+            {paymentTermsLabel(doc.paymentTerms, doc.locale) && <div>Conditions : {paymentTermsLabel(doc.paymentTerms, doc.locale)}</div>}
+            {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
+            {doc.seller.bankName && <div>{doc.seller.bankName}</div>}
+            {doc.seller.rib && <div>RIB : {doc.seller.rib}</div>}
+            {doc.seller.iban && <div>IBAN : {doc.seller.iban}</div>}
+            {doc.seller.swift && <div>SWIFT : {doc.seller.swift}</div>}
+          </div>
+          <div className="flex-1">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Mentions légales</div>
+            {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
+            {doc.seller.cnss && <div>CNSS : {doc.seller.cnss}</div>}
+          </div>
+        </div>
+        {doc.notes && <div className="mt-3"><div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Notes</div><div>{doc.notes}</div></div>}
       </div>
-
-      <div className="mt-5 flex gap-3">
-        <div className="flex-1 rounded-md border border-ink-200 p-3">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-500">Vendeur</div>
-          <div className="font-medium">{doc.seller.legalName}</div>
+      <div>
+        <div className="h-[3px]" style={{ backgroundColor: accent }} />
+        <div className="flex items-center justify-between gap-4 px-10 py-2.5 text-[10.5px] text-ink-400 max-md:px-6">
+          <span>{doc.footerText || `${doc.seller.legalName || ""} · ${doc.seller.address || ""} · ICE ${doc.seller.ice || "—"}`} · Conservation 10 ans (art. 211 CGI)</span>
         </div>
-        <div className="flex-1 rounded-md border border-ink-200 p-3">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-500">Facturé à</div>
-          <div className="font-medium">{doc.buyer.companyName || doc.buyer.name || "—"}</div>
-          {doc.buyer.address && <div className="text-ink-500">{doc.buyer.address}{doc.buyer.city ? `, ${doc.buyer.city}` : ""}</div>}
-          {doc.buyer.ice && <div className="text-ink-500">ICE {doc.buyer.ice}</div>}
-        </div>
-      </div>
-
-      {doc.poNumber && <div className="mt-3 text-ink-500">Bon de commande : {doc.poNumber}</div>}
-
-      <table className="mt-4 w-full text-[12px]">
-        <thead>
-          <tr className="bg-ink-950 text-white">
-            <th className="px-3 py-2 text-left font-medium">Description</th>
-            <th className="px-2 py-2 text-right font-medium">Qté</th>
-            <th className="px-2 py-2 text-right font-medium">P.U. HT</th>
-            <th className="px-3 py-2 text-right font-medium">Total HT</th>
-          </tr>
-        </thead>
-        <tbody>
-          {doc.lines.map((l, i) => {
-            const gross = Math.floor((l.quantityMilli * l.unitPriceMinor + 500) / 1000);
-            const net = gross - Math.floor((gross * l.discountBps + 5000) / 10000);
-            return (
-              <tr key={i} className="border-b border-ink-100">
-                <td className="px-3 py-2">
-                  {l.description || <span className="text-ink-400">—</span>}
-                  <span className="text-ink-400"> {l.taxExempt ? "(exonéré)" : `[TVA ${l.taxRateBps / 100}%]`}</span>
-                </td>
-                <td className="num px-2 py-2">{l.quantityMilli / 1000} {l.unit}</td>
-                <td className="num px-2 py-2">{fmt(l.unitPriceMinor)}</td>
-                <td className="num px-3 py-2 font-medium">{fmt(net)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <div className="ml-auto mt-4 w-64">
-        <div className="flex justify-between py-0.5"><span className="text-ink-500">Sous-total HT</span><span className="tabular-nums">{fmt(calc.subtotalHT)}</span></div>
-        {calc.invDiscountTotal > 0 && <div className="flex justify-between py-0.5"><span className="text-ink-500">Remise</span><span className="tabular-nums">−{fmt(calc.invDiscountTotal)}</span></div>}
-        {calc.buckets.map((b, i) => (
-          <div key={i} className="flex justify-between py-0.5"><span className="text-ink-500">TVA {b.rateBps / 100}% <span className="text-ink-400">(base {fmt(b.taxable)})</span></span><span className="tabular-nums">{fmt(b.tax)}</span></div>
-        ))}
-        <div className="mt-1.5 flex justify-between border-t-2 border-ink-950 pt-2 text-[14px] font-semibold">
-          <span>{doc.docType === "AVOIR" ? "Net à déduire" : "Total TTC"} <span className="font-normal text-ink-400">{doc.currency}</span></span>
-          <span className="tabular-nums">{fmt(calc.totalTTC)}</span>
-        </div>
-      </div>
-
-      {doc.taxMention && <div className="mt-4 font-semibold">{doc.taxMention}</div>}
-      <div className="mt-1 text-[11px] italic text-ink-500">{amountInWords(calc.totalTTC, doc.currency)}</div>
-      {doc.notes && <div className="mt-3">Notes : {doc.notes}</div>}
-
-      <div className="mt-6 border-t border-ink-200 pt-2.5 text-[10.5px] text-ink-400">
-        {doc.footerText || `${doc.seller.legalName || ""} — ${sellerIds}`} · Conservation 10 ans (art. 211 CGI)
       </div>
     </div>
   );

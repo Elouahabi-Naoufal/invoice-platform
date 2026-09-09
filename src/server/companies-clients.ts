@@ -1,4 +1,6 @@
 "use server";
+import { promises as fs } from "fs";
+import path from "path";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { companySchema, clientSchema } from "@/server/validation";
@@ -36,6 +38,49 @@ export async function archiveCompany(id: string) {
   if (!c) throw new Error("not found");
   // History-preserving: never hard-delete a company with invoices; archive instead.
   return prisma.company.update({ where: { id }, data: { archived: true } });
+}
+
+const LOGO_MIME: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+/** Logo upload: validated image → public/uploads/logos/<companyId>.<ext>, path stored on company. */
+export async function uploadLogo(companyId: string, form: FormData) {
+  const u = await requireUser();
+  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId: u.id } });
+  if (!c) throw new Error("not found");
+  const file = form.get("logo");
+  if (!(file instanceof File) || file.size === 0) throw new Error("no file");
+  if (file.size > 2 * 1024 * 1024) throw new Error("logo must be under 2 MB");
+  const ext = LOGO_MIME[file.type];
+  if (!ext) throw new Error("logo must be PNG, JPEG or WebP");
+  const dir = path.join(process.cwd(), "public", "uploads", "logos");
+  await fs.mkdir(dir, { recursive: true });
+  // Remove previous logo regardless of extension (filename is owner-scoped, never user input)
+  for (const e of Object.values(LOGO_MIME)) {
+    try { await fs.unlink(path.join(dir, `${companyId}.${e}`)); } catch { /* absent */ }
+  }
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await fs.writeFile(path.join(dir, `${companyId}.${ext}`), bytes);
+  const logoPath = `/uploads/logos/${companyId}.${ext}`;
+  return prisma.company.update({ where: { id: companyId }, data: { logoPath } });
+}
+
+/** Resolve a stored logoPath for server-side PDF rendering (disk → data URI). */
+export async function logoDataUri(logoPath: string | null | undefined): Promise<string | null> {
+  if (!logoPath || !logoPath.startsWith("/uploads/")) return null;
+  try {
+    const abs = path.join(process.cwd(), "public", logoPath.replace(/^\/+/, ""));
+    if (!abs.startsWith(path.join(process.cwd(), "public"))) return null; // traversal guard
+    const buf = await fs.readFile(abs);
+    const ext = path.extname(abs).slice(1).toLowerCase();
+    const mime = ext === "jpg" ? "image/jpeg" : ext === "webp" ? "image/webp" : "image/png";
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
 
 export async function listClients(q?: string) {

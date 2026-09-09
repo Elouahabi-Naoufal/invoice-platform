@@ -106,12 +106,12 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
       {confirmFin && (
         <Modal title="Finalize invoice?" onClose={() => setConfirmFin(false)}>
           <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
-            <dt className="text-ink-500">Document</dt><dd className="font-medium">{inv.docType} · {inv.issueDate}</dd>
-            <dt className="text-ink-500">Seller → Buyer</dt><dd className="font-medium">{inv.sellerName} → {inv.buyerName}</dd>
-            <dt className="text-ink-500">Total</dt><dd className="font-semibold tabular-nums">{formatMoney(inv.totalTTC, inv.currency)}</dd>
-            <dt className="text-ink-500">Due</dt><dd className="font-medium">{inv.dueDate ?? "—"}</dd>
+            <dt className="text-ink-500 dark:text-stone-400">Document</dt><dd className="font-medium">{inv.docType} · {inv.issueDate}</dd>
+            <dt className="text-ink-500 dark:text-stone-400">Seller → Buyer</dt><dd className="font-medium">{inv.sellerName} → {inv.buyerName}</dd>
+            <dt className="text-ink-500 dark:text-stone-400">Total</dt><dd className="font-semibold tabular-nums">{formatMoney(inv.totalTTC, inv.currency)}</dd>
+            <dt className="text-ink-500 dark:text-stone-400">Due</dt><dd className="font-medium">{inv.dueDate ?? "—"}</dd>
           </dl>
-          <p className="mb-5 rounded-md bg-ink-50 p-3 text-[13px] text-ink-700">
+          <p className="mb-5 rounded-md bg-ink-50 dark:bg-white/5 p-3 text-[13px] text-ink-700 dark:text-stone-300">
             Once finalized, the invoice becomes <strong>immutable</strong> and receives its official invoice number.
             Corrections afterwards require a credit note.
           </p>
@@ -140,7 +140,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
 
       {cancelOpen && (
         <Modal title="Cancel invoice?" onClose={() => setCancelOpen(false)}>
-          <p className="mb-3 text-[13px] text-ink-500">The number <strong className="text-ink-950">{inv.invoiceNumber}</strong> is kept and never reused. Use a credit note if money must be returned.</p>
+          <p className="mb-3 text-[13px] text-ink-500 dark:text-stone-400">The number <strong className="text-ink-950 dark:text-stone-100">{inv.invoiceNumber}</strong> is kept and never reused. Use a credit note if money must be returned.</p>
           <label className="label">Reason (required)</label>
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Issued in error" className="input mb-4" />
           <div className="flex justify-end gap-2">

@@ -28,9 +28,14 @@ export default async function CompaniesPage({ searchParams }: { searchParams: { 
         <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">
           {companies.map((c) => (
             <div key={c.id} className="card flex items-start gap-3.5 p-4">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-ink-950 text-base font-semibold text-white">
-                {c.legalName.slice(0, 1).toUpperCase()}
-              </span>
+              {c.logoPath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.logoPath} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-ink-200 dark:border-white/10 object-contain" />
+              ) : (
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-ink-950 text-base font-semibold text-white">
+                  {c.legalName.slice(0, 1).toUpperCase()}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[14px] font-semibold tracking-tight">{c.legalName}</div>
                 <div className="meta">{c.city ?? ""}{c.city ? " · " : ""}{c.defaultCurrency}</div>

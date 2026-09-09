@@ -142,8 +142,7 @@ export function deriveDisplayStatus(opts: {
   return "ISSUED";
 }
 
-export function deriveDueDate(issueDate: Date, terms: string, customDue?: Date | null): Date | null {
-  const d = new Date(issueDate);
+export function deriveDueDate(issueDate: Date, terms: string, customDue?: Date | null): Date | null {  const d = new Date(issueDate);
   switch (terms) {
     case "ON_RECEIPT":
       return d;
@@ -162,6 +161,26 @@ export function deriveDueDate(issueDate: Date, terms: string, customDue?: Date |
     default:
       return customDue ?? null;
   }
+}
+
+/** Human label for payment-terms codes (presentation only — codes stay canonical). */
+export function paymentTermsLabel(terms: string | null | undefined, locale = "fr"): string | null {
+  if (!terms || terms === "CUSTOM") return null;
+  const fr: Record<string, string> = {
+    ON_RECEIPT: "À réception",
+    D7: "7 jours",
+    D15: "15 jours",
+    D30: "30 jours",
+    D60: "60 jours",
+  };
+  const en: Record<string, string> = {
+    ON_RECEIPT: "Due on receipt",
+    D7: "7 days",
+    D15: "15 days",
+    D30: "30 days",
+    D60: "60 days",
+  };
+  return (locale.startsWith("en") ? en : fr)[terms] ?? terms;
 }
 
 export const CURRENCY_PRECISION: Record<string, number> = {

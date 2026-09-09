@@ -4,3 +4,4 @@ dev.db*
 .env
 *.db-journal
 tsconfig.tsbuildinfo
+public/uploads/

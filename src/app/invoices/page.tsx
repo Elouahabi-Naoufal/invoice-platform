@@ -42,7 +42,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
 
       <form className="card mb-3 flex flex-wrap items-center gap-2 p-3" action="/invoices" method="get">
         <div className="relative min-w-[220px] flex-1">
-          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
+          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 dark:text-stone-500" />
           <input name="q" defaultValue={searchParams.q ?? ""} placeholder="Search number, reference, notes…" className="input pl-8" />
         </div>
         <input type="date" name="from" defaultValue={searchParams.from ?? ""} className="input w-auto" aria-label="From" />
@@ -53,7 +53,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
             <Link
               key={s || "all"}
               href={qs({ status: s })}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium ${(!searchParams.status && !s) || searchParams.status === s ? "bg-ink-950 text-white" : "text-ink-500 hover:bg-ink-100"}`}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-medium ${(!searchParams.status && !s) || searchParams.status === s ? "bg-ink-950 text-white" : "text-ink-500 dark:text-stone-400 hover:bg-ink-100 dark:hover:bg-white/10"}`}
             >
               {s || "All"}
             </Link>
@@ -77,15 +77,15 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
                   <tr key={r.id}>
                     <td>
                       <Link href={`/invoices/${r.id}`} className="font-medium hover:text-brand-600">
-                        {r.invoiceNumber ?? <span className="text-ink-400">Draft</span>}
+                        {r.invoiceNumber ?? <span className="text-ink-400 dark:text-stone-500">Draft</span>}
                       </Link>
                       <div className="meta">{r.docType}</div>
                     </td>
-                    <td className="text-ink-700">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
-                    <td className="text-ink-500">{new Date(r.issueDate).toLocaleDateString()}</td>
-                    <td className="text-ink-500">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"}</td>
+                    <td className="text-ink-700 dark:text-stone-300">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
+                    <td className="text-ink-500 dark:text-stone-400">{new Date(r.issueDate).toLocaleDateString()}</td>
+                    <td className="text-ink-500 dark:text-stone-400">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"}</td>
                     <td className="num font-medium tabular-nums">{formatMoney(r.totalTTC, r.currency)}</td>
-                    <td className="num tabular-nums text-ink-500">{formatMoney(r.remaining, r.currency)}</td>
+                    <td className="num tabular-nums text-ink-500 dark:text-stone-400">{formatMoney(r.remaining, r.currency)}</td>
                     <td className="text-right"><StatusBadge value={r.display} /></td>
                   </tr>
                 ))}

@@ -30,7 +30,7 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
           <span className="text-[15px] font-semibold tracking-tight">Facturo</span>
         </div>
         <h1 className="page-title mb-1">{mode === "login" ? "Welcome back" : "Create admin account"}</h1>
-        <p className="mb-6 text-[13px] text-ink-500">
+        <p className="mb-6 text-[13px] text-ink-500 dark:text-stone-400">
           {mode === "login" ? "Sign in to manage your invoices." : singleUserClosed ? "Single-user mode: registration is closed. Please sign in." : "First run — this creates the owner account."}
         </p>
         <form action={submit} className="grid gap-3">
@@ -42,7 +42,7 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
           {err && <p className="field-err" role="alert">{err}</p>}
           <button type="submit" disabled={busy} className="btn-primary mt-1 w-full">{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         </form>
-        <p className="mt-4 text-center text-[13px] text-ink-500">
+        <p className="mt-4 text-center text-[13px] text-ink-500 dark:text-stone-400">
           {mode === "login" ? <a href="/login/register" className="text-brand-600 hover:underline">Create the owner account</a> : <a href="/login" className="text-brand-600 hover:underline">Back to sign in</a>}
         </p>
       </div>
