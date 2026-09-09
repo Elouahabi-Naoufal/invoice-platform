@@ -62,7 +62,7 @@ const s = StyleSheet.create({
     lineHeight: 1.45,
   },
   topBar: { height: 5 },
-  body: { paddingHorizontal: 36, paddingTop: 26 },
+  body: { paddingHorizontal: 36, paddingTop: 26, flex: 1, flexDirection: "column" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logo: { width: 120, height: 56, objectFit: "contain" },
   companyName: { fontSize: 13, fontWeight: "bold" },
@@ -103,7 +103,8 @@ const s = StyleSheet.create({
   wordsLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 0.6, marginBottom: 3 },
   wordsText: { fontStyle: "italic" },
   taxMention: { marginTop: 8, fontWeight: "bold" },
-  bottomGrid: { flexDirection: "row", gap: 12, marginTop: 16 },
+  bottomGrid: { flexDirection: "row", gap: 12, marginTop: 10 },
+  push: { flex: 1, minHeight: 12 },
   bottomBox: { flex: 1, backgroundColor: FAINT, borderRadius: 4, padding: 10 },
   bottomTitle: { fontSize: 8, letterSpacing: 1, marginBottom: 5, fontWeight: "bold" },
   bottomLine: { marginTop: 2 },
@@ -238,6 +239,16 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
 
           {inv.taxMention ? <Text style={s.taxMention}>{inv.taxMention}</Text> : null}
 
+          {inv.notes ? (
+            <View style={s.notesBox}>
+              <Text style={[s.bottomTitle, { color: accent }]}>NOTES</Text>
+              <Text>{inv.notes}</Text>
+            </View>
+          ) : null}
+
+          {/* Spacer: pushes payment/legal to just above the footer when the page has room */}
+          <View style={s.push} />
+
           {/* ── Payment + legal (legal left, payment right) ── */}
           <View style={s.bottomGrid}>
             <View style={s.bottomBox}>
@@ -261,13 +272,6 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               {!inv.paymentMode && !inv.seller.rib && !inv.seller.iban ? <Text style={[s.bottomLine, { color: MUTED }]}>—</Text> : null}
             </View>
           </View>
-
-          {inv.notes ? (
-            <View style={s.notesBox}>
-              <Text style={[s.bottomTitle, { color: accent }]}>NOTES</Text>
-              <Text>{inv.notes}</Text>
-            </View>
-          ) : null}
         </View>
 
         {/* ── Anchored footer (every page) ── */}
@@ -275,7 +279,7 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
           <View style={[s.footerBar, { backgroundColor: accent }]} />
           <View style={s.footerInner}>
             <Text style={s.footerText}>
-              {inv.footerText || `${str(inv.seller.legalName)}  ·  ${str(inv.seller.address)}${inv.seller.city ? `, ${inv.seller.city}` : ""}  ·  ${[inv.seller.phone, inv.seller.email].filter(Boolean).map(str).join("  ·  ")}  ·  ICE ${str(inv.seller.ice)}`}
+              {inv.footerText || `${str(inv.seller.legalName)}  ·  ${str(inv.seller.city)}  ·  ${[inv.seller.phone, inv.seller.email].filter(Boolean).map(str).join("  ·  ")}  ·  ICE ${str(inv.seller.ice)}`}
               {"  ·  Conservation 10 ans (art. 211 CGI)"}
             </Text>
             <Text style={s.pageNo} render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => `Page ${pageNumber} / ${totalPages}`} />

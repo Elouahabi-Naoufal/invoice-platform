@@ -135,7 +135,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
       <div>
         <div className="h-[3px]" style={{ backgroundColor: accent }} />
         <div className="flex items-center justify-between gap-4 px-10 py-2.5 text-[10.5px] text-ink-400 max-md:px-6">
-          <span>{doc.footerText || `${doc.seller.legalName || ""} · ${doc.seller.address || ""} · ICE ${doc.seller.ice || "—"}`} · Conservation 10 ans (art. 211 CGI)</span>
+          <span>{doc.footerText || `${doc.seller.legalName || ""} · ${doc.seller.city || ""} · ${[doc.seller.phone, doc.seller.email].filter(Boolean).join(" · ")} · ICE ${doc.seller.ice || "—"}`} · Conservation 10 ans (art. 211 CGI)</span>
         </div>
       </div>
     </div>
