@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import React from "react";
+import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { logoDataUri } from "@/server/companies-clients";
-import { renderPreviewPdf } from "@/server/pdf";
+import { InvoiceDoc } from "@/pdf/InvoiceDoc";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   let user;
@@ -26,25 +28,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const linkedNumber = inv.linkedInvoiceId
     ? (await prisma.invoice.findUnique({ where: { id: inv.linkedInvoiceId }, select: { invoiceNumber: true } }))?.invoiceNumber ?? null
     : null;
-  const buf = await renderPreviewPdf(inv.id).catch(async () => {
-    // Fallback: react-pdf engine (same calcInvoice() totals).
-    const { renderToBuffer } = await import("@react-pdf/renderer");
-    const { InvoiceDoc } = await import("@/pdf/InvoiceDoc");
-    const React = await import("react");
-    return renderToBuffer(
-      React.createElement(InvoiceDoc, {
-        inv: {
-          invoiceNumber: inv.invoiceNumber, docType: inv.docType, linkedNumber, correctionReason: inv.correctionReason,
-          issueDate: inv.issueDate.toISOString().slice(0, 10),
-          dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
-          currency: inv.currency, locale: inv.invoiceLocale, seller, buyer, lines,
-          invDiscountBps: inv.invDiscountBps, invDiscountFixedMinor: inv.invDiscountFixedMinor,
-          poNumber: inv.poNumber, paymentMode: inv.paymentMode, taxMention: inv.taxMention,
-          amountInWords: inv.amountInWords, notes: inv.notes, footerText: inv.footerText,
-        },
-      }) as React.ReactElement
-    );
-  });
+  const buf = await renderToBuffer(
+    React.createElement(InvoiceDoc, {
+      inv: {
+        invoiceNumber: inv.invoiceNumber, docType: inv.docType, linkedNumber, correctionReason: inv.correctionReason,
+        issueDate: inv.issueDate.toISOString().slice(0, 10),
+        dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
+        currency: inv.currency, locale: inv.invoiceLocale, seller, buyer, lines,
+        invDiscountBps: inv.invDiscountBps, invDiscountFixedMinor: inv.invDiscountFixedMinor,
+        poNumber: inv.poNumber, paymentMode: inv.paymentMode, taxMention: inv.taxMention,
+        amountInWords: inv.amountInWords, notes: inv.notes, footerText: inv.footerText,
+      },
+    }) as React.ReactElement
+  );
 
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/i/${inv.publicToken}`;
   const transporter = nodemailer.createTransport({
