@@ -24,16 +24,20 @@ export default function ClientForm({ initial, onDone }: { initial?: Record<strin
       if (onDone && id) onDone(id);
       else { r.push("/clients"); r.refresh(); }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Save failed";
+      let msg = e instanceof Error ? e.message : "Save failed";
+      try {
+        const issues = JSON.parse(msg) as { path: (string | number)[]; message: string }[];
+        if (Array.isArray(issues)) msg = issues.map((i) => `${(i.path || []).join(".") || "form"}: ${i.message}`).join(" · ");
+      } catch { /* plain message */ }
       setErr(msg);
-      toast({ kind: "err", title: "Unable to save client", body: msg });
+      toast({ kind: "err", title: "Unable to save client", body: msg.slice(0, 300) });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form action={submit} className="grid gap-3">
+    <form action={submit} noValidate className="grid gap-3">
       <div>
         <label className="label">Type</label>
         <select value={type} onChange={(e) => setType(e.target.value)} className="input">

@@ -70,17 +70,25 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           {doc.buyer.clientRC ? ` · RC : ${doc.buyer.clientRC}` : ""}
         </div>
 
-        <table className="mt-4 w-full">
-          <thead>
-            <tr className="text-white" style={{ backgroundColor: accent }}>
-              <th className="px-2 py-2 text-left font-medium">Désignation</th>
-              <th className="px-2 py-2 text-right font-medium">Qté</th>
-              <th className="px-2 py-2 text-right font-medium">P.U. HT</th>
-              <th className="px-2 py-2 text-right font-medium">Remise</th>
-              <th className="px-2 py-2 text-right font-medium">TVA</th>
-              <th className="px-2 py-2 text-right font-medium">Total HT</th>
-            </tr>
-          </thead>
+        <div className="-mx-[50px] mt-4 px-[50px] py-3.5 text-white max-md:-mx-6 max-md:px-6" style={{ backgroundColor: accent }}>
+          <div className="grid" style={{ gridTemplateColumns: "1fr 48px 84px 56px 56px 88px" }}>
+            <span className="px-2 text-left font-medium">Désignation</span>
+            <span className="px-2 text-right font-medium">Qté</span>
+            <span className="px-2 text-right font-medium">P.U. HT</span>
+            <span className="px-2 text-right font-medium">Remise</span>
+            <span className="px-2 text-right font-medium">TVA</span>
+            <span className="px-2 text-right font-medium">Total HT</span>
+          </div>
+        </div>
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col />
+            <col style={{ width: 48 }} />
+            <col style={{ width: 84 }} />
+            <col style={{ width: 56 }} />
+            <col style={{ width: 56 }} />
+            <col style={{ width: 88 }} />
+          </colgroup>
           <tbody>
             {doc.lines.map((l, i) => {
               const gross = Math.floor((l.quantityMilli * l.unitPriceMinor + 500) / 1000);

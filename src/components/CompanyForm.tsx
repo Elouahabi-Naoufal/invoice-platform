@@ -53,6 +53,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function prettyErr(e: unknown): string {
+  if (!(e instanceof Error)) return "Save failed";
+  try {
+    const issues = JSON.parse(e.message) as { path: (string | number)[]; message: string }[];
+    if (Array.isArray(issues)) {
+      return issues.map((i) => `${(i.path || []).join(".") || "form"}: ${i.message}`).join(" · ");
+    }
+  } catch { /* plain message */ }
+  return e.message;
+}
+
 export function CompanyFormFields({ initial }: { initial?: C }) {
   const v = (k: string) => (initial?.[k] as string) ?? "";
   return (
@@ -176,16 +187,17 @@ export default function CompanyForm({ initial, onDone }: { initial?: C; onDone?:
       if (onDone) onDone();
       else { r.push("/companies"); r.refresh(); }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Save failed";
+      // Surface WHICH field failed (native validation is disabled below so nothing blocks silently)
+      const msg = prettyErr(e);
       setErr(msg);
-      toast({ kind: "err", title: "Unable to save company", body: msg });
+      toast({ kind: "err", title: "Unable to save company", body: msg.slice(0, 300) });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form action={submit} className="card p-6">
+    <form action={submit} noValidate className="card p-6">
       <CompanyFormFields initial={initial} />
       {err && <p className="field-err mt-4">{err}</p>}
       <div className="mt-6 flex justify-end">

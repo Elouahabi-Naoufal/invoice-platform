@@ -81,7 +81,7 @@ const s = StyleSheet.create({
   partyName: { fontSize: 10, fontWeight: "bold" },
   partyLine: { color: MUTED, marginTop: 1 },
   clientLine: { marginTop: 12, backgroundColor: FAINT, borderRadius: 4, paddingVertical: 8, paddingHorizontal: 10, fontSize: 9.5 },
-  tableHead: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, marginTop: 16, borderRadius: 4 },
+  tableHead: { flexDirection: "row", paddingVertical: 13, marginTop: 16, marginHorizontal: -36, paddingHorizontal: 46 },
   th: { color: "#FFFFFF", fontWeight: "bold", fontSize: 8.5 },
   row: { flexDirection: "row", paddingVertical: 8.5, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: HAIR },
   cDesc: { flex: 1, paddingRight: 10 },
