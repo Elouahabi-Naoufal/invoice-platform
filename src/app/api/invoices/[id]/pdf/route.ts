@@ -36,6 +36,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     ? String(seller.logoData)
     : await logoDataUri(seller.logoPath);
   if (logoUri) seller.logoPath = logoUri;
+  // Same for the signature.
+  const sigUri = seller.signatureData && String(seller.signatureData).startsWith("data:")
+    ? String(seller.signatureData)
+    : await logoDataUri(seller.signaturePath);
+  if (sigUri) seller.signatureData = sigUri;
 
   const buf = await renderToBuffer(
     React.createElement(InvoiceDoc, {

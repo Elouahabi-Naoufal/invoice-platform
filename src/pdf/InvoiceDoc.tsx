@@ -63,14 +63,18 @@ const s = StyleSheet.create({
   },
   topBar: { height: 5 },
   body: { paddingHorizontal: 36, paddingTop: 26, flex: 1, flexDirection: "column" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logo: { width: 120, height: 56, objectFit: "contain" },
+  header: { flexDirection: "row", alignItems: "center", gap: 14 },
+  logo: { width: 110, height: 52, objectFit: "contain" },
+  headerInfo: { flex: 1 },
+  headerName: { fontSize: 16, fontWeight: "bold" },
+  headerSub: { color: MUTED, marginTop: 2, fontSize: 9 },
   companyName: { fontSize: 13, fontWeight: "bold" },
   companyLine: { color: MUTED, marginTop: 1 },
-  identity: { marginTop: 20, alignItems: "flex-start" },
+  identity: { marginTop: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5, textAlign: "left" },
-  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "left" },
-  metaCol: { marginTop: 4 },
+  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "right" },
+  metaCol: { marginTop: 2, textAlign: "right" },
+  metaRight: { color: MUTED, marginTop: 1, textAlign: "right" },
   metaCenter: { color: MUTED, marginTop: 1, textAlign: "left" },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 1 },
   metaLabel: { color: MUTED, width: 62, textAlign: "right", marginRight: 6 },
@@ -108,6 +112,9 @@ const s = StyleSheet.create({
   bottomBox: { flex: 1, backgroundColor: FAINT, borderRadius: 4, padding: 10 },
   bottomTitle: { fontSize: 8, letterSpacing: 1, marginBottom: 5, fontWeight: "bold" },
   bottomLine: { marginTop: 2 },
+  sigImage: { width: 150, height: 56, objectFit: "contain", marginTop: 2 },
+  sigEmpty: { width: 150, height: 56 },
+  sigRule: { width: 150, height: 1, backgroundColor: MUTED, marginTop: 6 },
   notesBox: { marginTop: 10 },
   footerFixed: { position: "absolute", bottom: 0, left: 0, right: 0 },
   footerBar: { height: 3 },
@@ -150,21 +157,23 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
         <View style={[s.topBar, { backgroundColor: accent }]} fixed />
 
         <View style={s.body}>
-          {/* ── Header: logo + company identity ── */}
+          {/* ── Header: logo + company block ── */}
           <View style={s.header}>
-            <View>
-              {showLogo ? <Image src={logoSrc} style={s.logo} /> : null}
-              <Text style={s.companyName}>{str(inv.seller.legalName) || "Vendeur"}</Text>
-              {inv.seller.tradeName ? <Text style={s.companyLine}>{str(inv.seller.tradeName)}</Text> : null}
-              {inv.seller.legalForm ? <Text style={s.companyLine}>{str(inv.seller.legalForm)}</Text> : null}
+            {showLogo ? <Image src={logoSrc} style={s.logo} /> : null}
+            <View style={s.headerInfo}>
+              <Text style={s.headerName}>{str(inv.seller.legalName) || "Vendeur"}</Text>
+              {[inv.seller.legalForm, [inv.seller.address, inv.seller.city].filter(Boolean).map(str).join(", ")]
+                .filter((t) => t && String(t).trim()).map((t, i) => (
+                  <Text key={i} style={s.headerSub}>{str(t)}</Text>
+                ))}
+              {sellerIds.length > 0 ? <Text style={s.headerSub}>{sellerIds.join("  ·  ")}</Text> : null}
             </View>
           </View>
 
-          {/* ── Invoice identity: centered block, left-aligned lines ── */}
+          {/* ── Invoice identity: title left, number + dates right ── */}
           <View style={s.identity}>
             <View>
               <Text style={s.docTitle}>{title}</Text>
-              <Text style={s.docNumber}>{inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
               {inv.linkedNumber ? (
                 <Text style={s.metaCenter}>
                   {inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}
@@ -173,12 +182,13 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               ) : inv.correctionReason ? (
                 <Text style={s.metaCenter}>Motif : {inv.correctionReason}</Text>
               ) : null}
-              <View style={s.metaCol}>
-                <Text style={s.metaCenter}>Date : {dateFmt(inv.issueDate)}</Text>
-                {inv.dueDate ? <Text style={s.metaCenter}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
-                <Text style={s.metaCenter}>Devise : {inv.currency}</Text>
-                {inv.poNumber ? <Text style={s.metaCenter}>Cde client : {inv.poNumber}</Text> : null}
-              </View>
+            </View>
+            <View style={s.metaCol}>
+              <Text style={s.docNumber}>N° {inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
+              <Text style={s.metaRight}>Date : {dateFmt(inv.issueDate)}</Text>
+              {inv.dueDate ? <Text style={s.metaRight}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
+              <Text style={s.metaRight}>Devise : {inv.currency}</Text>
+              {inv.poNumber ? <Text style={s.metaRight}>Cde client : {inv.poNumber}</Text> : null}
             </View>
           </View>
 
@@ -264,14 +274,13 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               ) : null}
             </View>
             <View style={s.bottomBox}>
-              <Text style={[s.bottomTitle, { color: accent }]}>PAIEMENT</Text>
-              {inv.paymentMode ? <Text style={s.bottomLine}>Mode : {inv.paymentMode}</Text> : null}
-              {inv.dueDate ? <Text style={s.bottomLine}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
-              {inv.seller.bankName ? <Text style={s.bottomLine}>{str(inv.seller.bankName)}</Text> : null}
-              {inv.seller.rib ? <Text style={s.bottomLine}>RIB : {str(inv.seller.rib)}</Text> : null}
-              {inv.seller.iban ? <Text style={s.bottomLine}>IBAN : {str(inv.seller.iban)}</Text> : null}
-              {inv.seller.swift ? <Text style={s.bottomLine}>SWIFT : {str(inv.seller.swift)}</Text> : null}
-              {!inv.paymentMode && !inv.seller.rib && !inv.seller.iban ? <Text style={[s.bottomLine, { color: MUTED }]}>—</Text> : null}
+              <Text style={[s.bottomTitle, { color: accent }]}>SIGNATURE</Text>
+              {str(inv.seller.signatureData).startsWith("data:") || str(inv.seller.signatureData).startsWith("http") ? (
+                <Image src={str(inv.seller.signatureData)} style={s.sigImage} />
+              ) : (
+                <View style={s.sigEmpty} />
+              )}
+              <View style={s.sigRule} />
             </View>
           </View>
         </View>

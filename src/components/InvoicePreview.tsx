@@ -36,24 +36,28 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
     <div className="a4doc w-[600px] max-w-full bg-white text-[13px] leading-relaxed text-ink-950 shadow-doc max-md:w-full print:mx-auto print:w-[600px] print:max-w-[600px] print:shadow-none">
       <div className="h-[5px]" style={{ backgroundColor: accent }} />
       <div className="px-10 py-6 max-md:px-6">
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            {doc.seller.logoPath ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={String(doc.seller.logoPath)} alt="" className="mb-2 h-14 object-contain object-left" />
-            ) : null}
-            <div className="text-[15px] font-semibold tracking-tight">{doc.seller.legalName || "Vendeur"}</div>
-            {doc.seller.tradeName && <div className="text-ink-500">{doc.seller.tradeName}</div>}
-            {doc.seller.legalForm && <div className="text-ink-500">{doc.seller.legalForm}</div>}
+        <div className="flex items-center gap-4">
+          {doc.seller.logoPath ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={String(doc.seller.logoPath)} alt="" className="h-[52px] w-[110px] shrink-0 object-contain object-left" />
+          ) : null}
+          <div className="min-w-0">
+            <div className="text-[16px] font-bold tracking-tight">{doc.seller.legalName || "Vendeur"}</div>
+            {[(doc.seller.legalForm ? String(doc.seller.legalForm) : ""), ([doc.seller.address, doc.seller.city].filter(Boolean).join(", "))].filter((t) => t && t.trim()).map((t, i) => (
+              <div key={i} className="text-[13px] text-ink-500">{t}</div>
+            ))}
+            {sellerIds.length > 0 && <div className="text-[13px] text-ink-500">{sellerIds.join("  ·  ")}</div>}
           </div>
         </div>
 
-        <div className="mt-4">
-          <div className="text-left">
+        <div className="mt-4 flex items-start justify-between gap-6">
+          <div>
             <div className="text-[30px] font-semibold leading-none tracking-tight">{title}</div>
-            <div className="mt-1 text-[13px] font-bold">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
-            {doc.linkedNumber && <div className="text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}{doc.correctionReason ? ` — Motif : ${doc.correctionReason}` : ""}</div>}
-            <div className="mt-1.5 text-ink-500">
+            {doc.linkedNumber && <div className="mt-1 text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}{doc.correctionReason ? ` — Motif : ${doc.correctionReason}` : ""}</div>}
+          </div>
+          <div className="text-right">
+            <div className="text-[13px] font-bold">N° {doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
+            <div className="mt-1 text-ink-500">
               <div>Date : {ddmmyyyy(doc.issueDate)}</div>
               {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
               <div>Devise : {doc.currency}</div>
@@ -130,14 +134,18 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
             {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
             {doc.seller.cnss && <div>CNSS : {doc.seller.cnss}</div>}
           </div>
-          <div className="flex-1">
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Paiement</div>
-            {doc.paymentMode && <div>Mode : {doc.paymentMode}</div>}
-            {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
-            {doc.seller.bankName && <div>{doc.seller.bankName}</div>}
-            {doc.seller.rib && <div>RIB : {doc.seller.rib}</div>}
-            {doc.seller.iban && <div>IBAN : {doc.seller.iban}</div>}
-            {doc.seller.swift && <div>SWIFT : {doc.seller.swift}</div>}
+          <div className="flex-1 rounded bg-ink-50 p-3 dark:bg-white/5">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Signature</div>
+            {(() => {
+              const sig = doc.seller.signatureData || doc.seller.signaturePath;
+              return sig ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={String(sig)} alt="Signature" className="h-14 w-[150px] object-contain object-left" />
+              ) : (
+                <div className="h-14 w-[150px]" />
+              );
+            })()}
+            <div className="mt-1.5 h-px w-[150px] bg-ink-400" />
           </div>
         </div>
         {doc.notes && <div className="mt-3"><div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Notes</div><div>{doc.notes}</div></div>}

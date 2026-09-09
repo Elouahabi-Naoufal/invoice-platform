@@ -84,7 +84,23 @@ export async function uploadLogo(companyId: string, form: FormData) {
   return prisma.company.update({ where: { id: companyId }, data: { logoPath } });
 }
 
-/** Resolve a stored logoPath for server-side PDF rendering (disk → data URI). */
+/** Signature upload: same pipeline as logo, stored as <companyId>.sig.png */
+export async function uploadSignature(companyId: string, form: FormData) {
+  const u = await requireUser();
+  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId: u.id } });
+  if (!c) throw new Error("not found");
+  const file = form.get("signature");
+  if (!(file instanceof File) || file.size === 0) throw new Error("no file");
+  if (file.size > 6 * 1024 * 1024) throw new Error("signature must be under 6 MB");
+  if (!LOGO_MIME[file.type]) throw new Error("signature must be PNG, JPEG or WebP");
+  const png = await processLogoImage(Buffer.from(await file.arrayBuffer()), file.type);
+  const dir = path.join(process.cwd(), "public", "uploads", "logos");
+  await fs.mkdir(dir, { recursive: true });
+  try { await fs.unlink(path.join(dir, `${companyId}.sig.png`)); } catch { /* absent */ }
+  await fs.writeFile(path.join(dir, `${companyId}.sig.png`), png);
+  const signaturePath = `/uploads/logos/${companyId}.sig.png`;
+  return prisma.company.update({ where: { id: companyId }, data: { signaturePath } });
+}
 export async function logoDataUri(logoPath: string | null | undefined): Promise<string | null> {
   if (!logoPath || !logoPath.startsWith("/uploads/")) return null;
   try {

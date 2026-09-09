@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createCompany, updateCompany, uploadLogo } from "@/server/companies-clients";
+import { createCompany, updateCompany, uploadLogo, uploadSignature } from "@/server/companies-clients";
 import { useToast, Modal } from "@/components/ui";
 
 const ACCENTS = ["#1D4ED8", "#0F766E", "#334155", "#7C2D12", "#581C87", "#0E7490"];
@@ -82,6 +82,10 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
             <span className="label">Logo (PNG/JPEG/WebP, ≤ 6 MB — auto-converted for PDF)</span>
             <LogoInput companyId={(initial?.id as string | undefined)} />
           </div>
+          <div>
+            <span className="label">Signature (PNG/JPEG/WebP, ≤ 6 MB — printed on invoices)</span>
+            <SignatureInput companyId={(initial?.id as string | undefined)} current={initial?.signaturePath as string | undefined} />
+          </div>
         </div>
         <F label="Legal name *"><input name="legalName" required minLength={2} defaultValue={v("legalName")} className="input" /></F>
         <F label="Trade name"><input name="tradeName" defaultValue={v("tradeName")} className="input" /></F>
@@ -131,12 +135,17 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
   );
 }
 
-function LogoInput({ companyId }: { companyId?: string }) {
+function ImageUploadInput({ companyId, field, action, acceptLabel }: {
+  companyId?: string;
+  field: "logo" | "signature";
+  action: (companyId: string, form: FormData) => Promise<unknown>;
+  acceptLabel: string;
+}) {
   const toast = useToast();
   const r = useRouter();
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
-  if (!companyId) return <p className="hint">Save the company first, then add a logo.</p>;
+  if (!companyId) return <p className="hint">Save the company first, then add {field === "logo" ? "a logo" : "a signature"}.</p>;
   return (
     <span className="flex items-center gap-2">
       <input
@@ -147,12 +156,12 @@ function LogoInput({ companyId }: { companyId?: string }) {
           setBusy(true);
           try {
             const fd = new FormData();
-            fd.set("logo", f);
-            await uploadLogo(companyId, fd);
-            toast({ kind: "ok", title: "Logo updated" });
+            fd.set(field, f);
+            await action(companyId, fd);
+            toast({ kind: "ok", title: `${field === "logo" ? "Logo" : "Signature"} updated` });
             r.refresh();
           } catch (err) {
-            toast({ kind: "err", title: "Logo upload failed", body: err instanceof Error ? err.message : undefined });
+            toast({ kind: "err", title: `${field === "logo" ? "Logo" : "Signature"} upload failed`, body: err instanceof Error ? err.message : undefined });
           } finally {
             setBusy(false);
             if (ref.current) ref.current.value = "";
@@ -160,8 +169,24 @@ function LogoInput({ companyId }: { companyId?: string }) {
         }}
       />
       <button type="button" disabled={busy} onClick={() => ref.current?.click()} className="btn-outline btn-sm">
-        {busy ? "Uploading…" : "Upload logo"}
+        {busy ? "Uploading…" : acceptLabel}
       </button>
+    </span>
+  );
+}
+
+function LogoInput({ companyId }: { companyId?: string }) {
+  return <ImageUploadInput companyId={companyId} field="logo" action={uploadLogo} acceptLabel="Upload logo" />;
+}
+
+function SignatureInput({ companyId, current }: { companyId?: string; current?: string }) {
+  return (
+    <span className="flex items-center gap-3">
+      {current ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={current} alt="Signature" className="h-10 rounded border border-ink-200 object-contain" />
+      ) : null}
+      <ImageUploadInput companyId={companyId} field="signature" action={uploadSignature} acceptLabel={current ? "Replace signature" : "Upload signature"} />
     </span>
   );
 }

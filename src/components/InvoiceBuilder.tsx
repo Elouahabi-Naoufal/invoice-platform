@@ -135,7 +135,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
     ice: String(seller.ice ?? ""), identifiantFiscal: String(seller.identifiantFiscal ?? ""),
     patente: String(seller.patente ?? ""), rc: String(seller.rc ?? ""), rcCity: String(seller.rcCity ?? ""),
     cnss: String(seller.cnss ?? ""), accentColor: String(seller.accentColor ?? "#1D4ED8"),
-    logoPath: String(seller.logoPath ?? ""),
+    logoPath: String(seller.logoPath ?? ""), signaturePath: String(seller.signaturePath ?? ""),
   } : {};
   const buyerView = buyer ? {
     name: buyer.name, companyName: buyer.companyName ?? undefined,

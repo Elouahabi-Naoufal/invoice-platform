@@ -24,6 +24,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     ? String(seller.logoData)
     : await logoDataUri(seller.logoPath);
   if (logoUri) seller.logoPath = logoUri;
+  // Same for the signature.
+  const sigUri = seller.signatureData && String(seller.signatureData).startsWith("data:")
+    ? String(seller.signatureData)
+    : await logoDataUri(seller.signaturePath);
+  if (sigUri) seller.signatureData = sigUri;
   const lines = inv.linesSnapshot ? JSON.parse(inv.linesSnapshot) : inv.lines;
   const linkedNumber = inv.linkedInvoiceId
     ? (await prisma.invoice.findUnique({ where: { id: inv.linkedInvoiceId }, select: { invoiceNumber: true } }))?.invoiceNumber ?? null

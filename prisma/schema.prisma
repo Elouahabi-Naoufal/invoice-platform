@@ -55,6 +55,7 @@ model Company {
   iban           String?
   swift          String?
   logoPath       String?
+  signaturePath  String?
   archived       Boolean @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

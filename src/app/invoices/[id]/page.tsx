@@ -13,9 +13,12 @@ export default async function DetailPage({ params }: { params: { id: string } })
   let inv;
   try { inv = await getInvoiceDetail(params.id); } catch { redirect("/invoices"); }
   const sellerView = { ...((inv.sellerView ?? {}) as Record<string, string>) };
-  // Historical rendering: frozen logo bytes win over the (possibly changed) current logo path.
+  // Historical rendering: frozen bytes win over the (possibly changed) current paths.
   if (sellerView.logoData && String(sellerView.logoData).startsWith("data:")) {
     sellerView.logoPath = String(sellerView.logoData);
+  }
+  if (sellerView.signatureData && String(sellerView.signatureData).startsWith("data:")) {
+    sellerView.signaturePath = String(sellerView.signatureData);
   }
   const buckets = (inv.taxBreakdown ? JSON.parse(inv.taxBreakdown) : []) as { rateBps: number; taxable: number; tax: number }[];
   const lines = (inv.linesSnapshot ? JSON.parse(inv.linesSnapshot) : inv.lines.map((l) => ({

@@ -124,9 +124,10 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
   if (lastInSeries && inv.issueDate < lastInSeries.issueDate)
     throw new Error(`chronologie art.145: date ${inv.issueDate.toISOString().slice(0, 10)} antérieure au dernier ${prefix}-${year} (${lastInSeries.issueDate.toISOString().slice(0, 10)})`);
 
-  // Freeze presentation into the snapshot BEFORE numbering: logo bytes (data URI) + accent.
-  // Later logo/accent changes must never alter an issued invoice — PDF stays reproducible.
+  // Freeze presentation into the snapshot BEFORE numbering: logo + signature bytes (data URI) + accent.
+  // Later logo/signature/accent changes must never alter an issued invoice — PDF stays reproducible.
   const frozenLogo = await logoDataUri(inv.company!.logoPath);
+  const frozenSignature = await logoDataUri((inv.company as { signaturePath?: string }).signaturePath);
   const frozenAccent = ((inv.company as { accentColor?: string }).accentColor || "#1D4ED8").trim() || "#1D4ED8";
 
   const result = await prisma.$transaction(async (tx) => {
@@ -165,6 +166,7 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
       swift: inv.company!.swift,
       logoPath: inv.company!.logoPath,
       logoData: frozenLogo, // frozen bytes — reproducible even if logo later changes
+      signatureData: frozenSignature, // frozen bytes — reproducible even if signature later changes
       accentColor: frozenAccent, // frozen theme — reproducible even if theme later changes
     });
     const buyerSnapshot = JSON.stringify({
