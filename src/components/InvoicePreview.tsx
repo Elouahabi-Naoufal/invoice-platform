@@ -48,15 +48,17 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           </div>
         </div>
 
-        <div className="mt-4 text-center">
-          <div className="text-[30px] font-semibold leading-none tracking-tight">{title}</div>
-          <div className="mt-1 text-[13px] font-bold">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
-          {doc.linkedNumber && <div className="text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}{doc.correctionReason ? ` — Motif : ${doc.correctionReason}` : ""}</div>}
-          <div className="mt-1.5 text-ink-500">
-            <div>Date : {ddmmyyyy(doc.issueDate)}</div>
-            {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
-            <div>Devise : {doc.currency}</div>
-            {doc.poNumber && <div>Cde client : {doc.poNumber}</div>}
+        <div className="mt-4 flex justify-center">
+          <div className="text-left">
+            <div className="text-[30px] font-semibold leading-none tracking-tight">{title}</div>
+            <div className="mt-1 text-[13px] font-bold">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
+            {doc.linkedNumber && <div className="text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}{doc.correctionReason ? ` — Motif : ${doc.correctionReason}` : ""}</div>}
+            <div className="mt-1.5 text-ink-500">
+              <div>Date : {ddmmyyyy(doc.issueDate)}</div>
+              {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
+              <div>Devise : {doc.currency}</div>
+              {doc.poNumber && <div>Cde client : {doc.poNumber}</div>}
+            </div>
           </div>
         </div>
 

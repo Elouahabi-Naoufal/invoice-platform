@@ -67,11 +67,11 @@ const s = StyleSheet.create({
   logo: { width: 120, height: 56, objectFit: "contain" },
   companyName: { fontSize: 13, fontWeight: "bold" },
   companyLine: { color: MUTED, marginTop: 1 },
-  identity: { marginTop: 20, alignItems: "center", textAlign: "center" },
-  docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5, textAlign: "center" },
-  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "center" },
-  metaCol: { textAlign: "center", marginTop: 4 },
-  metaCenter: { color: MUTED, marginTop: 1, textAlign: "center" },
+  identity: { marginTop: 20, alignItems: "center" },
+  docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5, textAlign: "left" },
+  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "left" },
+  metaCol: { marginTop: 4 },
+  metaCenter: { color: MUTED, marginTop: 1, textAlign: "left" },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 1 },
   metaLabel: { color: MUTED, width: 62, textAlign: "right", marginRight: 6 },
   metaValue: { fontWeight: "bold", minWidth: 80, textAlign: "right" },
@@ -160,23 +160,25 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
             </View>
           </View>
 
-          {/* ── Invoice identity (centered) ── */}
+          {/* ── Invoice identity: centered block, left-aligned lines ── */}
           <View style={s.identity}>
-            <Text style={s.docTitle}>{title}</Text>
-            <Text style={s.docNumber}>{inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
-            {inv.linkedNumber ? (
-              <Text style={s.metaCenter}>
-                {inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}
-                {inv.correctionReason ? ` — Motif : ${inv.correctionReason}` : ""}
-              </Text>
-            ) : inv.correctionReason ? (
-              <Text style={s.metaCenter}>Motif : {inv.correctionReason}</Text>
-            ) : null}
-            <View style={s.metaCol}>
-              <Text style={s.metaCenter}>Date : {dateFmt(inv.issueDate)}</Text>
-              {inv.dueDate ? <Text style={s.metaCenter}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
-              <Text style={s.metaCenter}>Devise : {inv.currency}</Text>
-              {inv.poNumber ? <Text style={s.metaCenter}>Cde client : {inv.poNumber}</Text> : null}
+            <View>
+              <Text style={s.docTitle}>{title}</Text>
+              <Text style={s.docNumber}>{inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
+              {inv.linkedNumber ? (
+                <Text style={s.metaCenter}>
+                  {inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}
+                  {inv.correctionReason ? ` — Motif : ${inv.correctionReason}` : ""}
+                </Text>
+              ) : inv.correctionReason ? (
+                <Text style={s.metaCenter}>Motif : {inv.correctionReason}</Text>
+              ) : null}
+              <View style={s.metaCol}>
+                <Text style={s.metaCenter}>Date : {dateFmt(inv.issueDate)}</Text>
+                {inv.dueDate ? <Text style={s.metaCenter}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
+                <Text style={s.metaCenter}>Devise : {inv.currency}</Text>
+                {inv.poNumber ? <Text style={s.metaCenter}>Cde client : {inv.poNumber}</Text> : null}
+              </View>
             </View>
           </View>
 
