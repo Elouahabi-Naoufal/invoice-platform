@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Users (single-user v1, teams later) ──
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  companies Company[]
+  events    InvoiceEvent[]
+}
+
+// ── Seller profiles ──
+model Company {
+  id             String  @id @default(cuid())
+  ownerId        String
+  legalName      String
+  tradeName      String?
+  address        String
+  city           String?
+  country        String  @default("MA")
+  phone          String?
+  email          String?
+  website        String?
+  defaultCurrency String @default("MAD")
+  defaultTaxBps  Int     @default(2000) // 20%
+  invoicePrefix  String  @default("FAC")
+  avoirPrefix    String  @default("AV")
+  invoiceLocale  String  @default("fr")
+  footerNotes    String?
+  // Morocco legal (optional, first-class)
+  ice            String?
+  identifiantFiscal String?
+  rc             String?
+  rcCity         String?
+  patente        String? // N° Taxe Professionnelle (obligatoire même en exonération)
+  legalForm      String? // SARL | SA | SNC | AE | ...
+  capitalSocial  Int?    // minor units MAD, optional display
+  cnss           String?
+  taxRegime      String  @default("COMMUN") // COMMUN | AE_HORS_CHAMP (art.91-II-3°) | EXONERE_ART92
+  // Bank (structured, optional)
+  bankName       String?
+  accountHolder  String?
+  rib            String?
+  iban           String?
+  swift          String?
+  logoPath       String?
+  archived       Boolean @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner    User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+  series   NumberingSeries[]
+
+  @@index([ownerId])
+}
+
+// Per-company per-year numbering series (prefix configurable → series-ready)
+model NumberingSeries {
+  id        String @id @default(cuid())
+  companyId String
+  prefix    String @default("FAC")
+  year      Int
+  lastNo    Int    @default(0)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, prefix, year])
+  @@index([companyId])
+}
+
+// ── Buyers ──
+model Client {
+  id              String  @id @default(cuid())
+  ownerId         String
+  type            String  @default("COMPANY") // PERSON | COMPANY
+  name            String  // person name or contact name
+  companyName     String?
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  country         String  @default("MA")
+  ice             String?
+  clientIF        String?
+  clientRC        String?
+  isAssujetti     Boolean @default(true) // false = particulier B2C, ICE non requis
+  defaultCurrency String  @default("MAD")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@index([ownerId])
+}
+
+// ── Invoice (DRAFT mutable, ISSUED immutable) ──
+model Invoice {
+  id              String   @id @default(cuid())
+  ownerId         String
+  companyId       String?
+  clientId        String?
+  status          String   @default("DRAFT") // DRAFT | ISSUED | CANCELLED
+  docType         String   @default("FACTURE") // FACTURE | AVOIR | RECTIFICATIVE (own AV-series, linked)
+  linkedInvoiceId String?  // original invoice for AVOIR / RECTIFICATIVE ("annule et remplace")
+  correctionReason String? // motif obligatoire pour AVOIR/RECTIFICATIVE
+  invoiceNumber   String?  // null until finalized; unique per company (two companies may share FAC-2026-0001)
+  currency        String   @default("MAD")
+  invoiceLocale   String   @default("fr")
+  issueDate       DateTime @default(now())
+  dueDate         DateTime?
+  paymentTerms    String   @default("CUSTOM") // ON_RECEIPT | D7 | D15 | D30 | D60 | CUSTOM
+  paymentMode     String?  // ESPECES | VIREMENT | CHEQUE | EFFET | ... (mention obligatoire MA)
+  taxMention      String?  // ex. "TVA non applicable — art. 91-II-3° CGI" (AE) / "Exonéré — art. 92"
+  amountInWords   String?  // "Arrêté la présente facture à la somme de ..." (usage MA, frozen)
+  poNumber        String?
+  clientRef       String?
+  projectRef      String?
+  notes           String?
+  footerText      String?
+  // discounts (invoice level)
+  invDiscountBps  Int      @default(0)
+  invDiscountFixedMinor Int @default(0)
+  // snapshots frozen at finalize (JSON strings)
+  sellerSnapshot  String?
+  buyerSnapshot   String?
+  linesSnapshot   String?  // frozen lines JSON for legal reproduction
+  // totals (minor units, computed by domain calculator at finalize + on payment)
+  subtotalHT      Int      @default(0)
+  totalTVA        Int      @default(0)
+  totalTTC        Int      @default(0)
+  taxBreakdown    String?  // JSON [{rateBps, taxable, tax}]
+  // share / send
+  publicToken     String?  @unique
+  sentAt          DateTime?
+  sentTo          String?
+  viewedAt        DateTime?
+  finalizedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  client   Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  linkedInvoice Invoice? @relation("CorrectionLink", fields: [linkedInvoiceId], references: [id], onDelete: SetNull)
+  corrections   Invoice[] @relation("CorrectionLink")
+  lines    InvoiceLine[]
+  payments Payment[]
+  events   InvoiceEvent[]
+
+  @@index([ownerId, status])
+  @@index([companyId])
+  @@index([clientId])
+  @@unique([companyId, invoiceNumber])
+}
+
+model InvoiceLine {
+  id               String @id @default(cuid())
+  invoiceId        String
+  position         Int    @default(0)
+  description      String
+  quantityMilli    Int    @default(1000) // 1000 = 1.000
+  unit             String @default("piece") // piece|hour|day|kg|service|...
+  unitPriceMinor   Int    // HT, minor units
+  discountBps      Int    @default(0) // 0..10000
+  taxRateBps       Int    @default(2000)
+  taxExempt        Boolean @default(false)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  amountMinor   Int
+  currency      String
+  paymentDate   DateTime @default(now())
+  method        String   @default("BANK_TRANSFER") // CASH|BANK_TRANSFER|CARD|CHECK|OTHER
+  reference     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model InvoiceEvent {
+  id        String   @id @default(cuid())
+  invoiceId String
+  actorId   String?
+  type      String   // created|finalized|sent|viewed|payment_recorded|paid|cancelled|duplicated
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId, type])
+}
