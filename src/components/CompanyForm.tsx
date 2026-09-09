@@ -68,7 +68,7 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
             </span>
           )}
           <div>
-            <span className="label">Logo (PNG/JPG/WebP, ≤ 2 MB)</span>
+            <span className="label">Logo (PNG/JPEG/WebP, ≤ 6 MB — auto-converted for PDF)</span>
             <LogoInput companyId={(initial?.id as string | undefined)} />
           </div>
         </div>
