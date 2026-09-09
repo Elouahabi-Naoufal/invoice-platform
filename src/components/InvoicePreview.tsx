@@ -48,7 +48,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           </div>
         </div>
 
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4">
           <div className="text-left">
             <div className="text-[30px] font-semibold leading-none tracking-tight">{title}</div>
             <div className="mt-1 text-[13px] font-bold">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>

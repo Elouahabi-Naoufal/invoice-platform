@@ -5,6 +5,7 @@ import { requireUser, getActiveCompanyId } from "@/server/auth";
 import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
 import { StatusBadge, EmptyState } from "@/components/ui";
+import InvoiceRow from "@/components/InvoiceRow";
 import { formatMoney } from "@/domain/invoice";
 
 const STATUSES = ["", "DRAFT", "ISSUED", "CANCELLED"];
@@ -74,20 +75,20 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
               <thead><tr><th>Invoice</th><th>Client</th><th>Issued</th><th>Due</th><th className="num">Amount</th><th className="num">Balance</th><th className="text-right">Status</th></tr></thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id}>
+                  <InvoiceRow key={r.id} id={r.id}>
                     <td>
-                      <Link href={`/invoices/${r.id}`} className="font-medium hover:text-brand-600">
-                        {r.invoiceNumber ?? <span className="text-ink-400 dark:text-stone-500">Draft</span>}
-                      </Link>
+                      <span className="font-medium text-brand-600">
+                        {r.invoiceNumber ?? <span className="text-ink-400">Draft</span>}
+                      </span>
                       <div className="meta">{r.docType}</div>
                     </td>
-                    <td className="text-ink-700 dark:text-stone-300">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
-                    <td className="text-ink-500 dark:text-stone-400">{new Date(r.issueDate).toLocaleDateString()}</td>
-                    <td className="text-ink-500 dark:text-stone-400">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"}</td>
+                    <td className="text-ink-700">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
+                    <td className="text-ink-500">{new Date(r.issueDate).toLocaleDateString()}</td>
+                    <td className="text-ink-500">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"}</td>
                     <td className="num font-medium tabular-nums">{formatMoney(r.totalTTC, r.currency)}</td>
-                    <td className="num tabular-nums text-ink-500 dark:text-stone-400">{formatMoney(r.remaining, r.currency)}</td>
+                    <td className="num tabular-nums text-ink-500">{formatMoney(r.remaining, r.currency)}</td>
                     <td className="text-right"><StatusBadge value={r.display} /></td>
-                  </tr>
+                  </InvoiceRow>
                 ))}
               </tbody>
             </table>

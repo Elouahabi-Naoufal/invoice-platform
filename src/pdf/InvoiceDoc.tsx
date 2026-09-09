@@ -67,7 +67,7 @@ const s = StyleSheet.create({
   logo: { width: 120, height: 56, objectFit: "contain" },
   companyName: { fontSize: 13, fontWeight: "bold" },
   companyLine: { color: MUTED, marginTop: 1 },
-  identity: { marginTop: 20, alignItems: "center" },
+  identity: { marginTop: 20, alignItems: "flex-start" },
   docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5, textAlign: "left" },
   docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "left" },
   metaCol: { marginTop: 4 },
