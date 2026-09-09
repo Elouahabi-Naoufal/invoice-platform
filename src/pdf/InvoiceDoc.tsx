@@ -56,19 +56,20 @@ const s = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 64, // room for fixed footer
     paddingHorizontal: 0,
-    fontSize: 8.5,
+    fontSize: 9.5,
     fontFamily: "Helvetica",
     color: INK,
+    lineHeight: 1.45,
   },
   topBar: { height: 5 },
-  body: { paddingHorizontal: 40, paddingTop: 22 },
+  body: { paddingHorizontal: 36, paddingTop: 26 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logo: { width: 120, height: 56, objectFit: "contain" },
-  companyName: { fontSize: 12, fontWeight: "bold" },
+  companyName: { fontSize: 13, fontWeight: "bold" },
   companyLine: { color: MUTED, marginTop: 1 },
-  identity: { marginTop: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
-  docTitle: { fontSize: 27, fontWeight: "bold", letterSpacing: 0.5 },
-  docNumber: { fontSize: 11, fontWeight: "bold", marginTop: 2 },
+  identity: { marginTop: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5 },
+  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3 },
   metaCol: { textAlign: "right" },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 1 },
   metaLabel: { color: MUTED, width: 62, textAlign: "right", marginRight: 6 },
@@ -78,39 +79,39 @@ const s = StyleSheet.create({
   partyLabel: { fontSize: 7, color: MUTED, letterSpacing: 1, marginBottom: 4 },
   partyName: { fontSize: 10, fontWeight: "bold" },
   partyLine: { color: MUTED, marginTop: 1 },
-  clientLine: { marginTop: 10, color: MUTED },
-  tableHead: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, marginTop: 16, borderRadius: 4 },
-  th: { color: "#FFFFFF", fontWeight: "bold", fontSize: 8 },
-  row: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: HAIR },
-  cDesc: { flex: 1, paddingRight: 8 },
-  cQty: { width: 44, textAlign: "right" },
-  cPU: { width: 72, textAlign: "right" },
-  cDisc: { width: 52, textAlign: "right" },
-  cTVA: { width: 52, textAlign: "right" },
-  cTotal: { width: 76, textAlign: "right", fontWeight: "bold" },
-  descSub: { color: MUTED, fontSize: 7.5, marginTop: 1 },
-  totalsWrap: { alignItems: "flex-end", marginTop: 12 },
-  totalsBox: { width: 250 },
-  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5 },
+  clientLine: { marginTop: 12, backgroundColor: FAINT, borderRadius: 4, paddingVertical: 8, paddingHorizontal: 10, fontSize: 9.5 },
+  tableHead: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, marginTop: 16, borderRadius: 4 },
+  th: { color: "#FFFFFF", fontWeight: "bold", fontSize: 8.5 },
+  row: { flexDirection: "row", paddingVertical: 8.5, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: HAIR },
+  cDesc: { flex: 1, paddingRight: 10 },
+  cQty: { width: 48, textAlign: "right" },
+  cPU: { width: 84, textAlign: "right" },
+  cDisc: { width: 56, textAlign: "right" },
+  cTVA: { width: 56, textAlign: "right" },
+  cTotal: { width: 88, textAlign: "right", fontWeight: "bold" },
+  descSub: { color: MUTED, fontSize: 8, marginTop: 1.5 },
+  totalsWrap: { alignItems: "flex-end", marginTop: 14 },
+  totalsBox: { width: 285 },
+  tRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
   tLabel: { color: MUTED },
   tValue: { fontWeight: "bold" },
-  tGrand: { flexDirection: "row", justifyContent: "space-between", marginTop: 5, paddingTop: 7, borderTopWidth: 2, alignItems: "center" },
-  tGrandLabel: { fontSize: 10, fontWeight: "bold" },
-  tGrandValue: { fontSize: 13.5, fontWeight: "bold" },
+  tGrand: { flexDirection: "row", justifyContent: "space-between", marginTop: 6, paddingTop: 8, borderTopWidth: 2, alignItems: "center" },
+  tGrandLabel: { fontSize: 11, fontWeight: "bold" },
+  tGrandValue: { fontSize: 15.5, fontWeight: "bold" },
   wordsBox: { marginTop: 14, backgroundColor: FAINT, borderRadius: 4, padding: 9 },
   wordsLabel: { fontSize: 7.5, color: MUTED, letterSpacing: 0.6, marginBottom: 3 },
   wordsText: { fontStyle: "italic" },
   taxMention: { marginTop: 8, fontWeight: "bold" },
-  bottomGrid: { flexDirection: "row", gap: 12, marginTop: 14 },
-  bottomBox: { flex: 1 },
-  bottomTitle: { fontSize: 7.5, letterSpacing: 1, marginBottom: 4, fontWeight: "bold" },
-  bottomLine: { marginTop: 1.5 },
+  bottomGrid: { flexDirection: "row", gap: 12, marginTop: 16 },
+  bottomBox: { flex: 1, backgroundColor: FAINT, borderRadius: 4, padding: 10 },
+  bottomTitle: { fontSize: 8, letterSpacing: 1, marginBottom: 5, fontWeight: "bold" },
+  bottomLine: { marginTop: 2 },
   notesBox: { marginTop: 10 },
   footerFixed: { position: "absolute", bottom: 0, left: 0, right: 0 },
   footerBar: { height: 3 },
-  footerInner: { paddingHorizontal: 40, paddingVertical: 9, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  footerText: { fontSize: 7.5, color: MUTED, maxWidth: 430 },
-  pageNo: { fontSize: 7.5, color: MUTED },
+  footerInner: { paddingHorizontal: 36, paddingVertical: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  footerText: { fontSize: 8, color: MUTED, maxWidth: 440 },
+  pageNo: { fontSize: 8, color: MUTED },
 });
 
 function str(v: unknown): string {
@@ -181,11 +182,12 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
 
           {/* ── Buyer: single compact line (art.145 requires client identification) ── */}
           <Text style={s.clientLine}>
-            Client : {str(inv.buyer.companyName) || str(inv.buyer.name) || "—"}
-            {inv.buyer.address ? `  ·  ${str(inv.buyer.address)}${inv.buyer.city ? `, ${inv.buyer.city}` : ""}` : ""}
-            {inv.buyer.ice ? `  ·  ICE : ${str(inv.buyer.ice)}` : ""}
-            {inv.buyer.clientIF ? `  ·  IF : ${str(inv.buyer.clientIF)}` : ""}
-            {inv.buyer.clientRC ? `  ·  RC : ${str(inv.buyer.clientRC)}` : ""}
+            <Text>Client :  </Text>
+            <Text style={{ fontWeight: "bold" }}>{str(inv.buyer.companyName) || str(inv.buyer.name) || "—"}</Text>
+            {inv.buyer.address ? <Text>{`  ·  ${str(inv.buyer.address)}${inv.buyer.city ? `, ${inv.buyer.city}` : ""}`}</Text> : null}
+            {inv.buyer.ice ? <Text>{`  ·  ICE : ${str(inv.buyer.ice)}`}</Text> : null}
+            {inv.buyer.clientIF ? <Text>{`  ·  IF : ${str(inv.buyer.clientIF)}`}</Text> : null}
+            {inv.buyer.clientRC ? <Text>{`  ·  RC : ${str(inv.buyer.clientRC)}`}</Text> : null}
           </Text>
 
           {/* ── Lines table ── */}

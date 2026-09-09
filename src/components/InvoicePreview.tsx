@@ -33,7 +33,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
   const sellerIds = [doc.seller.ice && `ICE : ${doc.seller.ice}`, doc.seller.identifiantFiscal && `IF : ${doc.seller.identifiantFiscal}`, doc.seller.rc && `RC : ${doc.seller.rc}${doc.seller.rcCity ? ` ${doc.seller.rcCity}` : ""}`, doc.seller.patente && `TP : ${doc.seller.patente}`].filter(Boolean);
 
   return (
-    <div className="w-[600px] max-w-full bg-white text-[12px] leading-relaxed text-ink-950 shadow-doc max-md:w-full">
+    <div className="w-[600px] max-w-full bg-white text-[13px] leading-relaxed text-ink-950 shadow-doc max-md:w-full">
       <div className="h-[5px]" style={{ backgroundColor: accent }} />
       <div className="px-10 py-6 max-md:px-6">
         <div className="flex items-start justify-between gap-6">
@@ -50,7 +50,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
 
         <div className="mt-4 flex items-end justify-between gap-6">
           <div>
-            <div className="text-[26px] font-semibold leading-none tracking-tight">{title}</div>
+            <div className="text-[30px] font-semibold leading-none tracking-tight">{title}</div>
             <div className="mt-1 text-[13px] font-bold">{doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
             {doc.linkedNumber && <div className="text-ink-500">{doc.docType === "AVOIR" ? `Avoir sur ${doc.linkedNumber}` : `Annule et remplace ${doc.linkedNumber}`}{doc.correctionReason ? ` — Motif : ${doc.correctionReason}` : ""}</div>}
           </div>
@@ -62,8 +62,8 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           </div>
         </div>
 
-        <div className="mt-3 text-[13px] text-ink-500">
-          Client : <strong className="text-ink-950 dark:text-stone-100">{doc.buyer.companyName || doc.buyer.name || "—"}</strong>
+        <div className="mt-3 rounded bg-ink-50 px-3 py-2 text-[13px] dark:bg-white/5">
+          Client : <strong>{doc.buyer.companyName || doc.buyer.name || "—"}</strong>
           {doc.buyer.address ? ` · ${doc.buyer.address}${doc.buyer.city ? `, ${doc.buyer.city}` : ""}` : ""}
           {doc.buyer.ice ? ` · ICE : ${doc.buyer.ice}` : ""}
           {doc.buyer.clientIF ? ` · IF : ${doc.buyer.clientIF}` : ""}
@@ -102,22 +102,22 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           </tbody>
         </table>
 
-        <div className="ml-auto mt-3 w-64">
+        <div className="ml-auto mt-4 w-72">
           <div className="flex justify-between py-0.5"><span className="text-ink-500">Total HT</span><strong className="tabular-nums">{fmt(calc.subtotalHT)}</strong></div>
           {calc.invDiscountTotal > 0 && <div className="flex justify-between py-0.5"><span className="text-ink-500">Remise globale</span><strong className="tabular-nums">−{fmt(calc.invDiscountTotal)}</strong></div>}
           {calc.buckets.map((b, i) => (
             <div key={i} className="flex justify-between py-0.5"><span className="text-ink-500">TVA {b.rateBps / 100} % <span className="text-ink-400">(base {fmt(b.taxable)})</span></span><strong className="tabular-nums">{fmt(b.tax)}</strong></div>
           ))}
           <div className="mt-1 flex items-center justify-between border-t-2 pt-2" style={{ borderColor: accent }}>
-            <span className="text-[13px] font-bold">{doc.docType === "AVOIR" ? "NET À DÉDUIRE" : "TOTAL TTC"}</span>
-            <span className="text-[17px] font-bold tabular-nums" style={{ color: accent }}>{fmt(calc.totalTTC)}</span>
+            <span className="text-[14px] font-bold">{doc.docType === "AVOIR" ? "NET À DÉDUIRE" : "TOTAL TTC"}</span>
+            <span className="text-[20px] font-bold tabular-nums" style={{ color: accent }}>{fmt(calc.totalTTC)}</span>
           </div>
         </div>
 
         {doc.taxMention && <div className="mt-2 font-semibold">{doc.taxMention}</div>}
 
-        <div className="mt-3 flex gap-3">
-          <div className="flex-1">
+        <div className="mt-4 flex gap-3">
+          <div className="flex-1 rounded bg-ink-50 p-3 dark:bg-white/5">
             <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Mentions légales</div>
             {sellerIds.map((t, i) => <div key={i}>{t}</div>)}
             {doc.seller.cnss && <div>CNSS : {doc.seller.cnss}</div>}
