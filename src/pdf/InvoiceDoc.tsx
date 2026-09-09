@@ -67,10 +67,11 @@ const s = StyleSheet.create({
   logo: { width: 120, height: 56, objectFit: "contain" },
   companyName: { fontSize: 13, fontWeight: "bold" },
   companyLine: { color: MUTED, marginTop: 1 },
-  identity: { marginTop: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
-  docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5 },
-  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3 },
-  metaCol: { textAlign: "right" },
+  identity: { marginTop: 20, alignItems: "center", textAlign: "center" },
+  docTitle: { fontSize: 30, fontWeight: "bold", letterSpacing: 0.5, textAlign: "center" },
+  docNumber: { fontSize: 12.5, fontWeight: "bold", marginTop: 3, textAlign: "center" },
+  metaCol: { textAlign: "center", marginTop: 4 },
+  metaCenter: { color: MUTED, marginTop: 1, textAlign: "center" },
   metaRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 1 },
   metaLabel: { color: MUTED, width: 62, textAlign: "right", marginRight: 6 },
   metaValue: { fontWeight: "bold", minWidth: 80, textAlign: "right" },
@@ -158,25 +159,23 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
             </View>
           </View>
 
-          {/* ── Invoice identity ── */}
+          {/* ── Invoice identity (centered) ── */}
           <View style={s.identity}>
-            <View>
-              <Text style={s.docTitle}>{title}</Text>
-              <Text style={s.docNumber}>{inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
-              {inv.linkedNumber ? (
-                <Text style={s.companyLine}>
-                  {inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}
-                  {inv.correctionReason ? ` — Motif : ${inv.correctionReason}` : ""}
-                </Text>
-              ) : inv.correctionReason ? (
-                <Text style={s.companyLine}>Motif : {inv.correctionReason}</Text>
-              ) : null}
-            </View>
+            <Text style={s.docTitle}>{title}</Text>
+            <Text style={s.docNumber}>{inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
+            {inv.linkedNumber ? (
+              <Text style={s.metaCenter}>
+                {inv.docType === "AVOIR" ? `Avoir sur ${inv.linkedNumber}` : `Annule et remplace ${inv.linkedNumber}`}
+                {inv.correctionReason ? ` — Motif : ${inv.correctionReason}` : ""}
+              </Text>
+            ) : inv.correctionReason ? (
+              <Text style={s.metaCenter}>Motif : {inv.correctionReason}</Text>
+            ) : null}
             <View style={s.metaCol}>
-              <View style={s.metaRow}><Text style={s.metaLabel}>Date</Text><Text style={s.metaValue}>{dateFmt(inv.issueDate)}</Text></View>
-              {inv.dueDate ? <View style={s.metaRow}><Text style={s.metaLabel}>Échéance</Text><Text style={s.metaValue}>{dateFmt(inv.dueDate)}</Text></View> : null}
-              <View style={s.metaRow}><Text style={s.metaLabel}>Devise</Text><Text style={s.metaValue}>{inv.currency}</Text></View>
-              {inv.poNumber ? <View style={s.metaRow}><Text style={s.metaLabel}>Cde client</Text><Text style={s.metaValue}>{inv.poNumber}</Text></View> : null}
+              <Text style={s.metaCenter}>Date : {dateFmt(inv.issueDate)}</Text>
+              {inv.dueDate ? <Text style={s.metaCenter}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
+              <Text style={s.metaCenter}>Devise : {inv.currency}</Text>
+              {inv.poNumber ? <Text style={s.metaCenter}>Cde client : {inv.poNumber}</Text> : null}
             </View>
           </View>
 
