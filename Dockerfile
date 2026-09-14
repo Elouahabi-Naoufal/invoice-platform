@@ -48,3 +48,5 @@ VOLUME ["/app/data", "/app/public/uploads"]
 EXPOSE 3007
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "start"]
+
+# Build 20260914-225532
