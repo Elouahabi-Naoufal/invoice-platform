@@ -1,7 +1,7 @@
 # Invoice Platform — production image (Next.js + Prisma + SQLite + sharp)
 FROM node:22-bookworm-slim AS base
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends openssl sqlite3 su-exec \
+RUN apt-get update && apt-get install -y --no-install-recommends openssl sqlite3 \
   && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps

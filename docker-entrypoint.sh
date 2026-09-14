@@ -7,7 +7,12 @@ chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
 chmod -R 775 /app/data /app/public/uploads 2>/dev/null || true
 
 run_as_nextjs() {
-  if [ "$(id -u)" = "0" ]; then su-exec nextjs:nodejs "$@"; else "$@"; fi
+  # runuser (util-linux) if available, else run as current user (root in container is fine)
+  if [ "$(id -u)" = "0" ] && command -v runuser >/dev/null 2>&1 && id nextjs >/dev/null 2>&1; then
+    runuser -u nextjs -- "$@"
+  else
+    "$@"
+  fi
 }
 
 echo ">> Running prisma migrate deploy..."
@@ -18,8 +23,8 @@ run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
 
 echo ">> Starting server..."
-if [ "$(id -u)" = "0" ]; then
-  exec su-exec nextjs:nodejs "$@"
+if [ "$(id -u)" = "0" ] && command -v runuser >/dev/null 2>&1 && id nextjs >/dev/null 2>&1; then
+  exec runuser -u nextjs -- "$@"
 else
   exec "$@"
 fi
