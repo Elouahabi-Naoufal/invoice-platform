@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import PublicShare from "@/components/PublicShare";
 
 export default async function PublicInvoice({ params }: { params: { token: string } }) {
   const inv = await prisma.invoice.findFirst({
@@ -16,6 +17,7 @@ export default async function PublicInvoice({ params }: { params: { token: strin
       <h1>Facture {inv.invoiceNumber}</h1>
       <p>Total TTC : {(inv.totalTTC / 100).toFixed(2)} {inv.currency} · Payé : {(paid / 100).toFixed(2)} · Reste : {(remaining / 100).toFixed(2)}</p>
       <p><a href={`/api/invoices/${inv.id}/pdf`}>Télécharger le PDF</a></p>
+      <p><PublicShare label={`Facture ${inv.invoiceNumber} — ${(inv.totalTTC / 100).toFixed(2)} ${inv.currency}`} total="" /></p>
       <p style={{ color: "#666" }}>Lien public — ne contient que les données visibles sur la facture.</p>
     </div>
   );

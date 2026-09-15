@@ -45,6 +45,7 @@ export default async function DetailPage({ params }: { params: { id: string } })
           totalTTC: inv.totalTTC, remaining: inv.remaining, currency: inv.currency, publicToken: inv.publicToken,
           sellerName: (inv.sellerView as { legalName?: string })?.legalName ?? "?",
           buyerName: (inv.buyerView as { companyName?: string; name?: string })?.companyName ?? (inv.buyerView as { name?: string })?.name ?? "?",
+          buyerPhone: (inv.buyerView as { phone?: string })?.phone ?? null,
           issueDate: inv.issueDate.toISOString().slice(0, 10),
           dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
         }} /></div>

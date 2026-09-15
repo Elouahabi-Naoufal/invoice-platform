@@ -1,15 +1,16 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight } from "lucide-react";
+import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, MessageCircle } from "lucide-react";
 import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft, decideQuote, convertDevis } from "@/server/invoice-ops";
 import { Modal, useToast } from "@/components/ui";
-import { formatMoney } from "@/domain/invoice";
+import { formatMoney, invoiceShareText, whatsAppShareUrl } from "@/domain/invoice";
 
 type Inv = {
   id: string; status: string; docType: string; invoiceNumber: string | null;
   totalTTC: number; remaining: number; currency: string; publicToken: string | null;
-  sellerName: string; buyerName: string; issueDate: string; dueDate: string | null;
+  sellerName: string; buyerName: string; buyerPhone?: string | null;
+  issueDate: string; dueDate: string | null;
 };
 
 export default function InvoiceActions({ inv }: { inv: Inv }) {
@@ -63,6 +64,14 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
     }
   }
 
+  function waLink() {
+    const url = `${location.origin}/i/${inv.publicToken ?? ""}`;
+    return whatsAppShareUrl(
+      invoiceShareText({ docType: inv.docType, number: inv.invoiceNumber, totalTTC: inv.totalTTC, currency: inv.currency, seller: inv.sellerName, url }),
+      inv.buyerPhone ?? null
+    );
+  }
+
   function copyLink() {
     const url = `${location.origin}/i/${inv.publicToken ?? ""}`;
     navigator.clipboard.writeText(url).then(
@@ -90,6 +99,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
             Record payment · {formatMoney(inv.remaining, inv.currency)}
           </button>
           <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
+          <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
           <button onClick={() => run("Draft created from invoice", () => duplicate(inv.id))} className="btn-ghost btn-sm"><Plus size={14} /> Duplicate</button>
           <a href={`/invoices/new?linked=${inv.id}`} className="btn-ghost btn-sm">Credit note</a>
@@ -114,6 +124,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
             } finally { setBusy(false); }
           }} className="btn-accent btn-sm"><ArrowRight size={14} /> Convert to facture</button>
           <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
+          <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
         </>
       )}

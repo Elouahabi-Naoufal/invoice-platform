@@ -163,8 +163,7 @@ export function deriveDueDate(issueDate: Date, terms: string, customDue?: Date |
   }
 }
 
-/** Human label for payment-terms codes (presentation only — codes stay canonical). */
-export function paymentTermsLabel(terms: string | null | undefined, locale = "fr"): string | null {
+/** Human label for payment-terms codes (presentation only — codes stay canonical). */export function paymentTermsLabel(terms: string | null | undefined, locale = "fr"): string | null {
   if (!terms || terms === "CUSTOM") return null;
   const fr: Record<string, string> = {
     ON_RECEIPT: "À réception",
@@ -276,4 +275,29 @@ export function amountInWords(minor: number, currency: string): string {
   const head = `${frIntToWords(major)} ${major <= 1 ? w.one : w.many}`;
   if (cents === 0) return `Arrêté la présente facture à la somme de ${head}.`;
   return `Arrêté la présente facture à la somme de ${head} et ${frIntToWords(cents)} ${w.cent}.`;
+}
+
+/** Normalize a phone to wa.me digits (Moroccan 06/07 → 212…). */
+export function waDigits(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  let d = phone.replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (/^0\d{9}$/.test(d)) d = "212" + d.slice(1); // Moroccan mobile 06/07XXXXXXXX
+  if (d.length < 8) return null;
+  return d;
+}
+
+/** WhatsApp share URL (contact picker when no number). */
+export function whatsAppShareUrl(text: string, phone?: string | null): string {
+  const num = waDigits(phone ?? null);
+  const q = `text=${encodeURIComponent(text)}`;
+  return num ? `https://wa.me/${num}?${q}` : `https://wa.me/?${q}`;
+}
+
+/** Default share message for an invoice/quote. */
+export function invoiceShareText(opts: {
+  docType: string; number: string | null; totalTTC: number; currency: string; seller: string; url: string;
+}): string {
+  const kind = opts.docType === "DEVIS" ? "devis" : opts.docType === "AVOIR" ? "avoir" : "facture";
+  return `Bonjour, voici votre ${kind} ${opts.number ?? ""} de ${opts.seller} : ${formatMoney(opts.totalTTC, opts.currency)} — ${opts.url}`;
 }
