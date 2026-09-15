@@ -1,14 +1,15 @@
-import { Inter } from "next/font/google";
+import { Outfit } from "next/font/google";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { jwtVerify } from "jose";
 import Sidebar from "@/components/Sidebar";
 import CompanySwitcher from "@/components/CompanySwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import { Toaster } from "@/components/ui";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", display: "swap" });
 
 async function sessionUser() {
   const token = (await cookies()).get("ip_session")?.value;
@@ -36,31 +37,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={outfit.variable}>
       <body className="font-sans">
         <Toaster>
           {user ? (
             <div className="flex min-h-screen">
               <Sidebar />
               <div className="min-w-0 flex-1">
-                <header
-                  className="sticky top-0 z-30 flex items-center gap-3 px-6 py-2.5"
-                  style={{
-                    background: "linear-gradient(to bottom, #5b9bd5 0%, #3a8bd2 48%, #2273b8 52%, #2b6cb8 100%)",
-                    borderBottom: "1px solid #17578f",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 5px rgba(20,40,70,0.35)",
-                  }}
-                >
-                  <div className="ml-auto flex items-center gap-3">
+                <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/90 px-6 py-3 backdrop-blur dark:border-white/10 dark:bg-[#101828]/90">
+                  <div className="ml-auto flex items-center gap-2.5">
+                    <ThemeToggle />
                     <CompanySwitcher companies={companies} activeId={activeId} />
-                    <form action={signOut}>
-                      <button
-                        className="btn-sm rounded-md px-2.5 py-1.5 text-xs font-bold text-white"
-                        style={{ textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}
-                        title={user.email}
-                      >
-                        {user.displayName} · Logout
-                      </button>
+                    <form action={signOut} className="flex items-center gap-2.5 border-l border-ink-200 pl-2.5 dark:border-white/10">
+                      <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-50 text-sm font-semibold text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                        {user.displayName.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="leading-tight">
+                        <span className="block text-sm font-medium text-ink-950 dark:text-white">{user.displayName}</span>
+                        <button className="meta hover:text-error-600">Logout</button>
+                      </span>
                     </form>
                   </div>
                 </header>

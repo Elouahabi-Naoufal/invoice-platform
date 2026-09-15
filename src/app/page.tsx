@@ -1,11 +1,28 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Plus, Wallet, ArrowDownLeft, FileText } from "lucide-react";
 import { requireUser, getActiveCompanyId } from "@/server/auth";
 import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
 import { StatusBadge, EmptyState } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
+
+function Metric({ icon, label, value, sub, tint }: {
+  icon: React.ReactNode; label: string; value: string; sub: string; tint: string;
+}) {
+  return (
+    <div className="card flex items-center gap-4 p-5">
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${tint}`}>
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="meta block">{label}</span>
+        <span className="block truncate text-2xl font-semibold text-ink-950 tabular-nums dark:text-white">{value}</span>
+        <span className="meta block truncate">{sub}</span>
+      </span>
+    </div>
+  );
+}
 
 export default async function Dashboard() {
   try { await requireUser(); } catch { redirect("/login"); }
@@ -15,7 +32,7 @@ export default async function Dashboard() {
       <EmptyState
         title="Welcome — create your company"
         body="Set up your first company profile (legal identity, tax, bank) and you can issue your first invoice in minutes."
-        action={<Link href="/companies?new=1" className="btn-accent"><Plus size={15} /> Create company</Link>}
+        action={<Link href="/companies?new=1" className="btn-accent"><Plus size={16} /> Create company</Link>}
       />
     );
   }
@@ -30,64 +47,74 @@ export default async function Dashboard() {
   const paidMonth = live
     .flatMap((r) => r.payments.map((p) => ({ ...p, cur: r.currency })))
     .filter((p) => new Date(p.paymentDate).toISOString().slice(0, 7) === month);
+  const paidMonthTotal = paidMonth.reduce((a, p) => a + p.amountMinor, 0);
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="page-title">{greet}</h1>
-      <p className="text-[13px] text-ink-500 dark:text-stone-400 mt-0.5 mb-6">Your business overview · {active.legalName}</p>
-
-      <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
-        <div className="card p-5">
-          <div className="meta mb-1">Outstanding</div>
-          <div className="text-[22px] font-semibold tracking-tight tabular-nums">{formatMoney(outstanding, active.defaultCurrency)}</div>
-          <div className="meta mt-1">{outstandingCount} open invoice{outstandingCount === 1 ? "" : "s"}{overdueCount > 0 ? ` · ${overdueCount} overdue` : ""}</div>
-        </div>
-        <div className="card p-5">
-          <div className="meta mb-1">Collected this month</div>
-          <div className="text-[22px] font-semibold tracking-tight tabular-nums">
-            {paidMonth.length === 0 ? `0 ${active.defaultCurrency}` : formatMoney(paidMonth.reduce((a, p) => a + p.amountMinor, 0), active.defaultCurrency)}
-          </div>
-          <div className="meta mt-1">{paidMonth.length} payment{paidMonth.length === 1 ? "" : "s"}</div>
-        </div>
-        <div className="card flex flex-col justify-between p-5">
-          <div className="meta mb-1">Next step</div>
-          <Link href="/invoices/new" className="btn-accent mt-2"><Plus size={15} /> New invoice</Link>
-        </div>
+    <div>
+      <div className="mb-6">
+        <h1 className="page-title">{greet}</h1>
+        <p className="meta mt-1">Your business overview · {active.legalName}</p>
       </div>
 
-      <div className="mt-8 mb-3 flex items-center justify-between">
-        <h2 className="section-title">Recent invoices</h2>
-        <Link href="/invoices" className="flex items-center gap-1 text-[13px] text-ink-500 dark:text-stone-400 hover:text-ink-950 dark:hover:text-white">
-          View all <ArrowRight size={14} />
-        </Link>
-      </div>
-      {rows.length === 0 ? (
-        <EmptyState
-          title="No invoices yet"
-          body="Create your first invoice and start tracking your business payments."
-          action={<Link href="/invoices/new" className="btn-accent"><Plus size={15} /> Create invoice</Link>}
+      <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
+        <Metric
+          icon={<Wallet size={22} className="text-brand-600 dark:text-brand-400" />}
+          tint="bg-brand-50 dark:bg-brand-500/15"
+          label="Outstanding"
+          value={formatMoney(outstanding, active.defaultCurrency)}
+          sub={`${outstandingCount} open · ${overdueCount} overdue`}
         />
-      ) : (
-        <div className="card overflow-hidden">
+        <Metric
+          icon={<ArrowDownLeft size={22} className="text-success-600 dark:text-success-500" />}
+          tint="bg-success-50 dark:bg-success-500/15"
+          label="Collected this month"
+          value={formatMoney(paidMonthTotal, active.defaultCurrency)}
+          sub={`${paidMonth.length} payments`}
+        />
+        <div className="card flex items-center gap-4 p-5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-ink-100 dark:bg-white/10">
+            <FileText size={22} className="text-ink-500" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="meta block">Invoicing</span>
+            <Link href="/invoices/new" className="btn-accent btn-sm mt-1.5"><Plus size={14} /> New invoice</Link>
+          </span>
+        </div>
+      </div>
+
+      <div className="card mt-6 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-ink-200 px-5 py-4 dark:border-white/10">
+          <h2 className="section-title">Recent invoices</h2>
+          <Link href="/invoices" className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700">
+            View all <ArrowRight size={15} />
+          </Link>
+        </div>
+        {rows.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="meta mb-4">Create your first invoice and start tracking payments.</p>
+            <Link href="/invoices/new" className="btn-accent"><Plus size={16} /> Create invoice</Link>
+          </div>
+        ) : (
           <table className="tbl">
             <tbody>
               {rows.slice(0, 8).map((r) => (
                 <tr key={r.id}>
-                  <td className="font-medium">
-                    <Link href={`/invoices/${r.id}`} className="hover:text-brand-600">{r.invoiceNumber ?? <span className="text-ink-400 dark:text-stone-500">Draft</span>}</Link>
+                  <td className="font-medium text-ink-950 dark:text-white">
+                    <Link href={`/invoices/${r.id}`} className="hover:text-brand-600">{r.invoiceNumber ?? <span className="text-ink-400">Draft</span>}</Link>
+                    <div className="meta">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</div>
                   </td>
-                  <td className="text-ink-500 dark:text-stone-400">{(r.client as { companyName?: string; name?: string } | null)?.companyName ?? (r.client as { name?: string } | null)?.name ?? "—"}</td>
-                  <td className="num font-medium tabular-nums">{formatMoney(r.totalTTC, r.currency)}</td>
+                  <td className="meta">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"}</td>
+                  <td className="num font-semibold text-ink-950 tabular-nums dark:text-white">{formatMoney(r.totalTTC, r.currency)}</td>
                   <td className="text-right"><StatusBadge value={r.display} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

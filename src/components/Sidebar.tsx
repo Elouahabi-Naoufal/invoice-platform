@@ -1,61 +1,63 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Users, Building2, Settings, Plus } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Receipt } from "lucide-react";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/invoices", label: "Invoices", icon: FileText, exact: false },
-  { href: "/clients", label: "Clients", icon: Users, exact: false },
-  { href: "/companies", label: "Companies", icon: Building2, exact: false },
-  { href: "/settings", label: "Settings", icon: Settings, exact: false },
+  {
+    group: "Menu",
+    items: [
+      { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { href: "/invoices", label: "Invoices", icon: FileText, exact: false },
+      { href: "/clients", label: "Clients", icon: Users, exact: false },
+      { href: "/companies", label: "Companies", icon: Building2, exact: false },
+    ],
+  },
+  {
+    group: "General",
+    items: [{ href: "/settings", label: "Settings", icon: Settings, exact: false }],
+  },
 ];
 
 export default function Sidebar() {
   const path = usePathname();
   return (
-    <aside
-      className="flex w-[216px] shrink-0 flex-col px-3 py-5 max-md:hidden"
-      style={{
-        background: "linear-gradient(to bottom, #46586e 0%, #33414f 50%, #232f3e 100%)",
-        boxShadow: "inset -1px 0 0 rgba(255,255,255,0.15), 2px 0 6px rgba(20,40,70,0.35)",
-      }}
-    >
-      <Link href="/" className="mb-6 flex items-center gap-2 px-2">
-        <span
-          className="grid h-8 w-8 place-items-center rounded-[10px] text-[15px] font-bold text-white"
-          style={{
-            background: "linear-gradient(to bottom, #6db3e8 0%, #2273b8 50%, #17578f 100%)",
-            border: "1px solid #0f3d68",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 3px rgba(0,0,0,0.5)",
-            textShadow: "0 1px 1px rgba(0,0,0,0.5)",
-          }}
-        >
-          F
+    <aside className="flex w-[260px] shrink-0 flex-col border-r border-ink-200 bg-white px-4 py-6 max-lg:hidden dark:border-white/10 dark:bg-[#101828]">
+      <Link href="/" className="mb-8 flex items-center gap-2.5 px-2">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-white shadow-sm">
+          <Receipt size={19} />
         </span>
-        <span className="text-[15px] font-bold tracking-tight text-white" style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
+        <span className="text-xl font-semibold tracking-tight text-ink-950 dark:text-white">
           Facturo
         </span>
       </Link>
-      <nav className="flex flex-col gap-0.5">
-        {NAV.map((n) => {
-          const active = n.exact ? path === n.href : path === n.href || path.startsWith(n.href + "/");
-          const Icon = n.icon;
-          return (
-            <Link key={n.href} href={n.href} className={`navlink ${active ? "navlink-active" : ""}`}>
-              <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
-              {n.label}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-col gap-6">
+        {NAV.map((g) => (
+          <div key={g.group}>
+            <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-ink-400">
+              {g.group}
+            </p>
+            <div className="flex flex-col gap-1">
+              {g.items.map((n) => {
+                const active = n.exact ? path === n.href : path === n.href || path.startsWith(n.href + "/");
+                const Icon = n.icon;
+                return (
+                  <Link key={n.href} href={n.href} className={`navlink ${active ? "navlink-active" : ""}`}>
+                    <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
-      <Link href="/invoices/new" className="btn-accent mt-4">
-        <Plus size={15} /> New invoice
+      <Link href="/invoices/new" className="btn-accent mt-6 w-full">
+        <Plus size={16} /> New invoice
       </Link>
-      <div className="mt-auto px-2 pt-4">
-        <p className="text-[11px]" style={{ color: "#93a5b8", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>
-          Conservation 10 ans · art. 211 CGI
-        </p>
+      <div className="mt-auto rounded-xl bg-brand-50 p-4 dark:bg-brand-500/10">
+        <p className="text-[13px] font-semibold text-brand-700 dark:text-brand-400">Art. 211 CGI</p>
+        <p className="meta mt-0.5">Invoices are kept 10 years and stay immutable once finalized.</p>
       </div>
     </aside>
   );

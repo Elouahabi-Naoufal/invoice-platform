@@ -3,30 +3,21 @@ import React, { createContext, useCallback, useContext, useState } from "react";
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 
 /* ---------- Status badge (restrained) ---------- */
-const STATUS_STYLE: Record<string, React.CSSProperties> = {
-  DRAFT: { background: "linear-gradient(to bottom,#ffffff,#dfe6ee)", color: "#33506b", border: "1px solid #8fa6bd" },
-  ISSUED: { background: "linear-gradient(to bottom,#e8f0f9,#b9cfe6)", color: "#1f3a5f", border: "1px solid #7ba0c6" },
-  SENT: { background: "linear-gradient(to bottom,#6db3e8,#2273b8)", color: "#fff", border: "1px solid #17578f" },
-  VIEWED: { background: "linear-gradient(to bottom,#6db3e8,#2273b8)", color: "#fff", border: "1px solid #17578f" },
-  PARTIALLY_PAID: { background: "linear-gradient(to bottom,#ffd97a,#f5a623)", color: "#5f3d00", border: "1px solid #b97a00" },
-  PAID: { background: "linear-gradient(to bottom,#9ed69a,#4da64d)", color: "#fff", border: "1px solid #2f7a2f" },
-  OVERDUE: { background: "linear-gradient(to bottom,#f08a80,#c12e2a)", color: "#fff", border: "1px solid #8f1f1c" },
-  CANCELLED: { background: "linear-gradient(to bottom,#e2e2e2,#bdbdbd)", color: "#666", border: "1px solid #999", textDecoration: "line-through" },
+const STATUS_STYLE: Record<string, string> = {
+  DRAFT: "bg-ink-100 text-ink-700 dark:bg-white/5 dark:text-white/80",
+  ISSUED: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400",
+  SENT: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400",
+  VIEWED: "bg-info-50 text-info-600 dark:bg-info-500/15 dark:text-info-500",
+  PARTIALLY_PAID: "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400",
+  PAID: "bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500",
+  OVERDUE: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500",
+  CANCELLED: "bg-ink-100 text-ink-400 line-through dark:bg-white/5 dark:text-white/40",
 };
 
 export function StatusBadge({ value }: { value: string }) {
   const label = value.replace(/_/g, " ");
   return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold uppercase"
-      style={{
-        borderRadius: 999,
-        letterSpacing: "0.04em",
-        textShadow: "0 1px 0 rgba(255,255,255,0.5)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 2px rgba(20,40,70,0.35)",
-        ...(STATUS_STYLE[value] ?? STATUS_STYLE.DRAFT),
-      }}
-    >
+    <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[value] ?? STATUS_STYLE.DRAFT}`}>
       {label}
     </span>
   );
