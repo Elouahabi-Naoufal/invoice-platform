@@ -10,7 +10,6 @@ data/
 .vscode/
 .idea/
 docs/
-scripts/
 *.md
 Dockerfile*
 .dockerignore

@@ -20,6 +20,12 @@ run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
   || run_as_nextjs ./node_modules/.bin/prisma db push \
   || echo ">> WARNING: migration failed, continuing startup."
 
+if [ "${SEED_ON_BOOT}" = "1" ]; then
+  echo ">> SEED_ON_BOOT=1: topping up companies/clients (never deletes)..."
+  run_as_nextjs node ./scripts/seed-data.mjs \
+    || echo ">> WARNING: seed failed, continuing startup."
+fi
+
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
 
 echo ">> Starting server..."
