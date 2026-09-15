@@ -29,3 +29,6 @@ npx prisma migrate dev --name init
 npm run test   # 8 domain tests
 npm run dev    # :3001
 ```
+
+## Deploys
+Pushes to `main` auto-deploy to https://invoice.naoufalelouahabi.com via Dokploy webhook.
