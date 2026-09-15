@@ -12,7 +12,7 @@ import { useToast, Modal } from "@/components/ui";
 type Company = Record<string, string | number | null | undefined> & { id: string; legalName: string };
 type Client = { id: string; type: string; name: string; companyName?: string | null; ice?: string | null; address?: string | null; city?: string | null; clientIF?: string | null; clientRC?: string | null };
 export type DraftInit = {
-  id: string; docType: string; currency: string; issueDate: string; dueDate: string | null;
+  id: string; docType: string; currency: string; issueDate: string; dueDate: string | null; validUntil: string | null;
   paymentTerms: string; paymentMode: string | null; poNumber: string | null; notes: string | null;
   invDiscountBps: number; companyId: string | null; clientId: string | null;
   correctionReason: string | null; linkedInvoiceId: string | null;
@@ -48,6 +48,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   const [docType, setDocType] = useState(draft?.docType ?? "FACTURE");
   const [issueDate, setIssueDate] = useState(draft?.issueDate ?? "2026-09-09");
   const [dueDate, setDueDate] = useState(draft?.dueDate ?? "");
+  const [validUntil, setValidUntil] = useState(draft?.validUntil ?? "");
   const [currency, setCurrency] = useState(draft?.currency ?? "MAD");
   const [paymentMode, setPaymentMode] = useState(draft?.paymentMode ?? "VIREMENT");
   const [paymentTerms, setPaymentTerms] = useState(draft?.paymentTerms ?? "D30");
@@ -107,6 +108,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
         correctionReason: (docType === "AVOIR" || docType === "RECTIFICATIVE") ? correctionReason : undefined,
         currency, invoiceLocale: "fr", issueDate,
         dueDate: dueDate || null,
+        validUntil: docType === "DEVIS" ? (validUntil || null) : undefined,
         paymentTerms, paymentMode, poNumber: poNumber || undefined, notes: notes || undefined,
         invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
         lines: lines.map((l) => ({ ...l })),
@@ -154,7 +156,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
           </button>
         ))}
         <select value={docType} onChange={(e) => setDocType(e.target.value)} disabled={!!draft} className="input ml-auto w-auto" aria-label="Document type">
-          <option>FACTURE</option><option>AVOIR</option><option>RECTIFICATIVE</option>
+          <option>FACTURE</option><option>DEVIS</option><option>AVOIR</option><option>RECTIFICATIVE</option>
         </select>
       </div>
 
@@ -215,7 +217,11 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
               )}
               <div className="card grid grid-cols-3 gap-3 p-4 max-md:grid-cols-2">
                 <div><label className="label">Issue date *</label><input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="input" /></div>
-                <div><label className="label">Due date</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" /><p className="hint">Empty = derived from terms</p></div>
+                {docType === "DEVIS" ? (
+                  <div><label className="label">Valid until</label><input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="input" /><p className="hint">Empty = issue + 30 days</p></div>
+                ) : (
+                  <div><label className="label">Due date</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" /><p className="hint">Empty = derived from terms</p></div>
+                )}
                 <div><label className="label">Currency</label><select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input"><option>MAD</option><option>EUR</option><option>USD</option><option>GBP</option></select></div>
                 <div><label className="label">Payment</label><select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="input"><option>VIREMENT</option><option>ESPECES</option><option>CHEQUE</option><option>EFFET</option></select></div>
                 <div><label className="label">Terms</label><select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input"><option value="ON_RECEIPT">Due on receipt</option><option value="D7">7 days</option><option value="D15">15 days</option><option value="D30">30 days</option><option value="D60">60 days</option><option value="CUSTOM">Custom</option></select></div>
@@ -270,7 +276,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
         <div className="sticky top-[68px] shrink-0 max-xl:static max-xl:w-full">
           <InvoicePreview doc={{
             docType, invoiceNumber: null, linkedNumber: linked?.number ?? null, correctionReason: correctionReason || null,
-            issueDate, dueDate: dueDate || null, currency, locale: "fr",
+            issueDate, dueDate: dueDate || null, validUntil: validUntil || null, currency, locale: "fr",
             seller: sellerView, buyer: buyerView, lines,
             invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
             poNumber: poNumber || null, paymentMode, paymentTerms, notes: notes || null,

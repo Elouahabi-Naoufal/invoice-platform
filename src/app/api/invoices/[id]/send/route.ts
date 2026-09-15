@@ -41,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
         currency: inv.currency, locale: inv.invoiceLocale, seller, buyer, lines,
         invDiscountBps: inv.invDiscountBps, invDiscountFixedMinor: inv.invDiscountFixedMinor,
-        poNumber: inv.poNumber, paymentMode: inv.paymentMode, taxMention: inv.taxMention,
+        poNumber: inv.poNumber, paymentMode: inv.paymentMode, validUntil: inv.validUntil ? inv.validUntil.toISOString().slice(0, 10) : null, taxMention: inv.taxMention,
         amountInWords: inv.amountInWords, notes: inv.notes, footerText: inv.footerText,
       },
     }) as React.ReactElement

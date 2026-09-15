@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Send, Copy, Pencil, Trash2, Ban, Plus } from "lucide-react";
-import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft } from "@/server/invoice-ops";
+import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight } from "lucide-react";
+import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft, decideQuote, convertDevis } from "@/server/invoice-ops";
 import { Modal, useToast } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 
@@ -84,7 +84,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
         </>
       )}
 
-      {inv.status === "ISSUED" && (
+      {inv.status === "ISSUED" && inv.docType !== "DEVIS" && (
         <>
           <button onClick={() => setPayOpen(true)} className="btn-primary btn-sm">
             Record payment · {formatMoney(inv.remaining, inv.currency)}
@@ -94,6 +94,27 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
           <button onClick={() => run("Draft created from invoice", () => duplicate(inv.id))} className="btn-ghost btn-sm"><Plus size={14} /> Duplicate</button>
           <a href={`/invoices/new?linked=${inv.id}`} className="btn-ghost btn-sm">Credit note</a>
           <button onClick={() => setCancelOpen(true)} className="btn-ghost btn-sm hover:text-red-700"><Ban size={14} /> Cancel</button>
+        </>
+      )}
+
+      {inv.status === "ISSUED" && inv.docType === "DEVIS" && (
+        <>
+          <button onClick={() => run("Quote accepted", () => decideQuote(inv.id, "ACCEPTED"))} className="btn-primary btn-sm"><Check size={14} /> Accept</button>
+          <button onClick={() => run("Quote refused", () => decideQuote(inv.id, "REFUSED"))} className="btn-outline btn-sm"><X size={14} /> Refuse</button>
+          <button onClick={async () => {
+            setErr(""); setBusy(true);
+            try {
+              const f = await convertDevis(inv.id) as { id: string };
+              toast({ kind: "ok", title: "Facture draft created from devis" });
+              r.push(`/invoices/${f.id}`);
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : "Conversion failed";
+              setErr(msg);
+              toast({ kind: "err", title: "Conversion failed", body: msg });
+            } finally { setBusy(false); }
+          }} className="btn-accent btn-sm"><ArrowRight size={14} /> Convert to facture</button>
+          <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
+          <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
         </>
       )}
 

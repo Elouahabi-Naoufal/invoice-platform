@@ -7,7 +7,7 @@ export interface PreviewLine {
 
 export interface PreviewDoc {
   docType: string; invoiceNumber: string | null; linkedNumber?: string | null; correctionReason?: string | null;
-  issueDate: string; dueDate?: string | null; currency: string; locale: string;
+  issueDate: string; dueDate?: string | null; validUntil?: string | null; currency: string; locale: string;
   seller: Record<string, string | number | null | undefined>; buyer: Record<string, string | null | undefined>;
   lines: PreviewLine[]; invDiscountBps: number; invDiscountFixedMinor: number;
   poNumber?: string | null; clientRef?: string | null; paymentMode?: string | null; paymentTerms?: string | null;
@@ -29,7 +29,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
   const calc = calcInvoice({ lines: doc.lines, invDiscountBps: doc.invDiscountBps, invDiscountFixedMinor: doc.invDiscountFixedMinor });
   const accent = accentOf(doc.seller);
   const fmt = (m: number) => formatMoney(m, doc.currency, doc.locale.startsWith("en") ? "en-GB" : "fr-MA");
-  const title = doc.docType === "AVOIR" ? "AVOIR" : doc.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : "FACTURE";
+  const title = doc.docType === "AVOIR" ? "AVOIR" : doc.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : doc.docType === "DEVIS" ? "DEVIS" : "FACTURE";
   const sellerIds = [doc.seller.ice && `ICE : ${doc.seller.ice}`, doc.seller.identifiantFiscal && `IF : ${doc.seller.identifiantFiscal}`, doc.seller.rc && `RC : ${doc.seller.rc}${doc.seller.rcCity ? ` ${doc.seller.rcCity}` : ""}`, doc.seller.patente && `TP : ${doc.seller.patente}`].filter(Boolean);
 
   return (
@@ -60,6 +60,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
             <div className="mt-1 text-ink-500">
               <div>Date : {ddmmyyyy(doc.issueDate)}</div>
               {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
+              {doc.docType === "DEVIS" && doc.validUntil && <div>Valable jusqu'au : {ddmmyyyy(doc.validUntil)}</div>}
               <div>Devise : {doc.currency}</div>
               {doc.poNumber && <div>Cde client : {doc.poNumber}</div>}
             </div>

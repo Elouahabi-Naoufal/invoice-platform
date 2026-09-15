@@ -13,6 +13,8 @@ import {
   cancelInvoice as coreCancel,
   duplicateInvoice as coreDuplicate,
   markSent as coreSent,
+  setQuoteStatus as coreQuote,
+  convertDevisToInvoice as coreConvert,
 } from "@/server/invoices";
 
 export async function createDraft(raw: unknown) {
@@ -48,6 +50,18 @@ export async function markSentOp(id: string, sentTo: string) {
   const u = await requireUser();
   await assertOwnsInvoice(u.id, id);
   return coreSent(u.id, id, sentTo);
+}
+
+export async function decideQuote(id: string, status: "ACCEPTED" | "REFUSED") {
+  const u = await requireUser();
+  await assertOwnsInvoice(u.id, id);
+  return coreQuote(u.id, id, status);
+}
+
+export async function convertDevis(id: string) {
+  const u = await requireUser();
+  await assertOwnsInvoice(u.id, id);
+  return coreConvert(u.id, id);
 }
 
 async function assertOwnsInvoice(ownerId: string, id: string) {
@@ -96,7 +110,7 @@ export async function deleteDraft(id: string) {
   return { ok: true };
 }
 
-export async function listInvoices(filter?: { status?: string; companyId?: string; q?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
+export async function listInvoices(filter?: { status?: string; companyId?: string; docType?: string; q?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
   const u = await requireUser();
   const page = Math.max(1, filter?.page ?? 1);
   const pageSize = Math.min(100, Math.max(5, filter?.pageSize ?? 25));
@@ -104,6 +118,7 @@ export async function listInvoices(filter?: { status?: string; companyId?: strin
     ownerId: u.id,
     ...(filter?.status ? { status: filter.status } : {}),
     ...(filter?.companyId ? { companyId: filter.companyId } : {}),
+    ...(filter?.docType ? { docType: filter.docType } : {}),
     ...(filter?.from || filter?.to
       ? { issueDate: { ...(filter.from ? { gte: new Date(filter.from) } : {}), ...(filter.to ? { lte: new Date(filter.to) } : {}) } }
       : {}),

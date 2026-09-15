@@ -35,6 +35,11 @@ export default async function DetailPage({ params }: { params: { id: string } })
         <h1 className="page-title">{inv.invoiceNumber ?? "Draft"}</h1>
         <StatusBadge value={inv.display} />
         <span className="meta">{inv.docType} · {inv.currency}</span>
+        {inv.docType === "DEVIS" && inv.status === "ISSUED" && (
+          <span className="meta">
+            {inv.quoteStatus === "ACCEPTED" ? "· accepted" : inv.quoteStatus === "REFUSED" ? "· refused" : inv.validUntil && new Date(inv.validUntil) < new Date() ? "· expired" : inv.validUntil ? `· valid until ${inv.validUntil.toISOString().slice(0, 10)}` : ""}
+          </span>
+        )}
         <div className="ml-auto"><InvoiceActions inv={{
           id: inv.id, status: inv.status, docType: inv.docType, invoiceNumber: inv.invoiceNumber,
           totalTTC: inv.totalTTC, remaining: inv.remaining, currency: inv.currency, publicToken: inv.publicToken,
@@ -53,7 +58,7 @@ export default async function DetailPage({ params }: { params: { id: string } })
           currency: inv.currency, locale: inv.invoiceLocale,
           seller: sellerView, buyer: (inv.buyerView ?? {}) as Record<string, string>,
           lines, invDiscountBps: inv.invDiscountBps, invDiscountFixedMinor: inv.invDiscountFixedMinor,
-          poNumber: inv.poNumber, paymentMode: inv.paymentMode, paymentTerms: inv.paymentTerms,
+          poNumber: inv.poNumber, paymentMode: inv.paymentMode, paymentTerms: inv.paymentTerms, validUntil: inv.validUntil ? inv.validUntil.toISOString().slice(0, 10) : null,
           taxMention: inv.taxMention,
           notes: inv.notes, footerText: inv.footerText,
         }} />

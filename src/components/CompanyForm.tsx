@@ -120,6 +120,7 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
         <F label="Default TVA (bps)" hint="2000 = 20%"><input name="defaultTaxBps" type="number" defaultValue={v("defaultTaxBps") || 2000} className="input" /></F>
         <F label="Invoice prefix"><input name="invoicePrefix" defaultValue={v("invoicePrefix") || "FAC"} className="input" /></F>
         <F label="Credit-note prefix"><input name="avoirPrefix" defaultValue={v("avoirPrefix") || "AV"} className="input" /></F>
+        <F label="Quote prefix"><input name="devisPrefix" defaultValue={v("devisPrefix") || "DEV"} className="input" /></F>
         <F label="Invoice language"><input name="invoiceLocale" defaultValue={v("invoiceLocale") || "fr"} className="input" /></F>
         <div className="col-span-2"><AccentPicker initial={v("accentColor")} /></div>
       </Section>

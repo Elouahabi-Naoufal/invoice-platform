@@ -24,6 +24,7 @@ export interface PdfInvoice {
   correctionReason?: string | null;
   issueDate: string;
   dueDate: string | null;
+  validUntil?: string | null;
   currency: string;
   locale: string;
   seller: Record<string, string | number | null | undefined>;
@@ -136,7 +137,7 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
   const accent = accentOf(inv.seller);
   const locale = inv.locale.startsWith("en") ? "en-GB" : "fr-MA";
   const fmt = (m: number) => formatMoney(m, inv.currency, locale);
-  const title = inv.docType === "AVOIR" ? "AVOIR" : inv.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : "FACTURE";
+  const title = inv.docType === "AVOIR" ? "AVOIR" : inv.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : inv.docType === "DEVIS" ? "DEVIS" : "FACTURE";
   const dateFmt = (iso: string) => {
     const [y, m, d] = iso.split("-");
     return y && m && d ? `${d}/${m}/${y}` : iso;
@@ -187,6 +188,7 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
               <Text style={s.docNumber}>N° {inv.invoiceNumber ?? "BROUILLON — sans numéro"}</Text>
               <Text style={s.metaRight}>Date : {dateFmt(inv.issueDate)}</Text>
               {inv.dueDate ? <Text style={s.metaRight}>Échéance : {dateFmt(inv.dueDate)}</Text> : null}
+              {inv.docType === "DEVIS" && inv.validUntil ? <Text style={s.metaRight}>Valable jusqu'au : {dateFmt(inv.validUntil)}</Text> : null}
               <Text style={s.metaRight}>Devise : {inv.currency}</Text>
               {inv.poNumber ? <Text style={s.metaRight}>Cde client : {inv.poNumber}</Text> : null}
             </View>

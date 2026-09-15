@@ -9,8 +9,9 @@ import InvoiceRow from "@/components/InvoiceRow";
 import { formatMoney } from "@/domain/invoice";
 
 const STATUSES = ["", "DRAFT", "ISSUED", "CANCELLED"];
+const TYPES = ["", "FACTURE", "DEVIS", "AVOIR", "RECTIFICATIVE"];
 
-export default async function InvoicesPage({ searchParams }: { searchParams: { status?: string; q?: string; from?: string; to?: string; page?: string } }) {
+export default async function InvoicesPage({ searchParams }: { searchParams: { status?: string; docType?: string; q?: string; from?: string; to?: string; page?: string } }) {
   try { await requireUser(); } catch { redirect("/login"); }
   const companies = await listCompanies();
   const activeId = await getActiveCompanyId();
@@ -20,6 +21,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
   const page = Math.max(1, Number(searchParams.page ?? 1) || 1);
   const { items: rows, total, pages } = await listInvoices({
     status: searchParams.status || undefined,
+    docType: searchParams.docType || undefined,
     companyId,
     q: searchParams.q || undefined,
     from: searchParams.from || undefined,
@@ -49,7 +51,16 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
         <input type="date" name="from" defaultValue={searchParams.from ?? ""} className="input w-auto" aria-label="From" />
         <input type="date" name="to" defaultValue={searchParams.to ?? ""} className="input w-auto" aria-label="To" />
         <button className="btn-outline btn-sm">Filter</button>
-        <div className="ml-auto flex gap-1">
+        <div className="ml-auto flex flex-wrap gap-1">
+          {TYPES.map((t) => (
+            <Link
+              key={t || "alltypes"}
+              href={qs({ docType: t })}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-medium ${(!searchParams.docType && !t) || searchParams.docType === t ? "bg-brand-500 text-white" : "text-ink-500 hover:bg-ink-100"}`}
+            >
+              {t || "Types"}
+            </Link>
+          ))}
           {STATUSES.map((s) => (
             <Link
               key={s || "all"}

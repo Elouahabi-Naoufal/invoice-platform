@@ -27,6 +27,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
       id: d.id, docType: d.docType, currency: d.currency,
       issueDate: d.issueDate.toISOString().slice(0, 10),
       dueDate: d.dueDate ? d.dueDate.toISOString().slice(0, 10) : null,
+      validUntil: d.validUntil ? d.validUntil.toISOString().slice(0, 10) : null,
       paymentTerms: d.paymentTerms, paymentMode: d.paymentMode, poNumber: d.poNumber, notes: d.notes,
       invDiscountBps: d.invDiscountBps, companyId: d.companyId, clientId: d.clientId,
       correctionReason: d.correctionReason, linkedInvoiceId: d.linkedInvoiceId,

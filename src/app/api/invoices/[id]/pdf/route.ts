@@ -56,7 +56,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         seller, buyer, lines,
         invDiscountBps: inv.invDiscountBps,
         invDiscountFixedMinor: inv.invDiscountFixedMinor,
-        poNumber: inv.poNumber, paymentMode: inv.paymentMode,
+        poNumber: inv.poNumber, paymentMode: inv.paymentMode, validUntil: inv.validUntil ? inv.validUntil.toISOString().slice(0, 10) : null,
         taxMention: inv.taxMention, amountInWords: inv.amountInWords,
         notes: inv.notes, footerText: inv.footerText,
       },

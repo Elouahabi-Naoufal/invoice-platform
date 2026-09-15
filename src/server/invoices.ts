@@ -21,6 +21,10 @@ export async function createDraftInvoice(ownerId: string, raw: unknown) {
     throw new Error(`${data.docType} requires correctionReason (motif)`);
   const dueDate =
     data.dueDate ?? deriveDueDate(data.issueDate, data.paymentTerms, null);
+  // Devis default validity: issue + 30 days (Moroccan practice)
+  const validUntil = data.docType === "DEVIS"
+    ? (data.validUntil ?? new Date(data.issueDate.getTime() + 30 * 86400000))
+    : null;
   const calc = calcInvoice({
     lines: toCalcLines(data.lines),
     invDiscountBps: data.invDiscountBps,
@@ -34,6 +38,7 @@ export async function createDraftInvoice(ownerId: string, raw: unknown) {
       docType: data.docType,
       linkedInvoiceId: data.linkedInvoiceId,
       correctionReason: data.correctionReason,
+      validUntil,
       status: "DRAFT",
       currency: data.currency,
       invoiceLocale: data.invoiceLocale,
@@ -113,7 +118,9 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
   const year = inv.issueDate.getFullYear();
   const prefix = inv.docType === "AVOIR"
     ? ((inv.company as { avoirPrefix?: string }).avoirPrefix || "AV")
-    : (inv.company.invoicePrefix || "FAC");
+    : inv.docType === "DEVIS"
+      ? ((inv.company as { devisPrefix?: string }).devisPrefix || "DEV")
+      : (inv.company.invoicePrefix || "FAC");
 
   // Chronology guard (art.145: numéro croissant ⇒ date croissante)
   const lastInSeries = await prisma.invoice.findFirst({
@@ -209,11 +216,93 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
         amountInWords: amountInWords(calc.totalTTC, inv.currency),
         finalizedAt: new Date(),
         publicToken: nanoid(32),
+        ...(inv.docType === "DEVIS" ? { quoteStatus: "PENDING" } : {}),
         events: { create: [{ actorId: ownerId, type: "finalized", metadata: number }] },
       },
     });
   });
   return result;
+}
+
+/**
+ * Devis lifecycle: set ACCEPTED/REFUSED (ISSUED devis only).
+ * EXPIRED is derived (validUntil < today && PENDING), never persisted by hand.
+ */
+export async function setQuoteStatus(ownerId: string, invoiceId: string, status: "ACCEPTED" | "REFUSED") {
+  const inv = await prisma.invoice.findFirst({ where: { id: invoiceId, ownerId } });
+  if (!inv) throw new Error("not found");
+  if (inv.docType !== "DEVIS" || inv.status !== "ISSUED") throw new Error("only issued devis can be decided");
+  if (inv.quoteStatus === "ACCEPTED" && status === "ACCEPTED" && inv.convertedInvoiceId) return inv;
+  const updated = await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      quoteStatus: status,
+      events: { create: [{ actorId: ownerId, type: status === "ACCEPTED" ? "quote_accepted" : "quote_refused" }] },
+    },
+  });
+  return updated;
+}
+
+/** Convert an accepted (or pending) devis into a FACTURE draft. One devis → at most one facture. */
+export async function convertDevisToInvoice(ownerId: string, devisId: string) {
+  const devis = await prisma.invoice.findFirst({
+    where: { id: devisId, ownerId },
+    include: { lines: { orderBy: { position: "asc" } } },
+  });
+  if (!devis) throw new Error("not found");
+  if (devis.docType !== "DEVIS" || devis.status !== "ISSUED") throw new Error("only issued devis convert");
+  if (devis.convertedInvoiceId) {
+    const existing = await prisma.invoice.findUnique({ where: { id: devis.convertedInvoiceId } });
+    if (existing) return existing;
+  }
+  const calc = calcInvoice({
+    lines: toCalcLines(devis.lines),
+    invDiscountBps: devis.invDiscountBps,
+    invDiscountFixedMinor: devis.invDiscountFixedMinor,
+  });
+  const facture = await prisma.invoice.create({
+    data: {
+      ownerId,
+      companyId: devis.companyId,
+      clientId: devis.clientId,
+      docType: "FACTURE",
+      linkedInvoiceId: devisId,
+      correctionReason: `Converti du devis ${devis.invoiceNumber ?? ""}`.trim(),
+      status: "DRAFT",
+      currency: devis.currency,
+      invoiceLocale: devis.invoiceLocale,
+      issueDate: new Date(),
+      dueDate: deriveDueDate(new Date(), devis.paymentTerms, null),
+      paymentTerms: devis.paymentTerms,
+      paymentMode: devis.paymentMode,
+      poNumber: devis.poNumber,
+      notes: devis.notes,
+      footerText: devis.footerText,
+      invDiscountBps: devis.invDiscountBps,
+      invDiscountFixedMinor: devis.invDiscountFixedMinor,
+      subtotalHT: calc.subtotalHT,
+      totalTVA: calc.totalTVA,
+      totalTTC: calc.totalTTC,
+      taxBreakdown: JSON.stringify(calc.buckets),
+      lines: {
+        create: devis.lines.map((l, i) => ({
+          description: l.description, quantityMilli: l.quantityMilli, unit: l.unit,
+          unitPriceMinor: l.unitPriceMinor, discountBps: l.discountBps,
+          taxRateBps: l.taxRateBps, taxExempt: l.taxExempt, position: i,
+        })),
+      },
+      events: { create: [{ actorId: ownerId, type: "created" }] },
+    },
+  });
+  await prisma.invoice.update({
+    where: { id: devisId },
+    data: {
+      quoteStatus: "ACCEPTED",
+      convertedInvoiceId: facture.id,
+      events: { create: [{ actorId: ownerId, type: "quote_converted", metadata: facture.id }] },
+    },
+  });
+  return facture;
 }
 
 /**

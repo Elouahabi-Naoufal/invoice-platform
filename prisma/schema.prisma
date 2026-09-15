@@ -35,6 +35,7 @@ model Company {
   defaultTaxBps  Int     @default(2000) // 20%
   invoicePrefix  String  @default("FAC")
   avoirPrefix    String  @default("AV")
+  devisPrefix    String  @default("DEV")
   invoiceLocale  String  @default("fr")
   accentColor    String  @default("#1D4ED8") // invoice theme accent (hex), user-customizable
   footerNotes    String?
@@ -117,6 +118,9 @@ model Invoice {
   docType         String   @default("FACTURE") // FACTURE | AVOIR | RECTIFICATIVE (own AV-series, linked)
   linkedInvoiceId String?  // original invoice for AVOIR / RECTIFICATIVE ("annule et remplace")
   correctionReason String? // motif obligatoire pour AVOIR/RECTIFICATIVE
+  validUntil      DateTime? // devis: validity date (default issue + 30d)
+  quoteStatus     String?  // devis: PENDING | ACCEPTED | REFUSED | EXPIRED
+  convertedInvoiceId String? // devis → resulting FACTURE id
   invoiceNumber   String?  // null until finalized; unique per company (two companies may share FAC-2026-0001)
   currency        String   @default("MAD")
   invoiceLocale   String   @default("fr")
