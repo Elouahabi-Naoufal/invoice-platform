@@ -36,15 +36,18 @@ export async function listRecurringTemplates(userId: string) {
 export async function createRecurringTemplate(userId: string, raw: unknown) {
   const u = await requireUser();
   const d = recSchema.parse(raw);
-  return prisma.recurringTemplate.create({ data: { ...d, ownerId: u.id } as never });
+  const { lines, ...rest } = d as { lines: unknown[] } & Record<string, unknown>;
+  return prisma.recurringTemplate.create({ data: { ...rest, lines: JSON.stringify(lines), ownerId: u.id } as never });
 }
 
 export async function updateRecurringTemplate(id: string, raw: unknown) {
   const u = await requireUser();
-  const d = recSchema.partial().parse(raw);
+  const d = recSchema.partial().parse(raw) as Record<string, unknown>;
   const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId: u.id } });
   if (!t) throw new Error("Template not found");
-  return prisma.recurringTemplate.update({ where: { id }, data: d as never });
+  const data: Record<string, unknown> = { ...d };
+  if (Array.isArray(d.lines)) data.lines = JSON.stringify(d.lines);
+  return prisma.recurringTemplate.update({ where: { id }, data: data as never });
 }
 
 export async function toggleRecurringTemplate(id: string) {

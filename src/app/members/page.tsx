@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
+import { safeFindMany } from "@/lib/safe";
 import { MemberForm, MemberRowActions } from "@/components/MemberForm";
 
 export default async function MembersPage() {
   try { await requireUser(); } catch { redirect("/login"); }
   const u = await prisma.user.findFirst({ where: { email: (await requireUser()).email } as never });
   if (!u) redirect("/login");
-  const members = await prisma.member.findMany({ where: { ownerId: u.id }, orderBy: { role: "desc" } });
+  const members = await safeFindMany(() => prisma.member.findMany({ where: { ownerId: u.id }, orderBy: { role: "desc" } }), []);
   return (
     <div>
       <div className="mb-5"><h1 className="page-title">Team</h1><p className="meta mt-1">Invite colleagues — email and role are yours to set. VIEWER reads, ADMIN manages; owner is you.</p></div>

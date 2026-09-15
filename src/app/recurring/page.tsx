@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
+import { safeFindMany } from "@/lib/safe";
 import { RecurringForm, RecurringActions } from "@/components/RecurringForm";
 import { EmptyState } from "@/components/ui";
 import Link from "next/link";
@@ -11,7 +12,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   try { await requireUser(); } catch { redirect("/login"); }
   const u = await prisma.user.findFirst({ where: { email: (await requireUser()).email } as never });
   if (!u) redirect("/login");
-  const templates = await prisma.recurringTemplate.findMany({ where: { ownerId: u.id }, include: { company: { select: { legalName: true } }, client: { select: { name: true, companyName: true } } }, orderBy: { createdAt: "desc" } });
+  const templates = await safeFindMany(() => prisma.recurringTemplate.findMany({ where: { ownerId: u.id }, include: { company: { select: { legalName: true } }, client: { select: { name: true, companyName: true } } }, orderBy: { createdAt: "desc" } }), []);
   const companies = await listCompanies();
   const clients = await listClients();
   return (

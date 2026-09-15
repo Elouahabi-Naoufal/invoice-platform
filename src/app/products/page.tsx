@@ -9,7 +9,8 @@ import { formatMoney } from "@/domain/invoice";
 
 export default async function ProductsPage({ searchParams }: { searchParams: { new?: string; edit?: string } }) {
   try { await requireUser(); } catch { redirect("/login"); }
-  const products = await listProducts();
+  let products: Awaited<ReturnType<typeof listProducts>> = [];
+  try { products = await listProducts(); } catch (e) { console.error("[products]", e); }
   const editing = searchParams.edit ? products.find((p) => p.id === searchParams.edit) : null;
   const showForm = searchParams.new !== undefined || !!editing;
   return (

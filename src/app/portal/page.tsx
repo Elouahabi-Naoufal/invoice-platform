@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
+import { safeFindMany } from "@/lib/safe";
 import { PortalToggle } from "@/components/PortalToggle";
 import { formatMoney } from "@/domain/invoice";
 import Link from "next/link";
@@ -9,7 +10,7 @@ export default async function PortalPage() {
   try { await requireUser(); } catch { redirect("/login"); }
   const u = await prisma.user.findFirst({ where: { email: (await requireUser()).email } as never });
   if (!u) redirect("/login");
-  const invoices = await prisma.invoice.findMany({ where: { ownerId: u.id, status: "ISSUED" }, orderBy: { createdAt: "desc" }, take: 100 });
+  const invoices = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId: u.id, status: "ISSUED" }, orderBy: { createdAt: "desc" }, take: 100 }), []);
   const shared = invoices.filter((i) => i.portalShared);
   return (
     <div>
