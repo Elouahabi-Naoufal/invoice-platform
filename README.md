@@ -19,6 +19,7 @@ See `docs/REALITY_CHECK.md` (Stripe/Zoho/Invoice Ninja references) + `docs/DOMAI
 - One ISO4217 currency per invoice; dashboard grouped per currency
 - Shared `calcInvoice()` feeds web preview + PDF — they can never disagree
 - Public link = high-entropy `publicToken`, revokable (null it), view logged in `InvoiceEvent`
+- WhatsApp PDF sending with QR pairing, persistent server session, templated captions, and explicit `SENT/FAILED` status (see `docs/WHATSAPP.md`)
 - Only DRAFT deletable; company with invoices can't be hard-deleted (SetNull + archive)
 
 ## Run

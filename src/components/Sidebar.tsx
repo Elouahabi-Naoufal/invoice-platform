@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Receipt, Package, Repeat, Bell, Link2, Shield, Handshake, Globe, FileDown, Languages } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Receipt, Package, Repeat, Bell, Link2, Shield, Handshake, Globe, FileDown, Languages, MessageCircle } from "lucide-react";
 
 const NAV = [
   {
@@ -23,7 +23,10 @@ const NAV = [
   },
   {
     group: "General",
-    items: [{ href: "/settings", label: "Settings", icon: Settings, exact: false }],
+    items: [
+      { href: "/settings", label: "Settings", icon: Settings, exact: false },
+      { href: "/settings/whatsapp", label: "WhatsApp", icon: MessageCircle, exact: true },
+    ],
   },
 ];
 

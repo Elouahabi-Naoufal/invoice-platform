@@ -57,6 +57,8 @@ model Company {
   swift             String?
   logoPath          String?
   signaturePath     String?
+  whatsappEnabled   Boolean  @default(false)
+  whatsappTemplate  String?
   archived          Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -154,6 +156,12 @@ model Invoice {
   portalShared          Boolean   @default(false)
   sentAt                DateTime?
   sentTo                String?
+  whatsappStatus        String    @default("NOT_SENT") // NOT_SENT | SENDING | SENT | FAILED
+  whatsappSentAt        DateTime?
+  whatsappSentTo        String?
+  whatsappMessageId     String?
+  whatsappError         String?
+  whatsappLastAttemptAt DateTime?
   viewedAt              DateTime?
   finalizedAt           DateTime?
   cancelledAt           DateTime?

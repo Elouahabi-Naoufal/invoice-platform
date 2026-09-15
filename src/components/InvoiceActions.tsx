@@ -11,6 +11,7 @@ type Inv = {
   totalTTC: number; remaining: number; currency: string; publicToken: string | null;
   sellerName: string; buyerName: string; buyerPhone?: string | null;
   issueDate: string; dueDate: string | null;
+  whatsappStatus: string; whatsappSentTo?: string | null; whatsappSentAt?: string | null; whatsappError?: string | null;
 };
 
 export default function InvoiceActions({ inv }: { inv: Inv }) {
@@ -21,6 +22,9 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
+  const [waTo, setWaTo] = useState(inv.buyerPhone ?? "");
+  const [waBusy, setWaBusy] = useState(false);
   const [amt, setAmt] = useState(inv.remaining / 100);
   const [method, setMethod] = useState("BANK_TRANSFER");
   const [ref, setRef] = useState("");
@@ -64,6 +68,33 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
     }
   }
 
+  async function sendWhatsApp() {
+    setErr("");
+    setWaBusy(true);
+    try {
+      const res = await fetch(`/api/invoices/${inv.id}/send-whatsapp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: waTo || undefined }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { alreadySent?: boolean; to?: string };
+      toast({
+        kind: "ok",
+        title: data.alreadySent ? "Already sent via WhatsApp" : "Invoice sent via WhatsApp",
+        body: `Delivered to ${data.to || waTo}`,
+      });
+      setWaOpen(false);
+      r.refresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "WhatsApp send failed";
+      setErr(msg);
+      toast({ kind: "err", title: "Unable to send via WhatsApp", body: msg });
+    } finally {
+      setWaBusy(false);
+    }
+  }
+
   function waLink() {
     const url = `${location.origin}/i/${inv.publicToken ?? ""}`;
     return whatsAppShareUrl(
@@ -99,7 +130,8 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
             Record payment · {formatMoney(inv.remaining, inv.currency)}
           </button>
           <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
-          <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp</a>
+          <button onClick={() => setWaOpen(true)} className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp PDF</button>
+          <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> Share link</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
           <a href={`/api/invoices/${inv.id}/ubl`} className="btn-outline btn-sm"><FileDown size={14} /> UBL</a>
           <button onClick={() => run("Draft created from invoice", () => duplicate(inv.id))} className="btn-ghost btn-sm"><Plus size={14} /> Duplicate</button>
@@ -126,7 +158,8 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
             } finally { setBusy(false); }
           }} className="btn-accent btn-sm"><ArrowRight size={14} /> Convert to facture</button>
           <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
-          <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp</a>
+          <button onClick={() => setWaOpen(true)} className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp PDF</button>
+          <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> Share link</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
         </>
       )}
@@ -192,6 +225,26 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
             <div className="flex justify-end gap-2">
               <button onClick={() => setSendOpen(false)} className="btn-ghost">Cancel</button>
               <button disabled={busy || !to.includes("@")} onClick={send} className="btn-primary">{busy ? "Sending…" : "Send"}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {waOpen && (
+        <Modal title="Send invoice via WhatsApp" onClose={() => setWaOpen(false)}>
+          <div className="grid gap-3">
+            <div><label className="label">Recipient phone</label><input value={waTo} onChange={(e) => setWaTo(e.target.value)} placeholder="+212661234567" type="tel" className="input" /></div>
+            <p className="hint">
+              Sends the issued PDF as a WhatsApp document with your configured template and public link.
+              Status: <strong>{inv.whatsappStatus}</strong>
+              {inv.whatsappStatus === "SENT" ? ` · already delivered to ${inv.whatsappSentTo ?? "—"}` : ""}
+              {inv.whatsappStatus === "FAILED" && inv.whatsappError ? ` · last error: ${inv.whatsappError}` : ""}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setWaOpen(false)} className="btn-ghost">Cancel</button>
+              <button disabled={waBusy || !waTo.trim() || inv.whatsappStatus === "SENT"} onClick={sendWhatsApp} className="btn-primary">
+                {waBusy ? "Sending…" : inv.whatsappStatus === "SENT" ? "Already sent" : "Send PDF"}
+              </button>
             </div>
           </div>
         </Modal>

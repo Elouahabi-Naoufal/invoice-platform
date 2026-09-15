@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 
@@ -14,6 +15,14 @@ export default async function SettingsPage() {
             <code className="rounded bg-ink-100 dark:bg-white/10 px-1 text-[12px]"> .env</code> and restart.
             Without SMTP, sending fails explicitly — an invoice is never marked sent on a provider failure.
           </p>
+        </div>
+        <div className="card p-5">
+          <h2 className="section-title mb-1">WhatsApp sending</h2>
+          <p className="text-[13px] text-ink-500 dark:text-stone-400">
+            Pair the server once with a QR code, then send issued invoices as PDF documents with your
+            configurable message template.
+          </p>
+          <Link href="/settings/whatsapp" className="btn-outline btn-sm mt-3 inline-flex">Open WhatsApp settings</Link>
         </div>
         <div className="card p-5">
           <h2 className="section-title mb-1">Archiving</h2>

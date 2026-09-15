@@ -48,6 +48,10 @@ export default async function DetailPage({ params }: { params: { id: string } })
           buyerPhone: (inv.buyerView as { phone?: string })?.phone ?? null,
           issueDate: inv.issueDate.toISOString().slice(0, 10),
           dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
+          whatsappStatus: inv.whatsappStatus,
+          whatsappSentTo: inv.whatsappSentTo,
+          whatsappSentAt: inv.whatsappSentAt ? inv.whatsappSentAt.toISOString() : null,
+          whatsappError: inv.whatsappError,
         }} /></div>
       </div>
 

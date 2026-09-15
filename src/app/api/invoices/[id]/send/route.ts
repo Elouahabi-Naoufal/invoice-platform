@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
-import { logoDataUri } from "@/server/companies-clients";
-import { InvoiceDoc } from "@/pdf/InvoiceDoc";
+import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   let user;
@@ -19,33 +16,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!SMTP_HOST || !SMTP_FROM) return new NextResponse("SMTP not configured — not marked sent", { status: 500 });
 
   const seller = inv.sellerSnapshot ? JSON.parse(inv.sellerSnapshot) : {};
-  const buyer = inv.buyerSnapshot ? JSON.parse(inv.buyerSnapshot) : {};
-  const logoUri = seller.logoData && String(seller.logoData).startsWith("data:")
-    ? String(seller.logoData)
-    : await logoDataUri(seller.logoPath);
-  if (logoUri) seller.logoPath = logoUri;
-  // Same for the signature.
-  const sigUri = seller.signatureData && String(seller.signatureData).startsWith("data:")
-    ? String(seller.signatureData)
-    : await logoDataUri(seller.signaturePath);
-  if (sigUri) seller.signatureData = sigUri;
-  const lines = inv.linesSnapshot ? JSON.parse(inv.linesSnapshot) : inv.lines;
-  const linkedNumber = inv.linkedInvoiceId
-    ? (await prisma.invoice.findUnique({ where: { id: inv.linkedInvoiceId }, select: { invoiceNumber: true } }))?.invoiceNumber ?? null
-    : null;
-  const buf = await renderToBuffer(
-    React.createElement(InvoiceDoc, {
-      inv: {
-        invoiceNumber: inv.invoiceNumber, docType: inv.docType, linkedNumber, correctionReason: inv.correctionReason,
-        issueDate: inv.issueDate.toISOString().slice(0, 10),
-        dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
-        currency: inv.currency, locale: inv.invoiceLocale, seller, buyer, lines,
-        invDiscountBps: inv.invDiscountBps, invDiscountFixedMinor: inv.invDiscountFixedMinor,
-        poNumber: inv.poNumber, paymentMode: inv.paymentMode, validUntil: inv.validUntil ? inv.validUntil.toISOString().slice(0, 10) : null, taxMention: inv.taxMention,
-        amountInWords: inv.amountInWords, notes: inv.notes, footerText: inv.footerText,
-      },
-    }) as React.ReactElement
-  );
+  const { buffer: buf } = await renderInvoicePdfBuffer({ invoiceId: inv.id, ownerId: user.id });
 
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/i/${inv.publicToken}`;
   const transporter = nodemailer.createTransport({
