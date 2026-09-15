@@ -64,14 +64,13 @@ function log(level: "info" | "error", message: string, extra: string = "") {
 }
 
 /**
- * whatsapp-web.js is loaded via runtime require so the bundler never follows
- * its optional RemoteAuth/unzipper peer chain (@aws-sdk/client-s3, which we
- * never use — only LocalAuth). Webpack cannot trace indirect eval, so the
- * package stays external and resolves from node_modules at request time.
+ * whatsapp-web.js is imported dynamically so the browser automation stack is
+ * only loaded on the server when a WhatsApp route actually needs it.
+ * Its optional S3 peer (@aws-sdk/client-s3, used solely by RemoteAuth's S3
+ * backend — we use LocalAuth) is aliased to a local stub in next.config.cjs.
  */
 async function loadWwebjs(): Promise<typeof import("whatsapp-web.js")> {
-  const req = (0, eval)("require") as (id: string) => typeof import("whatsapp-web.js");
-  return req("whatsapp-web.js");
+  return import("whatsapp-web.js");
 }
 
 export function whatsappClientId(): string {
