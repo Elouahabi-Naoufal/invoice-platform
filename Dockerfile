@@ -1,4 +1,5 @@
 # Invoice Platform — production image (Next.js + Prisma + SQLite + sharp)
+# Layering is deliberate: deps/ are cached and reused when only app code changes.
 FROM node:22-bookworm-slim AS base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl sqlite3 chromium \
@@ -9,7 +10,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 FROM base AS deps
 COPY package.json package-lock.json ./
 ENV NODE_ENV=development
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 FROM base AS builder
 WORKDIR /app
@@ -20,7 +21,7 @@ ENV DATABASE_URL="file:./prisma/dev.db"
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate
 RUN npm run build
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --no-audit --no-fund
 
 FROM base AS runner
 WORKDIR /app
@@ -50,5 +51,3 @@ VOLUME ["/app/data", "/app/public/uploads"]
 EXPOSE 3007
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "start"]
-
-# Build 20260914-225532
