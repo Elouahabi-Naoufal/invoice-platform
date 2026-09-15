@@ -33,9 +33,12 @@ function StepDot({ n, active, done }: { n: number; active: boolean; done: boolea
   );
 }
 
-export default function InvoiceBuilder({ companies, initialClients, linked, draft }: {
+export type CatalogItem = { id: string; name: string; description?: string | null; unit: string; unitPriceMinor: number; taxRateBps: number; taxExempt: boolean };
+
+export default function InvoiceBuilder({ companies, initialClients, linked, draft, catalog }: {
   companies: Company[]; initialClients: Client[];
   linked?: { id: string; number: string | null } | null; draft?: DraftInit | null;
+  catalog?: CatalogItem[];
 }) {
   const r = useRouter();
   const toast = useToast();
@@ -230,7 +233,29 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
               </div>
 
               <div className="card overflow-hidden">
-                <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Line items</span></div>
+                <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5 flex items-center gap-2">
+                  <span className="section-title">Line items</span>
+                  {(catalog?.length ?? 0) > 0 && (
+                    <span className="ml-auto flex items-center gap-2">
+                      <select id="catalog-pick" className="input w-auto py-1.5 text-xs" defaultValue="">
+                        <option value="" disabled>From catalog…</option>
+                        {catalog!.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} — {(p.unitPriceMinor / 100).toFixed(2)}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          const sel = document.getElementById("catalog-pick") as HTMLSelectElement | null;
+                          const p = catalog!.find((x) => x.id === sel?.value);
+                          if (!p) return;
+                          setLines((ls) => [...ls, { description: p.description ? `${p.name} — ${p.description}` : p.name, quantityMilli: 1000, unit: p.unit, unitPriceMinor: p.unitPriceMinor, discountBps: 0, taxRateBps: p.taxRateBps, taxExempt: p.taxExempt }]);
+                          if (sel) sel.value = "";
+                        }}
+                        className="btn-outline btn-sm"
+                      >Add</button>
+                    </span>
+                  )}
+                </div>
                 {lines.map((l, i) => (
                   <div key={i} className={`border-b border-ink-100 dark:border-white/10 px-4 py-3 last:border-b-0 ${missingDesc(i) ? "bg-red-50/60 dark:bg-red-500/10" : ""}`}>
                     <input id={`line-desc-${i}`} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder={`Line ${i + 1} — description *`} aria-label={`Line ${i + 1} description`} aria-invalid={missingDesc(i)}

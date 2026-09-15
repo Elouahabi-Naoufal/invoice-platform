@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Receipt } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Receipt, Package, Repeat, Bell, Link2, Shield, Handshake, Globe, FileDown, Languages } from "lucide-react";
 
 const NAV = [
   {
@@ -10,6 +10,14 @@ const NAV = [
       { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { href: "/invoices", label: "Invoices", icon: FileText, exact: false },
       { href: "/clients", label: "Clients", icon: Users, exact: false },
+      { href: "/products", label: "Products", icon: Package, exact: false },
+      { href: "/recurring", label: "Recurring", icon: Repeat, exact: false },
+      { href: "/relances", label: "Relances", icon: Bell, exact: false },
+      { href: "/payment-links", label: "Payment links", icon: Link2, exact: false },
+      { href: "/lettrage", label: "Lettrage", icon: Handshake, exact: false },
+      { href: "/portal", label: "Portal", icon: Globe, exact: false },
+      { href: "/exports", label: "Exports", icon: FileDown, exact: false },
+      { href: "/members", label: "Team", icon: Shield, exact: false },
       { href: "/companies", label: "Companies", icon: Building2, exact: false },
     ],
   },

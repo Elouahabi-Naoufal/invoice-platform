@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { listCompanies, listClients } from "@/server/companies-clients";
+import { listProducts } from "@/server/products";
 import InvoiceBuilder, { DraftInit } from "@/components/InvoiceBuilder";
 import { prisma } from "@/lib/prisma";
 
@@ -9,6 +10,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
   const companies = await listCompanies();
   if (companies.length === 0) redirect("/companies?new=1");
   const clients = await listClients();
+  const catalog = await listProducts().catch(() => []);
 
   let linked: { id: string; number: string | null } | null = null;
   if (searchParams.linked) {
@@ -39,5 +41,5 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
     };
   }
 
-  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} draft={draft} />;
+  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} draft={draft} catalog={catalog as never} />;
 }

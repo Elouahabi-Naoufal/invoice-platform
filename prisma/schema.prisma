@@ -21,49 +21,50 @@ model User {
 
 // ── Seller profiles ──
 model Company {
-  id             String  @id @default(cuid())
-  ownerId        String
-  legalName      String
-  tradeName      String?
-  address        String
-  city           String?
-  country        String  @default("MA")
-  phone          String?
-  email          String?
-  website        String?
-  defaultCurrency String @default("MAD")
-  defaultTaxBps  Int     @default(2000) // 20%
-  invoicePrefix  String  @default("FAC")
-  avoirPrefix    String  @default("AV")
-  devisPrefix    String  @default("DEV")
-  invoiceLocale  String  @default("fr")
-  accentColor    String  @default("#1D4ED8") // invoice theme accent (hex), user-customizable
-  footerNotes    String?
+  id                String   @id @default(cuid())
+  ownerId           String
+  legalName         String
+  tradeName         String?
+  address           String
+  city              String?
+  country           String   @default("MA")
+  phone             String?
+  email             String?
+  website           String?
+  defaultCurrency   String   @default("MAD")
+  defaultTaxBps     Int      @default(2000) // 20%
+  invoicePrefix     String   @default("FAC")
+  avoirPrefix       String   @default("AV")
+  devisPrefix       String   @default("DEV")
+  invoiceLocale     String   @default("fr")
+  accentColor       String   @default("#1D4ED8") // invoice theme accent (hex), user-customizable
+  footerNotes       String?
   // Morocco legal (optional, first-class)
-  ice            String?
+  ice               String?
   identifiantFiscal String?
-  rc             String?
-  rcCity         String?
-  patente        String? // N° Taxe Professionnelle (obligatoire même en exonération)
-  legalForm      String? // SARL | SA | SNC | AE | ...
-  capitalSocial  Int?    // minor units MAD, optional display
-  cnss           String?
-  taxRegime      String  @default("COMMUN") // COMMUN | AE_HORS_CHAMP (art.91-II-3°) | EXONERE_ART92
+  rc                String?
+  rcCity            String?
+  patente           String? // N° Taxe Professionnelle (obligatoire même en exonération)
+  legalForm         String? // SARL | SA | SNC | AE | ...
+  capitalSocial     Int? // minor units MAD, optional display
+  cnss              String?
+  taxRegime         String   @default("COMMUN") // COMMUN | AE_HORS_CHAMP (art.91-II-3°) | EXONERE_ART92
   // Bank (structured, optional)
-  bankName       String?
-  accountHolder  String?
-  rib            String?
-  iban           String?
-  swift          String?
-  logoPath       String?
-  signaturePath  String?
-  archived       Boolean @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  bankName          String?
+  accountHolder     String?
+  rib               String?
+  iban              String?
+  swift             String?
+  logoPath          String?
+  signaturePath     String?
+  archived          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   owner    User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   invoices Invoice[]
   series   NumberingSeries[]
+  recurringTemplates RecurringTemplate[]
 
   @@index([ownerId])
 }
@@ -84,105 +85,112 @@ model NumberingSeries {
 
 // ── Buyers ──
 model Client {
-  id              String  @id @default(cuid())
+  id              String   @id @default(cuid())
   ownerId         String
-  type            String  @default("COMPANY") // PERSON | COMPANY
-  name            String  // person name or contact name
+  type            String   @default("COMPANY") // PERSON | COMPANY
+  name            String // person name or contact name
   companyName     String?
   email           String?
   phone           String?
   address         String?
   city            String?
-  country         String  @default("MA")
+  country         String   @default("MA")
   ice             String?
   clientIF        String?
   clientRC        String?
-  isAssujetti     Boolean @default(true) // false = particulier B2C, ICE non requis
-  defaultCurrency String  @default("MAD")
+  isAssujetti     Boolean  @default(true) // false = particulier B2C, ICE non requis
+  defaultCurrency String   @default("MAD")
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   invoices Invoice[]
+  recurringTemplates RecurringTemplate[]
 
   @@index([ownerId])
 }
 
 // ── Invoice (DRAFT mutable, ISSUED immutable) ──
 model Invoice {
-  id              String   @id @default(cuid())
-  ownerId         String
-  companyId       String?
-  clientId        String?
-  status          String   @default("DRAFT") // DRAFT | ISSUED | CANCELLED
-  docType         String   @default("FACTURE") // FACTURE | AVOIR | RECTIFICATIVE (own AV-series, linked)
-  linkedInvoiceId String?  // original invoice for AVOIR / RECTIFICATIVE ("annule et remplace")
-  correctionReason String? // motif obligatoire pour AVOIR/RECTIFICATIVE
-  validUntil      DateTime? // devis: validity date (default issue + 30d)
-  quoteStatus     String?  // devis: PENDING | ACCEPTED | REFUSED | EXPIRED
-  convertedInvoiceId String? // devis → resulting FACTURE id
-  invoiceNumber   String?  // null until finalized; unique per company (two companies may share FAC-2026-0001)
-  currency        String   @default("MAD")
-  invoiceLocale   String   @default("fr")
-  issueDate       DateTime @default(now())
-  dueDate         DateTime?
-  paymentTerms    String   @default("CUSTOM") // ON_RECEIPT | D7 | D15 | D30 | D60 | CUSTOM
-  paymentMode     String?  // ESPECES | VIREMENT | CHEQUE | EFFET | ... (mention obligatoire MA)
-  taxMention      String?  // ex. "TVA non applicable — art. 91-II-3° CGI" (AE) / "Exonéré — art. 92"
-  amountInWords   String?  // "Arrêté la présente facture à la somme de ..." (usage MA, frozen)
-  poNumber        String?
-  clientRef       String?
-  projectRef      String?
-  notes           String?
-  footerText      String?
+  id                    String    @id @default(cuid())
+  ownerId               String
+  companyId             String?
+  clientId              String?
+  status                String    @default("DRAFT") // DRAFT | ISSUED | CANCELLED
+  docType               String    @default("FACTURE") // FACTURE | AVOIR | RECTIFICATIVE (own AV-series, linked)
+  linkedInvoiceId       String? // original invoice for AVOIR / RECTIFICATIVE ("annule et remplace")
+  correctionReason      String? // motif obligatoire pour AVOIR/RECTIFICATIVE
+  validUntil            DateTime? // devis: validity date (default issue + 30d)
+  quoteStatus           String? // devis: PENDING | ACCEPTED | REFUSED | EXPIRED
+  convertedInvoiceId    String? // devis → resulting FACTURE id
+  invoiceNumber         String? // null until finalized; unique per company (two companies may share FAC-2026-0001)
+  currency              String    @default("MAD")
+  invoiceLocale         String    @default("fr")
+  issueDate             DateTime  @default(now())
+  dueDate               DateTime?
+  paymentTerms          String    @default("CUSTOM") // ON_RECEIPT | D7 | D15 | D30 | D60 | CUSTOM
+  paymentMode           String? // ESPECES | VIREMENT | CHEQUE | EFFET | ... (mention obligatoire MA)
+  taxMention            String? // ex. "TVA non applicable — art. 91-II-3° CGI" (AE) / "Exonéré — art. 92"
+  amountInWords         String? // "Arrêté la présente facture à la somme de ..." (usage MA, frozen)
+  poNumber              String?
+  clientRef             String?
+  projectRef            String?
+  notes                 String?
+  footerText            String?
   // discounts (invoice level)
-  invDiscountBps  Int      @default(0)
-  invDiscountFixedMinor Int @default(0)
+  invDiscountBps        Int       @default(0)
+  invDiscountFixedMinor Int       @default(0)
   // snapshots frozen at finalize (JSON strings)
-  sellerSnapshot  String?
-  buyerSnapshot   String?
-  linesSnapshot   String?  // frozen lines JSON for legal reproduction
+  sellerSnapshot        String?
+  buyerSnapshot         String?
+  linesSnapshot         String? // frozen lines JSON for legal reproduction
   // totals (minor units, computed by domain calculator at finalize + on payment)
-  subtotalHT      Int      @default(0)
-  totalTVA        Int      @default(0)
-  totalTTC        Int      @default(0)
-  taxBreakdown    String?  // JSON [{rateBps, taxable, tax}]
+  subtotalHT            Int       @default(0)
+  totalTVA              Int       @default(0)
+  totalTTC              Int       @default(0)
+  taxBreakdown          String? // JSON [{rateBps, taxable, tax}]
   // share / send
-  publicToken     String?  @unique
-  sentAt          DateTime?
-  sentTo          String?
-  viewedAt        DateTime?
-  finalizedAt     DateTime?
-  cancelledAt     DateTime?
-  cancelReason    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  publicToken           String?   @unique
+  portalShared          Boolean   @default(false)
+  sentAt                DateTime?
+  sentTo                String?
+  viewedAt              DateTime?
+  finalizedAt           DateTime?
+  cancelledAt           DateTime?
+  cancelReason          String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  client   Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  linkedInvoice Invoice? @relation("CorrectionLink", fields: [linkedInvoiceId], references: [id], onDelete: SetNull)
-  corrections   Invoice[] @relation("CorrectionLink")
-  lines    InvoiceLine[]
-  payments Payment[]
-  events   InvoiceEvent[]
+  company         Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  client          Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  linkedInvoice   Invoice?       @relation("CorrectionLink", fields: [linkedInvoiceId], references: [id], onDelete: SetNull)
+  corrections     Invoice[]      @relation("CorrectionLink")
+  lines           InvoiceLine[]
+  payments        Payment[]
+  events          InvoiceEvent[]
+  reminders  Reminder[]
+  paymentLinks PaymentLink[]
+  reconciliations AvoirInvoice[] @relation("InvoiceRef")
+  avoirInvoices AvoirInvoice[] @relation("AvoirRef")
+  lastGeneratedRecurring RecurringTemplate[] @relation("RecurringLastGen")
 
+  @@unique([companyId, invoiceNumber])
   @@index([ownerId, status])
   @@index([companyId])
   @@index([clientId])
-  @@unique([companyId, invoiceNumber])
 }
 
 model InvoiceLine {
-  id               String @id @default(cuid())
-  invoiceId        String
-  position         Int    @default(0)
-  description      String
-  quantityMilli    Int    @default(1000) // 1000 = 1.000
-  unit             String @default("piece") // piece|hour|day|kg|service|...
-  unitPriceMinor   Int    // HT, minor units
-  discountBps      Int    @default(0) // 0..10000
-  taxRateBps       Int    @default(2000)
-  taxExempt        Boolean @default(false)
+  id             String  @id @default(cuid())
+  invoiceId      String
+  position       Int     @default(0)
+  description    String
+  quantityMilli  Int     @default(1000) // 1000 = 1.000
+  unit           String  @default("piece") // piece|hour|day|kg|service|...
+  unitPriceMinor Int // HT, minor units
+  discountBps    Int     @default(0) // 0..10000
+  taxRateBps     Int     @default(2000)
+  taxExempt      Boolean @default(false)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -190,15 +198,15 @@ model InvoiceLine {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  invoiceId     String
-  amountMinor   Int
-  currency      String
-  paymentDate   DateTime @default(now())
-  method        String   @default("BANK_TRANSFER") // CASH|BANK_TRANSFER|CARD|CHECK|OTHER
-  reference     String?
-  notes         String?
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  invoiceId   String
+  amountMinor Int
+  currency    String
+  paymentDate DateTime @default(now())
+  method      String   @default("BANK_TRANSFER") // CASH|BANK_TRANSFER|CARD|CHECK|OTHER
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -209,7 +217,7 @@ model InvoiceEvent {
   id        String   @id @default(cuid())
   invoiceId String
   actorId   String?
-  type      String   // created|finalized|sent|viewed|payment_recorded|paid|cancelled|duplicated
+  type      String // created|finalized|sent|viewed|payment_recorded|paid|cancelled|duplicated
   metadata  String?
   createdAt DateTime @default(now())
 
@@ -217,4 +225,118 @@ model InvoiceEvent {
   actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([invoiceId, type])
+}
+
+// ── Product/service library (v1: reuse lines, no stock) ──
+model Product {
+  id             String   @id @default(cuid())
+  ownerId        String
+  companyId      String?
+  name           String
+  description    String?
+  unit           String   @default("piece")
+  unitPriceMinor Int // HT, minor units
+  taxRateBps     Int      @default(2000)
+  taxExempt      Boolean  @default(false)
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([companyId])
+}
+
+// ── Recurring invoice templates ──
+model RecurringTemplate {
+  id                    String   @id @default(cuid())
+  ownerId               String
+  name                  String
+  companyId             String?
+  clientId              String?
+  docType               String   @default("FACTURE") // FACTURE | DEVIS
+  currency              String   @default("MAD")
+  paymentTerms          String   @default("D30")
+  periodDays            Int      @default(30)
+  startDate             DateTime
+  lines                 String   // JSON
+  lastGeneratedAt       DateTime?
+  lastGeneratedInvoiceId String?
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  client  Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  lastGeneratedInvoice Invoice? @relation("RecurringLastGen", fields: [lastGeneratedInvoiceId], references: [id])
+
+  @@index([ownerId])
+  @@index([ownerId, active])
+}
+
+// ── Overdue reminders (relances) ──
+model Reminder {
+  id          String    @id @default(cuid())
+  ownerId     String
+  invoiceId   String
+  type        String    @default("OVERDUE") // OVERDUE | BEFORE_DUE
+  channel     String    @default("EMAIL") // EMAIL | WHATSAPP
+  sentAt      DateTime?
+  scheduledAt DateTime
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, scheduledAt])
+  @@index([invoiceId])
+}
+
+// ── Payment links (v1: simple token) ──
+model PaymentLink {
+  id          String    @id @default(cuid())
+  ownerId     String
+  invoiceId   String
+  token       String    @unique
+  amountMinor Int?
+  expiresAt   DateTime?
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([token])
+}
+
+// ── Team members (v1: owner/admin/viewer) ──
+model Member {
+  id          String    @id @default(cuid())
+  ownerId     String
+  email       String
+  displayName String?
+  role        String    @default("VIEWER") // OWNER | ADMIN | VIEWER
+  inviteToken String?   @unique
+  invitedAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+
+  @@unique([ownerId, email])
+  @@index([ownerId])
+}
+
+model AvoirInvoice {
+  id          String  @id @default(cuid())
+  ownerId     String
+  avoirId     String
+  invoiceId   String
+  amountMinor Int
+  createdAt   DateTime @default(now())
+
+  avoir  Invoice @relation("AvoirRef", fields: [avoirId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation("InvoiceRef", fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([avoirId])
+  @@index([invoiceId])
 }

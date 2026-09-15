@@ -84,8 +84,17 @@ export const invoiceCreateSchema = z.object({
   lines: z.array(lineSchema).min(1),
 });
 
-export const paymentSchema = z.object({
-  amountMinor: z.number().int().min(1),
+export const productSchema = z.object({
+  companyId: z.string().optional().nullable(),
+  name: z.string().min(2),
+  description: z.string().optional(),
+  unit: z.string().default("piece"),
+  unitPriceMinor: z.number().int().min(0),
+  taxRateBps: z.number().int().min(0).max(10000).default(2000),
+  taxExempt: z.boolean().default(false),
+});
+
+export const paymentSchema = z.object({  amountMinor: z.number().int().min(1),
   paymentDate: z.coerce.date().default(() => new Date()),
   method: z.enum(["CASH", "BANK_TRANSFER", "CARD", "CHECK", "OTHER"]).default("BANK_TRANSFER"),
   reference: z.string().optional(),

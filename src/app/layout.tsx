@@ -6,6 +6,7 @@ import { jwtVerify } from "jose";
 import Sidebar from "@/components/Sidebar";
 import CompanySwitcher from "@/components/CompanySwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
+import LocaleToggle from "@/components/LocaleToggle";
 import { Toaster } from "@/components/ui";
 import "./globals.css";
 
@@ -36,8 +37,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     redirect("/login");
   }
 
+  const locale = (await cookies()).get("ip_locale")?.value ?? "fr";
+  const dir = locale === "ar" ? "rtl" : "ltr";
   return (
-    <html lang="en" className={outfit.variable}>
+    <html lang={locale} dir={dir} className={outfit.variable}>
       <body className="font-sans">
         <Toaster>
           {user ? (
@@ -46,6 +49,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="min-w-0 flex-1">
                 <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/90 px-6 py-3 backdrop-blur dark:border-white/10 dark:bg-[#101828]/90">
                   <div className="ml-auto flex items-center gap-2.5">
+                    <LocaleToggle current={locale} />
                     <ThemeToggle />
                     <CompanySwitcher companies={companies} activeId={activeId} />
                     <form action={signOut} className="flex items-center gap-2.5 border-l border-ink-200 pl-2.5 dark:border-white/10">

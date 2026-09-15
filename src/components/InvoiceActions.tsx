@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, MessageCircle } from "lucide-react";
+import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, MessageCircle, FileDown } from "lucide-react";
 import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft, decideQuote, convertDevis } from "@/server/invoice-ops";
 import { Modal, useToast } from "@/components/ui";
 import { formatMoney, invoiceShareText, whatsAppShareUrl } from "@/domain/invoice";
@@ -101,6 +101,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
           <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
           <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
+          <a href={`/api/invoices/${inv.id}/ubl`} className="btn-outline btn-sm"><FileDown size={14} /> UBL</a>
           <button onClick={() => run("Draft created from invoice", () => duplicate(inv.id))} className="btn-ghost btn-sm"><Plus size={14} /> Duplicate</button>
           <a href={`/invoices/new?linked=${inv.id}`} className="btn-ghost btn-sm">Credit note</a>
           <button onClick={() => setCancelOpen(true)} className="btn-ghost btn-sm hover:text-red-700"><Ban size={14} /> Cancel</button>
@@ -111,6 +112,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
         <>
           <button onClick={() => run("Quote accepted", () => decideQuote(inv.id, "ACCEPTED"))} className="btn-primary btn-sm"><Check size={14} /> Accept</button>
           <button onClick={() => run("Quote refused", () => decideQuote(inv.id, "REFUSED"))} className="btn-outline btn-sm"><X size={14} /> Refuse</button>
+          <a href={`/api/invoices/${inv.id}/ubl`} className="btn-outline btn-sm"><FileDown size={14} /> UBL</a>
           <button onClick={async () => {
             setErr(""); setBusy(true);
             try {
