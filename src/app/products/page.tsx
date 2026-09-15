@@ -47,7 +47,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: { n
       {showForm && (
         <div className="card mt-4 p-5">
           <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">{editing ? "Edit product" : "New product"}</h2><Link href="/products" className="text-sm text-ink-500 hover:text-ink-900">Close</Link></div>
-          <ProductForm initial={editing as never} onDone={() => {}} />
+          <ProductForm initial={editing as never} />
         </div>
       )}
     </div>

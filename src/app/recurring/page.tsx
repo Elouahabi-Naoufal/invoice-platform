@@ -22,7 +22,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
         <Link href="/recurring?new=1" className="btn-accent"><Plus size={15} /> New template</Link>
       </div>
       {searchParams.new !== undefined && (
-        <div className="card mb-4 p-5"><h2 className="font-semibold mb-3">New recurring template</h2><RecurringForm companies={companies as never} clients={clients as never} onDone={() => {}} /></div>
+        <div className="card mb-4 p-5"><h2 className="font-semibold mb-3">New recurring template</h2><RecurringForm companies={companies as never} clients={clients as never} /></div>
       )}
       {templates.length === 0 && searchParams.new === undefined ? (
         <EmptyState title="No templates" body="Create a template with name, period, client and lines — generate an invoice in one click." action={<Link href="/recurring?new=1" className="btn-accent"><Plus size={15} /> New template</Link>} />

@@ -4,13 +4,13 @@ import { useState } from "react";
 import { createPaymentLink } from "@/server/payment-links";
 import { useToast } from "@/components/ui";
 
-export function PaymentLinkForm({ invoices, onDone }: { invoices: { id: string; invoiceNumber: string | null; totalTTC: number; currency: string }[]; onDone: () => void }) {
+export function PaymentLinkForm({ invoices, onDone }: { invoices: { id: string; invoiceNumber: string | null; totalTTC: number; currency: string }[]; onDone?: () => void }) {
   const r = useRouter(); const toast = useToast(); const [err, setErr] = useState("");
   async function submit(fd: FormData) {
     const obj: Record<string, string> = {}; fd.forEach((v, k) => { obj[k] = String(v); });
     try {
       const link = await createPaymentLink("", { invoiceId: obj.invoiceId, amountMinor: obj.amount ? Math.round(Number(obj.amount) * 100) : undefined } as never) as { token: string };
-      toast({ kind: "ok", title: `Payment link created — token ${link.token}` }); onDone(); r.refresh();
+      toast({ kind: "ok", title: `Payment link created — token ${link.token}` }); onDone?.(); r.refresh();
     } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
   }
   return (

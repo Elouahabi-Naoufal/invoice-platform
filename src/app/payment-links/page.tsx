@@ -13,7 +13,7 @@ export default async function PaymentLinksPage() {
   return (
     <div>
       <div className="mb-5"><h1 className="page-title">Payment links</h1><p className="meta mt-1">Create a shareable payment token per invoice — amount is yours to set (defaults to TTC).</p></div>
-      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Create payment link</h2><PaymentLinkForm invoices={invoices as never} onDone={() => {}} /></div>
+      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Create payment link</h2><PaymentLinkForm invoices={invoices as never} /></div>
       <div className="card overflow-hidden">
         <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Links ({links.length})</span></div>
         {links.length === 0 ? <p className="p-4 text-sm text-ink-500">No links yet</p> : (

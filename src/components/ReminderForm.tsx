@@ -4,13 +4,13 @@ import { createReminder } from "@/server/reminders";
 import { useToast } from "@/components/ui";
 import { useState } from "react";
 
-export function ReminderForm({ invoices, onDone }: { invoices: { id: string; invoiceNumber: string | null; dueDate: string | null }[]; onDone: () => void }) {
+export function ReminderForm({ invoices, onDone }: { invoices: { id: string; invoiceNumber: string | null; dueDate: string | null }[]; onDone?: () => void }) {
   const r = useRouter(); const toast = useToast(); const [err, setErr] = useState("");
   async function submit(fd: FormData) {
     const obj: Record<string, string> = {}; fd.forEach((v, k) => { obj[k] = String(v); });
     try {
       await createReminder("", { invoiceId: obj.invoiceId, type: obj.type || "OVERDUE", channel: obj.channel || "EMAIL", scheduledAt: new Date(obj.scheduledAt).toISOString() } as never);
-      toast({ kind: "ok", title: "Reminder scheduled" }); onDone(); r.refresh();
+      toast({ kind: "ok", title: "Reminder scheduled" }); onDone?.(); r.refresh();
     } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
   }
   return (

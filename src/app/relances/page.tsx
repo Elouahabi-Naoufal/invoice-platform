@@ -15,7 +15,7 @@ export default async function RelancesPage() {
   return (
     <div>
       <div className="mb-5"><h1 className="page-title">Relances</h1><p className="meta mt-1">Overdue invoices and scheduled reminders — channel, date and invoice are all your choices.</p></div>
-      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Schedule a reminder</h2><ReminderForm invoices={issued.map((i) => ({ ...i, dueDate: i.dueDate ? new Date(i.dueDate).toISOString() : null })) as never} onDone={() => {}} /></div>
+      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Schedule a reminder</h2><ReminderForm invoices={issued.map((i) => ({ ...i, dueDate: i.dueDate ? new Date(i.dueDate).toISOString() : null })) as never} /></div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card overflow-hidden">
           <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Overdue ({overdue.length})</span></div>

@@ -4,13 +4,13 @@ import { useState } from "react";
 import { reconcileAvoir, removeReconciliation } from "@/server/reconciliations";
 import { useToast } from "@/components/ui";
 
-export function LettrageForm({ avoirs, invoices, onDone }: { avoirs: { id: string; invoiceNumber: string | null; totalTTC: number; currency: string }[]; invoices: { id: string; invoiceNumber: string | null }[]; onDone: () => void }) {
+export function LettrageForm({ avoirs, invoices, onDone }: { avoirs: { id: string; invoiceNumber: string | null; totalTTC: number; currency: string }[]; invoices: { id: string; invoiceNumber: string | null }[]; onDone?: () => void }) {
   const r = useRouter(); const toast = useToast(); const [err, setErr] = useState("");
   async function submit(fd: FormData) {
     const obj: Record<string, string> = {}; fd.forEach((v, k) => { obj[k] = String(v); });
     try {
       await reconcileAvoir("", { avoirId: obj.avoirId, invoiceId: obj.invoiceId, amountMinor: Math.round(Number(obj.amount) * 100) } as never);
-      toast({ kind: "ok", title: "Lettrage created" }); onDone(); r.refresh();
+      toast({ kind: "ok", title: "Lettrage created" }); onDone?.(); r.refresh();
     } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
   }
   return (

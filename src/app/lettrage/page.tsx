@@ -15,7 +15,7 @@ export default async function LettragePage() {
   return (
     <div>
       <div className="mb-5"><h1 className="page-title">Lettrage avoirs</h1><p className="meta mt-1">Reconcile credit notes (avoirs) against invoices — pick both documents and the imputed amount yourself.</p></div>
-      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">New lettrage</h2><LettrageForm avoirs={avoirs as never} invoices={invoices as never} onDone={() => {}} /></div>
+      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">New lettrage</h2><LettrageForm avoirs={avoirs as never} invoices={invoices as never} /></div>
       <div className="card overflow-hidden">
         <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Reconciliations ({rows.length})</span></div>
         {rows.length === 0 ? <p className="p-4 text-sm text-ink-500">No lettrage yet</p> : (

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createRecurringTemplate, toggleRecurringTemplate, generateInvoiceFromTemplate } from "@/server/recurring";
 import { useToast } from "@/components/ui";
 
-export function RecurringForm({ companies, clients, onDone }: { companies: { id: string; legalName: string }[]; clients: { id: string; name: string; companyName?: string | null }[]; onDone: () => void }) {
+export function RecurringForm({ companies, clients, onDone }: { companies: { id: string; legalName: string }[]; clients: { id: string; name: string; companyName?: string | null }[]; onDone?: () => void }) {
   const r = useRouter();
   const toast = useToast();
   const [lines, setLines] = useState([{ description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false }]);
@@ -29,7 +29,7 @@ export function RecurringForm({ companies, clients, onDone }: { companies: { id:
     try {
       await createRecurringTemplate("", data as never);
       toast({ kind: "ok", title: "Recurring template created" });
-      onDone(); r.refresh();
+      onDone?.(); r.refresh();
     } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
   }
   return (
