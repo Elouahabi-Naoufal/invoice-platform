@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui";
 
@@ -15,13 +16,15 @@ interface Status {
 }
 
 interface Settings {
-  companyId: string;
-  companyName: string;
-  enabled: boolean;
-  template: string;
-  isDefault: boolean;
-  defaultTemplate: string;
-  tokens: string[];
+  companyId?: string;
+  companyName?: string;
+  enabled?: boolean;
+  template?: string;
+  isDefault?: boolean;
+  defaultTemplate?: string;
+  tokens?: string[];
+  noCompany?: boolean;
+  message?: string;
 }
 
 type Busy = "" | "connect" | "disconnect" | "reset" | "save";
@@ -48,8 +51,10 @@ export default function WhatsAppSettings() {
       const nextSettings = (await settingsRes.json()) as Settings;
       setStatus(nextStatus);
       setSettings(nextSettings);
-      setEnabled(nextSettings.enabled);
-      setTemplate(nextSettings.template);
+      if (!nextSettings.noCompany) {
+        setEnabled(nextSettings.enabled ?? false);
+        setTemplate(nextSettings.template ?? "");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "WhatsApp settings unavailable");
     }
@@ -96,8 +101,8 @@ export default function WhatsAppSettings() {
       if (!res.ok) throw new Error(await res.text());
       const next = (await res.json()) as Settings;
       setSettings(next);
-      setEnabled(next.enabled);
-      setTemplate(next.template);
+      setEnabled(next.enabled ?? false);
+      setTemplate(next.template ?? "");
       toast({ kind: "ok", title: "WhatsApp settings saved" });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Save failed";
@@ -106,6 +111,19 @@ export default function WhatsAppSettings() {
     } finally {
       setBusy("");
     }
+  }
+
+  if (settings?.noCompany) {
+    return (
+      <div className="card p-5">
+        <h2 className="section-title mb-1">No company yet</h2>
+        <p className="text-[13px] text-ink-500 dark:text-stone-400">
+          WhatsApp sending is configured per company. Create your first company, then come back
+          here to pair WhatsApp and set your message template.
+        </p>
+        <Link href="/companies" className="btn-primary btn-sm mt-4 inline-flex">Create a company</Link>
+      </div>
+    );
   }
 
   return (
@@ -172,13 +190,13 @@ export default function WhatsAppSettings() {
             <div>
               <label className="label">Message template</label>
               <textarea value={template} onChange={(e) => setTemplate(e.target.value)} rows={5} maxLength={1000} className="input" />
-              <p className="hint">Placeholders: {settings.tokens.map((t) => `{${t}}`).join(" ")}. Messages are capped at 1000 characters.</p>
+              <p className="hint">Placeholders: {(settings.tokens ?? []).map((t) => `{${t}}`).join(" ")}. Messages are capped at 1000 characters.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button disabled={busy !== ""} onClick={() => void save()} className="btn-primary btn-sm">
                 {busy === "save" ? "Saving…" : "Save template"}
               </button>
-              <button disabled={busy !== ""} onClick={() => setTemplate(settings.defaultTemplate)} className="btn-ghost btn-sm">
+              <button disabled={busy !== ""} onClick={() => setTemplate(settings.defaultTemplate ?? "")} className="btn-ghost btn-sm">
                 Restore default
               </button>
             </div>

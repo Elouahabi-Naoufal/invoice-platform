@@ -20,7 +20,8 @@ logged in `InvoiceEvent`.
 3. Persist the session volume in production:
    - Session files live in `WHATSAPP_SESSION_DIR` (default `./data/whatsapp`).
    - `/app/data` is already a Docker volume; do not store the session in ephemeral storage.
-4. Open `/settings/whatsapp`.
+4. Open `/settings/whatsapp`. If you have no company yet, create one first under
+   Companies — WhatsApp sending is configured per company.
 5. Click **Connect**, then scan the QR code from WhatsApp → Linked devices.
 6. Enable sending and save the company message template.
 
