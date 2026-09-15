@@ -1,5 +1,4 @@
 import { existsSync, promises as fs } from "fs";
-import { createRequire } from "node:module";
 import path from "path";
 import type { Client } from "whatsapp-web.js";
 import { sanitizeWhatsAppError } from "@/server/whatsapp-message";
@@ -65,14 +64,14 @@ function log(level: "info" | "error", message: string, extra: string = "") {
 }
 
 /**
- * Load whatsapp-web.js at runtime without a static module specifier.
- * This keeps Next's bundler from following its optional RemoteAuth/unzipper
- * peer chain; the server requires the installed package at request time.
+ * whatsapp-web.js is loaded via runtime require so the bundler never follows
+ * its optional RemoteAuth/unzipper peer chain (@aws-sdk/client-s3, which we
+ * never use — only LocalAuth). Webpack cannot trace indirect eval, so the
+ * package stays external and resolves from node_modules at request time.
  */
 async function loadWwebjs(): Promise<typeof import("whatsapp-web.js")> {
-  const require = createRequire(path.join(process.cwd(), "package.json"));
-  const name = ["whatsapp", "web.js"].join("-");
-  return require(name) as typeof import("whatsapp-web.js");
+  const req = (0, eval)("require") as (id: string) => typeof import("whatsapp-web.js");
+  return req("whatsapp-web.js");
 }
 
 export function whatsappClientId(): string {
