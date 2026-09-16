@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireActor, requireWrite } from "@/server/auth";
 import { getWhatsAppSettings, updateWhatsAppSettings } from "@/server/whatsapp-settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  let user;
+  let ownerId: string;
   try {
-    user = await requireUser();
+    ownerId = (await requireActor()).ownerId;
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }
   try {
-    return NextResponse.json(await getWhatsAppSettings(user.id));
+    return NextResponse.json(await getWhatsAppSettings(ownerId));
   } catch (e) {
     const message = e instanceof Error ? e.message : "settings failed";
     if (message === "no company") {
@@ -29,9 +29,9 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  let user;
+  let ownerId: string;
   try {
-    user = await requireUser();
+    ownerId = (await requireWrite()).ownerId;
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }
@@ -42,7 +42,7 @@ export async function PUT(req: Request) {
     return new NextResponse("settings invalid", { status: 400 });
   }
   try {
-    return NextResponse.json(await updateWhatsAppSettings(user.id, body));
+    return NextResponse.json(await updateWhatsAppSettings(ownerId, body));
   } catch (e) {
     return new NextResponse(e instanceof Error ? e.message : "settings invalid", { status: 400 });
   }

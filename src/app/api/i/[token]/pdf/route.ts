@@ -8,7 +8,11 @@ import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
  */
 export async function GET(_req: Request, { params }: { params: { token: string } }) {
   const inv = await prisma.invoice.findFirst({
-    where: { publicToken: params.token, status: "ISSUED" },
+    where: {
+      publicToken: params.token,
+      status: "ISSUED",
+      OR: [{ publicTokenExpiresAt: null }, { publicTokenExpiresAt: { gt: new Date() } }],
+    },
     select: { id: true, ownerId: true },
   });
   if (!inv) return NextResponse.json({ error: "not found" }, { status: 404 });

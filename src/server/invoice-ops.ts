@@ -4,7 +4,7 @@
  * UI/middleware visibility is never authorization.
  */
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/server/auth";
+import { requireActor, requireWrite } from "@/server/auth";
 import { deriveDisplayStatus, calcInvoice } from "@/domain/invoice";
 import { publicUploadUrl } from "@/lib/uploads";
 import {
@@ -19,50 +19,68 @@ import {
 } from "@/server/invoices";
 
 export async function createDraft(raw: unknown) {
-  const u = await requireUser();
-  return coreCreate(u.id, raw);
+  const { ownerId } = await requireWrite();
+  return coreCreate(ownerId, raw);
 }
 
 export async function finalize(id: string) {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return coreFinalize(u.id, id);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return coreFinalize(ownerId, id);
 }
 
 export async function pay(id: string, raw: unknown) {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return corePay(u.id, id, raw);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return corePay(ownerId, id, raw);
 }
 
 export async function cancel(id: string, reason: string) {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return coreCancel(u.id, id, reason);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return coreCancel(ownerId, id, reason);
 }
 
 export async function duplicate(id: string) {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return coreDuplicate(u.id, id);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return coreDuplicate(ownerId, id);
 }
 
 export async function markSentOp(id: string, sentTo: string) {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return coreSent(u.id, id, sentTo);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return coreSent(ownerId, id, sentTo);
 }
 
 export async function decideQuote(id: string, status: "ACCEPTED" | "REFUSED") {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return coreQuote(u.id, id, status);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return coreQuote(ownerId, id, status);
 }
 
 export async function convertDevis(id: string) {
-  const u = await requireUser();
-  await assertOwnsInvoice(u.id, id);
-  return coreConvert(u.id, id);
+  const { ownerId } = await requireWrite();
+  await assertOwnsInvoice(ownerId, id);
+  return coreConvert(ownerId, id);
+}
+
+/** Revoke the public share link (sets token to null; the old URL stops working). */
+export async function revokePublicLink(id: string) {
+  const { ownerId } = await requireWrite();
+  const inv = await prisma.invoice.findFirst({ where: { id, ownerId } });
+  if (!inv) throw new Error("not found");
+  return prisma.invoice.update({ where: { id }, data: { publicToken: null, publicTokenExpiresAt: null } });
+}
+
+/** Set (or clear) an expiry on the public share link. */
+export async function setPublicLinkExpiry(id: string, days: number | null) {
+  const { ownerId } = await requireWrite();
+  const inv = await prisma.invoice.findFirst({ where: { id, ownerId } });
+  if (!inv) throw new Error("not found");
+  if (!inv.publicToken) throw new Error("no public link to expire");
+  const expires = days && days > 0 ? new Date(Date.now() + days * 86400000) : null;
+  return prisma.invoice.update({ where: { id }, data: { publicTokenExpiresAt: expires } });
 }
 
 async function assertOwnsInvoice(ownerId: string, id: string) {
@@ -81,23 +99,23 @@ function safeJsonParse<T>(raw: string | null | undefined, fallback: T): T {
 
 /** DRAFT-only edit (lines + details). ISSUED/CANCELLED rejected — immutability. */
 export async function updateDraft(id: string, raw: unknown) {
-  const u = await requireUser();
-  const inv = await prisma.invoice.findFirst({ where: { id, ownerId: u.id } });
+  const { ownerId } = await requireWrite();
+  const inv = await prisma.invoice.findFirst({ where: { id, ownerId } });
   if (!inv) throw new Error("not found");
   if (inv.status !== "DRAFT") throw new Error("immutable: only DRAFT editable");
   const { invoiceCreateSchema, lineSchema } = await import("@/server/validation");
   const patch = invoiceCreateSchema.partial().extend({ lines: lineSchema.array().min(1).optional() }).parse(raw);
   // IDOR guard: patched relations must belong to the same owner.
   if (patch.companyId) {
-    const c = await prisma.company.findFirst({ where: { id: patch.companyId, ownerId: u.id }, select: { id: true } });
+    const c = await prisma.company.findFirst({ where: { id: patch.companyId, ownerId }, select: { id: true } });
     if (!c) throw new Error("seller company not found");
   }
   if (patch.clientId) {
-    const c = await prisma.client.findFirst({ where: { id: patch.clientId, ownerId: u.id }, select: { id: true } });
+    const c = await prisma.client.findFirst({ where: { id: patch.clientId, ownerId }, select: { id: true } });
     if (!c) throw new Error("buyer client not found");
   }
   if (patch.linkedInvoiceId) {
-    const l = await prisma.invoice.findFirst({ where: { id: patch.linkedInvoiceId, ownerId: u.id }, select: { id: true } });
+    const l = await prisma.invoice.findFirst({ where: { id: patch.linkedInvoiceId, ownerId }, select: { id: true } });
     if (!l) throw new Error("linked invoice not found");
   }
   const lines = patch.lines;
@@ -125,8 +143,8 @@ export async function updateDraft(id: string, raw: unknown) {
 
 /** Only DRAFT deletable. Issued/cancelled → cancel, never hard-delete. */
 export async function deleteDraft(id: string) {
-  const u = await requireUser();
-  const inv = await prisma.invoice.findFirst({ where: { id, ownerId: u.id } });
+  const { ownerId } = await requireWrite();
+  const inv = await prisma.invoice.findFirst({ where: { id, ownerId } });
   if (!inv) throw new Error("not found");
   if (inv.status !== "DRAFT") throw new Error("only DRAFT deletable — cancel issued invoices instead");
   await prisma.invoice.delete({ where: { id } });
@@ -134,7 +152,7 @@ export async function deleteDraft(id: string) {
 }
 
 export async function listInvoices(filter?: { status?: string; companyId?: string; docType?: string; q?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
-  const u = await requireUser();
+  const { ownerId } = await requireActor();
   const page = Math.max(1, filter?.page ?? 1);
   const pageSize = Math.min(100, Math.max(5, filter?.pageSize ?? 25));
   const dateOrUndefined = (v?: string) => {
@@ -147,7 +165,7 @@ export async function listInvoices(filter?: { status?: string; companyId?: strin
   const from = dateOrUndefined(filter?.from);
   const to = dateOrUndefined(filter?.to);
   const where = {
-    ownerId: u.id,
+    ownerId,
     ...(status ? { status } : {}),
     ...(filter?.companyId ? { companyId: filter.companyId } : {}),
     ...(docType ? { docType } : {}),
@@ -179,9 +197,9 @@ export async function listInvoices(filter?: { status?: string; companyId?: strin
 }
 
 export async function getInvoiceDetail(id: string) {
-  const u = await requireUser();
+  const { ownerId } = await requireActor();
   const inv = await prisma.invoice.findFirst({
-    where: { id, ownerId: u.id },
+    where: { id, ownerId },
     include: { lines: { orderBy: { position: "asc" } }, payments: { orderBy: { paymentDate: "asc" } }, events: { orderBy: { createdAt: "asc" } }, client: true, company: true },
   });
   if (!inv) throw new Error("not found");

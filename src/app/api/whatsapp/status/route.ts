@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { getWhatsAppStatus } from "@/server/whatsapp";
 
 export const runtime = "nodejs";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await requireUser();
+    await requireActor();
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }

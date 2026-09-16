@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireWrite } from "@/server/auth";
 import { sendInvoiceEmail } from "@/server/email";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  let user;
+  let ownerId: string;
   try {
-    user = await requireUser();
+    ownerId = (await requireWrite()).ownerId;
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }
@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     body = {};
   }
   try {
-    const result = await sendInvoiceEmail(user.id, params.id, {
+    const result = await sendInvoiceEmail(ownerId, params.id, {
       to: typeof body.to === "string" ? body.to : undefined,
       subject: typeof body.subject === "string" ? body.subject : undefined,
       message: typeof body.message === "string" ? body.message : undefined,

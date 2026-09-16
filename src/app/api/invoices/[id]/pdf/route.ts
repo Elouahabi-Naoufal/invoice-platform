@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
 
 /**
@@ -7,15 +7,15 @@ import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
  * Public downloads use /api/i/[token]/pdf (token-scoped, ISSUED only).
  */
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  let user;
+  let ownerId: string;
   try {
-    user = await requireUser();
+    ownerId = (await requireActor()).ownerId;
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }
   let pdf;
   try {
-    pdf = await renderInvoicePdfBuffer({ invoiceId: params.id, ownerId: user.id });
+    pdf = await renderInvoicePdfBuffer({ invoiceId: params.id, ownerId });
   } catch {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

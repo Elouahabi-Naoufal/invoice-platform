@@ -1,6 +1,6 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/server/auth";
+import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
 import { computeNextRun, generateFromTemplate } from "@/server/automation";
 
@@ -28,9 +28,9 @@ const recSchema = z.object({
 });
 
 export async function listRecurringTemplates(_userId?: string) {
-  const u = await requireUser();
+  const { ownerId } = await requireActor();
   const templates = await prisma.recurringTemplate.findMany({
-    where: { ownerId: u.id },
+    where: { ownerId },
     include: { lastGeneratedInvoice: { select: { invoiceNumber: true } }, company: { select: { legalName: true } }, client: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
@@ -47,9 +47,9 @@ async function assertRelations(ownerId: string, companyId: string, clientId: str
 }
 
 export async function createRecurringTemplate(_userId: string, raw: unknown) {
-  const u = await requireUser();
+  const { ownerId } = await requireWrite();
   const d = recSchema.parse(raw);
-  await assertRelations(u.id, d.companyId, d.clientId);
+  await assertRelations(ownerId, d.companyId, d.clientId);
   const { lines, ...rest } = d as { lines: unknown[] } & Record<string, unknown>;
   const startDate = new Date(d.startDate);
   return prisma.recurringTemplate.create({
@@ -58,18 +58,18 @@ export async function createRecurringTemplate(_userId: string, raw: unknown) {
       startDate,
       nextRunAt: startDate,
       lines: JSON.stringify(lines),
-      ownerId: u.id,
+      ownerId,
     } as never,
   });
 }
 
 export async function updateRecurringTemplate(id: string, raw: unknown) {
-  const u = await requireUser();
+  const { ownerId } = await requireWrite();
   const d = recSchema.partial().parse(raw) as Record<string, unknown>;
-  const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId: u.id } });
+  const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId } });
   if (!t) throw new Error("Template not found");
   if (typeof d.companyId === "string" || typeof d.clientId === "string") {
-    await assertRelations(u.id, (d.companyId as string) ?? t.companyId ?? "", (d.clientId as string) ?? t.clientId ?? "");
+    await assertRelations(ownerId, (d.companyId as string) ?? t.companyId ?? "", (d.clientId as string) ?? t.clientId ?? "");
   }
   const data: Record<string, unknown> = { ...d };
   if (Array.isArray(d.lines)) data.lines = JSON.stringify(d.lines);
@@ -83,19 +83,19 @@ export async function updateRecurringTemplate(id: string, raw: unknown) {
 }
 
 export async function toggleRecurringTemplate(id: string) {
-  const u = await requireUser();
-  const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId: u.id } });
+  const { ownerId } = await requireWrite();
+  const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId } });
   if (!t) throw new Error("Template not found");
   return prisma.recurringTemplate.update({ where: { id }, data: { active: !t.active } });
 }
 
 /** Manual "Generate now": creates + finalizes one invoice and advances the schedule. */
 export async function generateInvoiceFromTemplate(templateId: string) {
-  const u = await requireUser();
-  const t = await prisma.recurringTemplate.findFirst({ where: { id: templateId, ownerId: u.id, active: true } });
+  const { ownerId } = await requireWrite();
+  const t = await prisma.recurringTemplate.findFirst({ where: { id: templateId, ownerId, active: true } });
   if (!t) throw new Error("Template not found or inactive");
   if (!t.companyId || !t.clientId) throw new Error("Template needs a seller company and a client");
-  const invoice = await generateFromTemplate(u.id, t);
+  const invoice = await generateFromTemplate(ownerId, t);
   const now = new Date();
   await prisma.recurringTemplate.update({
     where: { id: templateId },

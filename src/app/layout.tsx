@@ -25,8 +25,14 @@ async function sessionUser() {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await sessionUser();
-  const companies = user
-    ? await prisma.company.findMany({ where: { ownerId: user.id, archived: false }, orderBy: { createdAt: "asc" } })
+  // Members act on the owner's data; resolve the effective tenancy boundary.
+  let ownerId: string | null = user?.id ?? null;
+  if (user) {
+    const member = await prisma.member.findFirst({ where: { userId: user.id, revokedAt: null }, select: { ownerId: true } });
+    if (member) ownerId = member.ownerId;
+  }
+  const companies = ownerId
+    ? await prisma.company.findMany({ where: { ownerId, archived: false }, orderBy: { createdAt: "asc" } })
     : [];
   const activeId = (await cookies()).get("ip_company")?.value ?? null;
 

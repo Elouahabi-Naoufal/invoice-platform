@@ -1,26 +1,51 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
 import { safeFindMany } from "@/lib/safe";
 import { MemberForm, MemberRowActions } from "@/components/MemberForm";
 
 export default async function MembersPage() {
-  try { await requireUser(); } catch { redirect("/login"); }
-  const u = await prisma.user.findFirst({ where: { email: (await requireUser()).email } as never });
-  if (!u) redirect("/login");
-  const members = await safeFindMany(() => prisma.member.findMany({ where: { ownerId: u.id }, orderBy: { role: "desc" } }), []);
+  let ownerId = "";
+  let role = "VIEWER";
+  try {
+    const actor = await requireActor();
+    ownerId = actor.ownerId;
+    role = actor.role;
+  } catch {
+    redirect("/login");
+  }
+  const members = await safeFindMany(() => prisma.member.findMany({ where: { ownerId }, orderBy: { role: "desc" } }), []);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   return (
     <div>
-      <div className="mb-5"><h1 className="page-title">Team</h1><p className="meta mt-1">Invite colleagues — email and role are yours to set. VIEWER reads, ADMIN manages; owner is you.</p></div>
-      <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Invite member</h2><MemberForm /></div>
+      <div className="mb-5">
+        <h1 className="page-title">Team</h1>
+        <p className="meta mt-1">Invite colleagues — they create their own login from the invite link. VIEWER is read-only, ADMIN manages invoices.</p>
+      </div>
+      {role === "VIEWER" ? (
+        <div className="card p-4 mb-4 text-sm text-ink-500">You have read-only access; only owners/admins can invite members.</div>
+      ) : (
+        <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Invite member</h2><MemberForm /></div>
+      )}
       <div className="card overflow-hidden">
         <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Members ({members.length})</span></div>
         {members.length === 0 ? <p className="p-4 text-sm text-ink-500">No members yet — you are the owner.</p> : (
           <table className="tbl">
-            <thead><tr><th>Email</th><th>Role</th><th>Invited</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Role</th><th>Invited</th><th>Status</th><th>Invite link</th><th></th></tr></thead>
             <tbody>
               {members.map((m) => (
-                <tr key={m.id}><td className="font-medium">{m.email}</td><td><span className="badge">{m.role}</span></td><td className="tabular-nums text-ink-500">{new Date(m.invitedAt).toLocaleDateString()}</td><td>{m.revokedAt ? <span className="badge badge-amber">Revoked</span> : m.acceptedAt ? <span className="badge badge-emerald">Active</span> : <span className="badge">Invited</span>}</td><td className="text-right">{!m.revokedAt && <MemberRowActions id={m.id} />}</td></tr>
+                <tr key={m.id}>
+                  <td className="font-medium">{m.email}</td>
+                  <td><span className="badge">{m.role}</span></td>
+                  <td className="tabular-nums text-ink-500">{new Date(m.invitedAt).toLocaleDateString()}</td>
+                  <td>{m.revokedAt ? <span className="badge badge-amber">Revoked</span> : m.acceptedAt ? <span className="badge badge-emerald">Active</span> : <span className="badge">Invited</span>}</td>
+                  <td className="text-ink-500">
+                    {m.inviteToken ? (
+                      <code className="rounded bg-ink-100 px-1 text-[11px] dark:bg-white/10">{`${appUrl}/invite/${m.inviteToken}`}</code>
+                    ) : "—"}
+                  </td>
+                  <td className="text-right">{!m.revokedAt && <MemberRowActions id={m.id} />}</td>
+                </tr>
               ))}
             </tbody>
           </table>

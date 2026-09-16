@@ -1,19 +1,18 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/server/auth";
-import { z } from "zod";
+import { requireActor, requireWrite } from "@/server/auth";
 
 export async function listPublicInvoices(_userId?: string) {
-  const u = await requireUser();
+  const { ownerId } = await requireActor();
   return prisma.invoice.findMany({
-    where: { ownerId: u.id, status: "ISSUED", portalShared: true },
+    where: { ownerId, status: "ISSUED", portalShared: true },
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function togglePortalShare(invoiceId: string, enabled: boolean) {
-  const u = await requireUser();
-  const inv = await prisma.invoice.findFirst({ where: { id: invoiceId, ownerId: u.id } });
+  const { ownerId } = await requireWrite();
+  const inv = await prisma.invoice.findFirst({ where: { id: invoiceId, ownerId } });
   if (!inv) throw new Error("Invoice not found");
   return prisma.invoice.update({ where: { id: invoiceId }, data: { portalShared: enabled } });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireWrite } from "@/server/auth";
 import { sendInvoiceViaWhatsApp } from "@/server/whatsapp-send";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ function statusFor(message: string): number {
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   let user;
   try {
-    user = await requireUser();
+    user = await requireWrite();
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }
@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     body = {};
   }
   try {
-    const result = await sendInvoiceViaWhatsApp(user.id, params.id, { to: body?.to });
+    const result = await sendInvoiceViaWhatsApp(user.ownerId, params.id, { to: body?.to });
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     const message = e instanceof Error ? e.message : "WhatsApp send failed";

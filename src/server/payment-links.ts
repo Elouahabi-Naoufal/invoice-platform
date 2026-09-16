@@ -1,25 +1,25 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/server/auth";
+import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
 
 export async function listPaymentLinks(_userId?: string) {
-  const u = await requireUser();
+  const { ownerId } = await requireActor();
   return prisma.paymentLink.findMany({
-    where: { ownerId: u.id },
+    where: { ownerId },
     include: { invoice: { select: { invoiceNumber: true, totalTTC: true } } },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export async function createPaymentLink(userId: string, raw: unknown) {
-  const u = await requireUser();
+export async function createPaymentLink(_userId: string, raw: unknown) {
+  const { ownerId } = await requireWrite();
   const d = z.object({ invoiceId: z.string(), amountMinor: z.number().int().positive().optional() }).parse(raw);
-  const inv = await prisma.invoice.findFirst({ where: { id: d.invoiceId, ownerId: u.id, status: "ISSUED" } });
+  const inv = await prisma.invoice.findFirst({ where: { id: d.invoiceId, ownerId, status: "ISSUED" } });
   if (!inv) throw new Error("Invoice not found or not issued");
   const token = crypto.randomUUID().slice(0, 16);
   const expiresAt = new Date(Date.now() + 30 * 86400000);
-  return prisma.paymentLink.create({ data: { invoiceId: d.invoiceId, ownerId: u.id, token, amountMinor: d.amountMinor ?? inv.totalTTC, expiresAt } as never });
+  return prisma.paymentLink.create({ data: { invoiceId: d.invoiceId, ownerId, token, amountMinor: d.amountMinor ?? inv.totalTTC, expiresAt } as never });
 }
 
 export async function getPaymentLink(token: string) {

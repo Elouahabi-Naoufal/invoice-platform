@@ -4,7 +4,11 @@ import PublicShare from "@/components/PublicShare";
 
 export default async function PublicInvoice({ params }: { params: { token: string } }) {
   const inv = await prisma.invoice.findFirst({
-    where: { publicToken: params.token, status: "ISSUED" },
+    where: {
+      publicToken: params.token,
+      status: "ISSUED",
+      OR: [{ publicTokenExpiresAt: null }, { publicTokenExpiresAt: { gt: new Date() } }],
+    },
     include: { payments: true },
   });
   if (!inv) notFound();

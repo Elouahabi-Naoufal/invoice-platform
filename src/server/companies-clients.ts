@@ -2,14 +2,14 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/server/auth";
+import { requireActor, requireWrite } from "@/server/auth";
 import { companySchema, clientSchema } from "@/server/validation";
 import { publicUploadUrl, uploadDiskPath } from "@/lib/uploads";
 
 /** All queries scoped to ownerId — IDOR-safe by construction. */
 export async function listCompanies() {
-  const u = await requireUser();
-  const companies = await prisma.company.findMany({ where: { ownerId: u.id, archived: false }, orderBy: { createdAt: "asc" } });
+  const { ownerId } = await requireActor();
+  const companies = await prisma.company.findMany({ where: { ownerId, archived: false }, orderBy: { createdAt: "asc" } });
   return companies.map((c) => ({
     ...c,
     logoPath: publicUploadUrl(c.logoPath),
@@ -18,29 +18,29 @@ export async function listCompanies() {
 }
 
 export async function getCompany(id: string) {
-  const u = await requireUser();
-  const c = await prisma.company.findFirst({ where: { id, ownerId: u.id } });
+  const { ownerId } = await requireActor();
+  const c = await prisma.company.findFirst({ where: { id, ownerId } });
   if (!c) throw new Error("not found");
   return { ...c, logoPath: publicUploadUrl(c.logoPath), signaturePath: publicUploadUrl(c.signaturePath) };
 }
 
 export async function createCompany(raw: unknown) {
-  const u = await requireUser();
+  const { ownerId } = await requireWrite();
   const d = companySchema.parse(raw);
-  return prisma.company.create({ data: { ...d, ownerId: u.id } as never });
+  return prisma.company.create({ data: { ...d, ownerId } as never });
 }
 
 export async function updateCompany(id: string, raw: unknown) {
-  const u = await requireUser();
+  const { ownerId } = await requireWrite();
   const d = companySchema.partial().parse(raw);
-  const c = await prisma.company.findFirst({ where: { id, ownerId: u.id } });
+  const c = await prisma.company.findFirst({ where: { id, ownerId } });
   if (!c) throw new Error("not found");
   return prisma.company.update({ where: { id }, data: d as never });
 }
 
 export async function archiveCompany(id: string) {
-  const u = await requireUser();
-  const c = await prisma.company.findFirst({ where: { id, ownerId: u.id }, include: { invoices: { take: 1 } } });
+  const { ownerId } = await requireWrite();
+  const c = await prisma.company.findFirst({ where: { id, ownerId } });
   if (!c) throw new Error("not found");
   // History-preserving: never hard-delete a company with invoices; archive instead.
   return prisma.company.update({ where: { id }, data: { archived: true } });
@@ -71,8 +71,8 @@ export async function processLogoImage(input: Buffer, mime: string): Promise<Buf
 
 /** Logo upload: validated + normalized to PNG → public/uploads/logos/<companyId>.png */
 export async function uploadLogo(companyId: string, form: FormData) {
-  const u = await requireUser();
-  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId: u.id } });
+  const { ownerId } = await requireWrite();
+  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId } });
   if (!c) throw new Error("not found");
   const file = form.get("logo");
   if (!(file instanceof File) || file.size === 0) throw new Error("no file");
@@ -117,8 +117,8 @@ export async function processSignatureImage(input: Buffer, mime: string): Promis
 
 /** Signature upload: same pipeline as logo, stored as <companyId>.sig.png */
 export async function uploadSignature(companyId: string, form: FormData) {
-  const u = await requireUser();
-  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId: u.id } });
+  const { ownerId } = await requireWrite();
+  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId } });
   if (!c) throw new Error("not found");
   const file = form.get("signature");
   if (!(file instanceof File) || file.size === 0) throw new Error("no file");
@@ -151,31 +151,31 @@ export async function logoDataUri(logoPath: string | null | undefined): Promise<
 }
 
 export async function listClients(q?: string) {
-  const u = await requireUser();
+  const { ownerId } = await requireActor();
   return prisma.client.findMany({
-    where: { ownerId: u.id, ...(q ? { OR: [{ name: { contains: q } }, { companyName: { contains: q } }, { email: { contains: q } }] } : {}) },
+    where: { ownerId, ...(q ? { OR: [{ name: { contains: q } }, { companyName: { contains: q } }, { email: { contains: q } }] } : {}) },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
 }
 
 export async function getClient(id: string) {
-  const u = await requireUser();
-  const c = await prisma.client.findFirst({ where: { id, ownerId: u.id } });
+  const { ownerId } = await requireActor();
+  const c = await prisma.client.findFirst({ where: { id, ownerId } });
   if (!c) throw new Error("not found");
   return c;
 }
 
 export async function createClient(raw: unknown) {
-  const u = await requireUser();
+  const { ownerId } = await requireWrite();
   const d = clientSchema.parse(raw);
-  return prisma.client.create({ data: { ...d, ownerId: u.id } as never });
+  return prisma.client.create({ data: { ...d, ownerId } as never });
 }
 
 export async function updateClient(id: string, raw: unknown) {
-  const u = await requireUser();
+  const { ownerId } = await requireWrite();
   const d = clientSchema.partial().parse(raw);
-  const c = await prisma.client.findFirst({ where: { id, ownerId: u.id } });
+  const c = await prisma.client.findFirst({ where: { id, ownerId } });
   if (!c) throw new Error("not found");
   return prisma.client.update({ where: { id }, data: d as never });
 }

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { buildInvoicesCsv } from "@/server/csv";
 
 export async function GET(req: NextRequest) {
-  let user;
+  let ownerId: string;
   try {
-    user = await requireUser();
+    ownerId = (await requireActor()).ownerId;
   } catch {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "invalid date range" }, { status: 400 });
   }
   try {
-    const csv = await buildInvoicesCsv(user.id, { from, to });
+    const csv = await buildInvoicesCsv(ownerId, { from, to });
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

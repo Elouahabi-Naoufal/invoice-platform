@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireWrite } from "@/server/auth";
 import { disconnectWhatsApp } from "@/server/whatsapp";
 
 export const runtime = "nodejs";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
-    await requireUser();
+    await requireWrite();
   } catch {
     return new NextResponse("unauthorized", { status: 401 });
   }

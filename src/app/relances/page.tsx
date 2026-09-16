@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
 import { safeFindMany } from "@/lib/safe";
 import { ReminderForm } from "@/components/ReminderForm";
@@ -7,12 +7,11 @@ import { ReminderActions } from "@/components/ReminderActions";
 import { formatMoney } from "@/domain/invoice";
 
 export default async function RelancesPage() {
-  try { await requireUser(); } catch { redirect("/login"); }
-  const u = await prisma.user.findFirst({ where: { email: (await requireUser()).email } as never });
-  if (!u) redirect("/login");
-  const overdue = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId: u.id, status: "ISSUED", dueDate: { lt: new Date() } } as never, orderBy: { dueDate: "asc" }, take: 100 }), []);
-  const reminders = await safeFindMany(() => prisma.reminder.findMany({ where: { ownerId: u.id }, include: { invoice: { select: { invoiceNumber: true, totalTTC: true, currency: true } } }, orderBy: { scheduledAt: "desc" }, take: 100 }), []);
-  const issued = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId: u.id, status: "ISSUED" }, select: { id: true, invoiceNumber: true, dueDate: true }, orderBy: { dueDate: "asc" }, take: 100 }), []);
+  let ownerId = "";
+  try { ownerId = (await requireActor()).ownerId; } catch { redirect("/login"); }
+  const overdue = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId, status: "ISSUED", dueDate: { lt: new Date() } } as never, orderBy: { dueDate: "asc" }, take: 100 }), []);
+  const reminders = await safeFindMany(() => prisma.reminder.findMany({ where: { ownerId }, include: { invoice: { select: { invoiceNumber: true, totalTTC: true, currency: true } } }, orderBy: { scheduledAt: "desc" }, take: 100 }), []);
+  const issued = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId, status: "ISSUED" }, select: { id: true, invoiceNumber: true, dueDate: true }, orderBy: { dueDate: "asc" }, take: 100 }), []);
   return (
     <div>
       <div className="mb-5"><h1 className="page-title">Relances</h1><p className="meta mt-1">Overdue invoices and scheduled reminders. Reminders send automatically when due (email or WhatsApp); you can also send one now.</p></div>

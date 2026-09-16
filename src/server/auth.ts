@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 const COOKIE = "ip_session";
 const ACTIVE_COMPANY = "ip_company";
+const PASSWORD_MIN = 8;
 
 function secret() {
   const s = process.env.JWT_SECRET;
@@ -13,27 +14,83 @@ function secret() {
   return new TextEncoder().encode(s);
 }
 
+function assertPasswordPolicy(pw: unknown): string {
+  if (typeof pw !== "string" || pw.length < PASSWORD_MIN) {
+    throw new Error(`password must be at least ${PASSWORD_MIN} characters`);
+  }
+  return pw;
+}
+
+/* ---------- login rate limiting (in-memory, single instance) ---------- */
+const MAX_FAILURES = 8;
+const WINDOW_MS = 10 * 60 * 1000;
+const LOCK_MS = 10 * 60 * 1000;
+const loginAttempts = new Map<string, { count: number; first: number; lockedUntil: number }>();
+
+function assertNotLocked(key: string) {
+  const rec = loginAttempts.get(key);
+  if (!rec) return;
+  if (rec.lockedUntil > Date.now()) {
+    const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+    throw new Error(`too many attempts — try again in ${mins} min`);
+  }
+}
+
+function recordFailure(key: string) {
+  const now = Date.now();
+  const rec = loginAttempts.get(key);
+  if (!rec || now - rec.first > WINDOW_MS) {
+    loginAttempts.set(key, { count: 1, first: now, lockedUntil: 0 });
+    return;
+  }
+  rec.count += 1;
+  if (rec.count >= MAX_FAILURES) rec.lockedUntil = now + LOCK_MS;
+}
+
+function clearFailures(key: string) {
+  loginAttempts.delete(key);
+}
+
 export async function register(owner: { email: string; password: string; displayName: string }) {
-  const exists = await prisma.user.findUnique({ where: { email: owner.email.toLowerCase() } });
+  const email = String(owner?.email ?? "").toLowerCase().trim();
+  if (!email || !email.includes("@")) throw new Error("valid email required");
+  const password = assertPasswordPolicy(owner?.password);
+  const displayName = String(owner?.displayName ?? "").trim() || "Admin";
+  const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) throw new Error("email taken");
   // Single-user mode: refuse second registration unless ALLOW_MULTIUSER=1
   if (process.env.ALLOW_MULTIUSER !== "1") {
     const count = await prisma.user.count();
     if (count > 0) throw new Error("single-user mode: registration closed");
   }
-  const passwordHash = await bcrypt.hash(owner.password, 12);
-  const user = await prisma.user.create({
-    data: { email: owner.email.toLowerCase(), passwordHash, displayName: owner.displayName },
-  });
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = await prisma.user.create({ data: { email, passwordHash, displayName } });
   await setSession(user.id);
   return { id: user.id, email: user.email };
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) throw new Error("invalid credentials");
+  const key = String(email ?? "").toLowerCase().trim();
+  assertNotLocked(key);
+  const user = await prisma.user.findUnique({ where: { email: key } });
+  if (!user || !(await bcrypt.compare(String(password ?? ""), user.passwordHash))) {
+    recordFailure(key);
+    throw new Error("invalid credentials");
+  }
+  clearFailures(key);
   await setSession(user.id);
   return { id: user.id, email: user.email };
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const user = await requireUser();
+  if (!(await bcrypt.compare(String(currentPassword ?? ""), user.passwordHash))) {
+    throw new Error("current password is incorrect");
+  }
+  const pw = assertPasswordPolicy(newPassword);
+  const passwordHash = await bcrypt.hash(pw, 12);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  return { ok: true };
 }
 
 export async function logout() {
@@ -65,13 +122,51 @@ export async function requireUser() {
   }
 }
 
+export type Role = "OWNER" | "ADMIN" | "VIEWER";
+
+export interface Actor {
+  userId: string;
+  /** The tenancy boundary: the owner whose data this actor may access. */
+  ownerId: string;
+  role: Role;
+  email: string;
+  displayName: string;
+}
+
+/**
+ * Resolve the effective actor. A user who is a member of someone else's
+ * account acts on that owner's data with the member's role; otherwise the
+ * user owns their own data as OWNER.
+ */
+export async function requireActor(): Promise<Actor> {
+  const user = await requireUser();
+  const member = await prisma.member.findFirst({ where: { userId: user.id, revokedAt: null } });
+  if (member) {
+    return { userId: user.id, ownerId: member.ownerId, role: member.role as Role, email: user.email, displayName: user.displayName };
+  }
+  return { userId: user.id, ownerId: user.id, role: "OWNER", email: user.email, displayName: user.displayName };
+}
+
+/** VIEWER is read-only; OWNER/ADMIN may write. */
+export async function requireWrite(): Promise<Actor> {
+  const actor = await requireActor();
+  if (actor.role === "VIEWER") throw new Error("forbidden: read-only access");
+  return actor;
+}
+
+export async function requireRole(roles: Role[]): Promise<Actor> {
+  const actor = await requireActor();
+  if (!roles.includes(actor.role)) throw new Error("forbidden");
+  return actor;
+}
+
 export async function getActiveCompanyId(): Promise<string | null> {
   return (await cookies()).get(ACTIVE_COMPANY)?.value ?? null;
 }
 
 export async function setActiveCompany(companyId: string) {
-  const user = await requireUser();
-  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId: user.id } });
+  const actor = await requireActor();
+  const c = await prisma.company.findFirst({ where: { id: companyId, ownerId: actor.ownerId } });
   if (!c) throw new Error("not found"); // IDOR-safe: scoped to owner
   (await cookies()).set(ACTIVE_COMPANY, companyId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 365 * 86400 });
 }

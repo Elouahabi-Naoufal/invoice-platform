@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { requireUser, getActiveCompanyId } from "@/server/auth";
+import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listCompanies } from "@/server/companies-clients";
 import { buildReports } from "@/server/reports";
 import { formatMoney } from "@/domain/invoice";
@@ -17,8 +17,9 @@ export default async function ReportsPage({
 }: {
   searchParams: { companyId?: string; from?: string; to?: string };
 }) {
+  let ownerId = "";
   try {
-    await requireUser();
+    ownerId = (await requireActor()).ownerId;
   } catch {
     redirect("/login");
   }
@@ -28,7 +29,7 @@ export default async function ReportsPage({
   const from = parseDate(searchParams.from);
   const to = parseDate(searchParams.to);
 
-  const data = await buildReports((await requireUser()).id, { companyId, from, to });
+  const data = await buildReports(ownerId, { companyId, from, to });
   const fmt = (m: number, c: string) => formatMoney(m, c);
   const qs = (patch: Record<string, string>) => {
     const p = new URLSearchParams({ ...(companyId ? { companyId } : {}), ...(searchParams.from ? { from: searchParams.from } : {}), ...(searchParams.to ? { to: searchParams.to } : {}), ...patch });

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, MessageCircle, FileDown } from "lucide-react";
-import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft, decideQuote, convertDevis } from "@/server/invoice-ops";
+import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft, decideQuote, convertDevis, revokePublicLink } from "@/server/invoice-ops";
 import { Modal, useToast } from "@/components/ui";
 import { formatMoney, invoiceShareText, whatsAppShareUrl } from "@/domain/invoice";
 
@@ -133,9 +133,13 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
           <button onClick={() => setWaOpen(true)} className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp PDF</button>
           <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> Share link</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
+          {inv.publicToken && (
+            <button onClick={() => run("Public link revoked", () => revokePublicLink(inv.id))} className="btn-ghost btn-sm hover:text-red-700">Revoke link</button>
+          )}
           <a href={`/api/invoices/${inv.id}/ubl`} className="btn-outline btn-sm"><FileDown size={14} /> UBL</a>
           <button onClick={() => run("Draft created from invoice", () => duplicate(inv.id))} className="btn-ghost btn-sm"><Plus size={14} /> Duplicate</button>
           <a href={`/invoices/new?linked=${inv.id}`} className="btn-ghost btn-sm">Credit note</a>
+          <a href={`/invoices/new?linked=${inv.id}&type=RECTIFICATIVE`} className="btn-ghost btn-sm">Rectificative</a>
           <button onClick={() => setCancelOpen(true)} className="btn-ghost btn-sm hover:text-red-700"><Ban size={14} /> Cancel</button>
         </>
       )}

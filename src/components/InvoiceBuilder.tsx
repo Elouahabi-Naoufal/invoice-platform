@@ -14,7 +14,7 @@ type Client = { id: string; type: string; name: string; companyName?: string | n
 export type DraftInit = {
   id: string; docType: string; currency: string; issueDate: string; dueDate: string | null; validUntil: string | null;
   paymentTerms: string; paymentMode: string | null; poNumber: string | null; notes: string | null;
-  invDiscountBps: number; companyId: string | null; clientId: string | null;
+  invDiscountBps: number; invDiscountFixedMinor: number; companyId: string | null; clientId: string | null;
   correctionReason: string | null; linkedInvoiceId: string | null;
   lines: PreviewLine[];
 };
@@ -35,9 +35,9 @@ function StepDot({ n, active, done }: { n: number; active: boolean; done: boolea
 
 export type CatalogItem = { id: string; name: string; description?: string | null; unit: string; unitPriceMinor: number; taxRateBps: number; taxExempt: boolean };
 
-export default function InvoiceBuilder({ companies, initialClients, linked, draft, catalog }: {
+export default function InvoiceBuilder({ companies, initialClients, linked, linkedType, draft, catalog }: {
   companies: Company[]; initialClients: Client[];
-  linked?: { id: string; number: string | null } | null; draft?: DraftInit | null;
+  linked?: { id: string; number: string | null } | null; linkedType?: string; draft?: DraftInit | null;
   catalog?: CatalogItem[];
 }) {
   const r = useRouter();
@@ -48,7 +48,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   const [buyerId, setBuyerId] = useState(draft?.clientId ?? "");
   const [q, setQ] = useState("");
   const [showNew, setShowNew] = useState(false);
-  const [docType, setDocType] = useState(draft?.docType ?? (linked ? "AVOIR" : "FACTURE"));
+  const [docType, setDocType] = useState(draft?.docType ?? (linked ? (linkedType ?? "AVOIR") : "FACTURE"));
   const [issueDate, setIssueDate] = useState(draft?.issueDate ?? new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(draft?.dueDate ?? "");
   const [validUntil, setValidUntil] = useState(draft?.validUntil ?? "");
@@ -59,6 +59,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   const [correctionReason, setCorrectionReason] = useState(draft?.correctionReason ?? "");
   const [notes, setNotes] = useState(draft?.notes ?? "");
   const [invDiscPct, setInvDiscPct] = useState((draft?.invDiscountBps ?? 0) / 100);
+  const [invDiscFixed, setInvDiscFixed] = useState((draft?.invDiscountFixedMinor ?? 0) / 100);
   const [lines, setLines] = useState<PreviewLine[]>(draft?.lines ?? [
     { description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false },
   ]);
@@ -70,7 +71,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   const buyer = clients.find((c) => c.id === buyerId);
 
   const calc = useMemo(() => {
-    try { return calcInvoice({ lines, invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0 }); }
+    try { return calcInvoice({ lines, invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: Math.round(invDiscFixed * 100) }); }
     catch { return null; }
   }, [lines, invDiscPct]);
 
@@ -113,7 +114,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
         dueDate: dueDate || null,
         validUntil: docType === "DEVIS" ? (validUntil || null) : undefined,
         paymentTerms, paymentMode, poNumber: poNumber || undefined, notes: notes || undefined,
-        invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
+            invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: Math.round(invDiscFixed * 100),
         lines: lines.map((l) => ({ ...l })),
       };
       if (draft) {
@@ -230,6 +231,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
                 <div><label className="label">Terms</label><select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input"><option value="ON_RECEIPT">Due on receipt</option><option value="D7">7 days</option><option value="D15">15 days</option><option value="D30">30 days</option><option value="D60">60 days</option><option value="CUSTOM">Custom</option></select></div>
                 <div><label className="label">Purchase order</label><input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="BC-…" className="input" /></div>
                 <div><label className="label">Invoice discount %</label><input type="number" min={0} max={100} value={invDiscPct} onChange={(e) => setInvDiscPct(Number(e.target.value))} className="input" /></div>
+                <div><label className="label">Fixed discount ({currency})</label><input type="number" min={0} step="0.01" value={invDiscFixed} onChange={(e) => setInvDiscFixed(Number(e.target.value))} className="input" /></div>
               </div>
 
               <div className="card overflow-hidden">
@@ -303,7 +305,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
             docType, invoiceNumber: null, linkedNumber: linked?.number ?? null, correctionReason: correctionReason || null,
             issueDate, dueDate: dueDate || null, validUntil: validUntil || null, currency, locale: "fr",
             seller: sellerView, buyer: buyerView, lines,
-            invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: 0,
+        invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: Math.round(invDiscFixed * 100),
             poNumber: poNumber || null, paymentMode, paymentTerms, notes: notes || null,
           }} />
           {!calc && <p className="field-err mt-2">Invalid lines — amounts must be ≥ 0.</p>}

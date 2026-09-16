@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { buildReports, reportsToCsv } from "@/server/reports";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  let user;
+  let ownerId: string;
   try {
-    user = await requireUser();
+    ownerId = (await requireActor()).ownerId;
   } catch {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "invalid date range" }, { status: 400 });
   }
   try {
-    const data = await buildReports(user.id, {
+    const data = await buildReports(ownerId, {
       companyId: searchParams.get("companyId") ?? undefined,
       from,
       to,

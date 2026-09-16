@@ -1,12 +1,17 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { listCompanies, listClients } from "@/server/companies-clients";
 import { listProducts } from "@/server/products";
 import InvoiceBuilder, { DraftInit } from "@/components/InvoiceBuilder";
 import { prisma } from "@/lib/prisma";
 
-export default async function NewInvoicePage({ searchParams }: { searchParams: { linked?: string; edit?: string } }) {
-  const user = await (async () => { try { return await requireUser(); } catch { redirect("/login"); } })();
+export default async function NewInvoicePage({ searchParams }: { searchParams: { linked?: string; edit?: string; type?: string } }) {
+  let ownerId = "";
+  try {
+    ownerId = (await requireActor()).ownerId;
+  } catch {
+    redirect("/login");
+  }
   const companies = await listCompanies();
   if (companies.length === 0) redirect("/companies?new=1");
   const clients = await listClients();
@@ -14,14 +19,14 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
 
   let linked: { id: string; number: string | null } | null = null;
   if (searchParams.linked) {
-    const orig = await prisma.invoice.findFirst({ where: { id: searchParams.linked, ownerId: user!.id } });
+    const orig = await prisma.invoice.findFirst({ where: { id: searchParams.linked, ownerId } });
     if (orig) linked = { id: orig.id, number: orig.invoiceNumber };
   }
 
   let draft: DraftInit | null = null;
   if (searchParams.edit) {
     const d = await prisma.invoice.findFirst({
-      where: { id: searchParams.edit, ownerId: user!.id, status: "DRAFT" },
+      where: { id: searchParams.edit, ownerId, status: "DRAFT" },
       include: { lines: { orderBy: { position: "asc" } } },
     });
     if (!d) redirect("/invoices");
@@ -31,7 +36,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
       dueDate: d.dueDate ? d.dueDate.toISOString().slice(0, 10) : null,
       validUntil: d.validUntil ? d.validUntil.toISOString().slice(0, 10) : null,
       paymentTerms: d.paymentTerms, paymentMode: d.paymentMode, poNumber: d.poNumber, notes: d.notes,
-      invDiscountBps: d.invDiscountBps, companyId: d.companyId, clientId: d.clientId,
+      invDiscountBps: d.invDiscountBps, invDiscountFixedMinor: d.invDiscountFixedMinor, companyId: d.companyId, clientId: d.clientId,
       correctionReason: d.correctionReason, linkedInvoiceId: d.linkedInvoiceId,
       lines: d.lines.map((l) => ({
         description: l.description, quantityMilli: l.quantityMilli, unit: l.unit,
@@ -41,5 +46,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
     };
   }
 
-  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} draft={draft} catalog={catalog as never} />;
+  const linkedType = searchParams.type === "RECTIFICATIVE" ? "RECTIFICATIVE" : undefined;
+
+  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} linkedType={linkedType} draft={draft} catalog={catalog as never} />;
 }

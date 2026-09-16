@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
+import PasswordForm from "@/components/PasswordForm";
 
 export default async function SettingsPage() {
   try { await requireUser(); } catch { redirect("/login"); }
@@ -8,6 +9,18 @@ export default async function SettingsPage() {
     <div className="max-w-2xl">
       <h1 className="page-title mb-5">Settings</h1>
       <div className="grid gap-3">
+        <div className="card p-5">
+          <h2 className="section-title mb-1">Security</h2>
+          <p className="mb-3 text-[13px] text-ink-500 dark:text-stone-400">Change your password. Minimum 8 characters.</p>
+          <PasswordForm />
+        </div>
+        <div className="card p-5">
+          <h2 className="section-title mb-1">Automation</h2>
+          <p className="text-[13px] text-ink-500 dark:text-stone-400">
+            Recurring invoices and due reminders run automatically via a background worker. Set
+            <code className="rounded bg-ink-100 dark:bg-white/10 px-1 text-[12px]"> CRON_SECRET</code> in the environment to enable it.
+          </p>
+        </div>
         <div className="card p-5">
           <h2 className="section-title mb-1">Email delivery (SMTP)</h2>
           <p className="text-[13px] text-ink-500 dark:text-stone-400">

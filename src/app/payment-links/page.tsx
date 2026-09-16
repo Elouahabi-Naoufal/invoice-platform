@@ -1,15 +1,14 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/server/auth";
+import { requireActor } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
 import { safeFindMany } from "@/lib/safe";
 import { PaymentLinkForm } from "@/components/PaymentLinkForm";
 
 export default async function PaymentLinksPage() {
-  try { await requireUser(); } catch { redirect("/login"); }
-  const u = await prisma.user.findFirst({ where: { email: (await requireUser()).email } as never });
-  if (!u) redirect("/login");
-  const invoices = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId: u.id, status: "ISSUED" }, select: { id: true, invoiceNumber: true, totalTTC: true, currency: true }, orderBy: { createdAt: "desc" }, take: 100 }), []);
-  const links = await safeFindMany(() => prisma.paymentLink.findMany({ where: { ownerId: u.id }, include: { invoice: { select: { invoiceNumber: true } } }, orderBy: { createdAt: "desc" }, take: 100 }), []);
+  let ownerId = "";
+  try { ownerId = (await requireActor()).ownerId; } catch { redirect("/login"); }
+  const invoices = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId, status: "ISSUED" }, select: { id: true, invoiceNumber: true, totalTTC: true, currency: true }, orderBy: { createdAt: "desc" }, take: 100 }), []);
+  const links = await safeFindMany(() => prisma.paymentLink.findMany({ where: { ownerId }, include: { invoice: { select: { invoiceNumber: true } } }, orderBy: { createdAt: "desc" }, take: 100 }), []);
   return (
     <div>
       <div className="mb-5"><h1 className="page-title">Payment links</h1><p className="meta mt-1">Create a shareable payment token per invoice — amount is yours to set (defaults to TTC).</p></div>
