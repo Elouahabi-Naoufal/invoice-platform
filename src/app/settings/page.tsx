@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/server/auth";
-import { prisma } from "@/lib/prisma";
 import { getWhatsAppStatus } from "@/server/whatsapp";
 import ProfileForm from "@/components/ProfileForm";
-import { Mail, MessageCircle, Lock, Workflow, Database, CheckCircle2, XCircle } from "lucide-react";
+import { MessageCircle, Lock, Workflow, Database, CheckCircle2, XCircle } from "lucide-react";
 
 function StatusLine({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -16,13 +15,9 @@ function StatusLine({ ok, label }: { ok: boolean; label: string }) {
 
 export default async function SettingsGeneralPage() {
   const user = await requireUser();
-  const [email, whatsapp] = await Promise.all([
-    prisma.emailSettings.findUnique({ where: { ownerId: user.id } }),
-    getWhatsAppStatus().catch(() => null),
-  ]);
+  const whatsapp = await getWhatsAppStatus().catch(() => null);
 
   const sections = [
-    { href: "/settings/email", icon: Mail, title: "Email", body: email?.enabled ? `Connected as ${email.fromAddress}` : "Connect your business mailbox (SMTP)." },
     { href: "/settings/whatsapp", icon: MessageCircle, title: "WhatsApp", body: whatsapp?.connected ? "Connected — sending via WhatsApp Web." : "Pair a phone with a QR code." },
     { href: "/settings/security", icon: Lock, title: "Security", body: "Change your password." },
     { href: "/settings/automation", icon: Workflow, title: "Automation", body: "Recurring invoices and reminders." },
@@ -38,11 +33,11 @@ export default async function SettingsGeneralPage() {
       </div>
 
       <div className="card p-5">
-        <h2 className="section-title mb-3">Connections</h2>
+        <h2 className="section-title mb-3">Sending channel</h2>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <StatusLine ok={Boolean(email?.enabled)} label={email?.enabled ? `Email connected (${email.fromAddress})` : "Email not connected"} />
           <StatusLine ok={Boolean(whatsapp?.connected)} label={whatsapp?.connected ? "WhatsApp connected" : "WhatsApp not connected"} />
         </div>
+        <p className="meta mt-2">Invoices, quotes and reminders are sent over WhatsApp.</p>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">

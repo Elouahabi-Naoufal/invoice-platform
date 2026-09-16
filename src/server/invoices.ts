@@ -443,16 +443,3 @@ export async function duplicateInvoice(ownerId: string, invoiceId: string) {
   });
   return copy;
 }
-
-export async function markSent(ownerId: string, invoiceId: string, sentTo: string) {
-  const inv = await prisma.invoice.findFirst({ where: { id: invoiceId, ownerId } });
-  if (!inv || inv.status !== "ISSUED") throw new Error("only ISSUED can be sent");
-  return prisma.invoice.update({
-    where: { id: invoiceId },
-    data: {
-      sentAt: new Date(),
-      sentTo,
-      events: { create: [{ actorId: ownerId, type: "sent", metadata: sentTo }] },
-    },
-  });
-}

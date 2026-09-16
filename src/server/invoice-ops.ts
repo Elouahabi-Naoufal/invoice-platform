@@ -13,7 +13,6 @@ import {
   recordPayment as corePay,
   cancelInvoice as coreCancel,
   duplicateInvoice as coreDuplicate,
-  markSent as coreSent,
   setQuoteStatus as coreQuote,
   convertDevisToInvoice as coreConvert,
 } from "@/server/invoices";
@@ -45,12 +44,6 @@ export async function duplicate(id: string) {
   const { ownerId } = await requireWrite();
   await assertOwnsInvoice(ownerId, id);
   return coreDuplicate(ownerId, id);
-}
-
-export async function markSentOp(id: string, sentTo: string) {
-  const { ownerId } = await requireWrite();
-  await assertOwnsInvoice(ownerId, id);
-  return coreSent(ownerId, id, sentTo);
 }
 
 export async function decideQuote(id: string, status: "ACCEPTED" | "REFUSED") {

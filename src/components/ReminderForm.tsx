@@ -9,7 +9,7 @@ export function ReminderForm({ invoices, onDone }: { invoices: { id: string; inv
   async function submit(fd: FormData) {
     const obj: Record<string, string> = {}; fd.forEach((v, k) => { obj[k] = String(v); });
     try {
-      await createReminder("", { invoiceId: obj.invoiceId, type: obj.type || "OVERDUE", channel: obj.channel || "EMAIL", scheduledAt: new Date(obj.scheduledAt).toISOString() } as never);
+      await createReminder("", { invoiceId: obj.invoiceId, type: obj.type || "OVERDUE", channel: "WHATSAPP", scheduledAt: new Date(obj.scheduledAt).toISOString() } as never);
       toast({ kind: "ok", title: "Reminder scheduled" }); onDone?.(); r.refresh();
     } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
   }
@@ -22,7 +22,7 @@ export function ReminderForm({ invoices, onDone }: { invoices: { id: string; inv
         </select>
       </div>
       <div><label className="label">Type</label><select name="type" className="input" defaultValue="OVERDUE"><option value="OVERDUE">Overdue</option><option value="BEFORE_DUE">Before due</option></select></div>
-      <div><label className="label">Channel</label><select name="channel" className="input" defaultValue="EMAIL"><option value="EMAIL">Email</option><option value="WHATSAPP">WhatsApp</option></select></div>
+      <div><label className="label">Channel</label><input value="WhatsApp" readOnly className="input bg-ink-50 dark:bg-white/5" /></div>
       <div><label className="label">Scheduled at *</label><input name="scheduledAt" type="datetime-local" required className="input" /></div>
       <button type="submit" className="btn-primary btn-sm">Schedule</button>
       {err && <p className="field-err w-full">{err}</p>}

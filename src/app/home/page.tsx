@@ -26,7 +26,7 @@ export default async function HomePage() {
   const features = [
     ["Invoices & quotes", "Factures, devis, avoirs and rectificatives with gapless per-company numbering."],
     ["Payments", "Record full or partial payments and track outstanding and overdue balances."],
-    ["Send anywhere", "Email through your own mailbox or Gmail, or send PDFs over WhatsApp."],
+    ["Send on WhatsApp", "Send issued invoices as PDF documents over WhatsApp, with your own message template."],
     ["Reports", "TVA summary, aged receivables, revenue by client and product."],
     ["Multi-company", "Several legal entities, each with its own ICE, prefixes and bank details."],
     ["Morocco-ready", "ICE, IF, RC, patente, TVA rates and art. 145 CGI mentions built in."],

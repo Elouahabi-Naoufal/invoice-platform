@@ -46,7 +46,7 @@ export default function TermsPage() {
           <h2 className="section-title mb-1">4. Acceptable use</h2>
           <ul className="ml-5 list-disc">
             <li>Do not use the service for unlawful, fraudulent or misleading activity.</li>
-            <li>Do not send unsolicited or abusive messages through the connected email or WhatsApp channels.</li>
+            <li>Do not send unsolicited or abusive messages through the connected WhatsApp channel.</li>
             <li>Do not attempt to disrupt, reverse-engineer or gain unauthorised access to the service.</li>
           </ul>
         </section>
@@ -63,8 +63,7 @@ export default function TermsPage() {
         <section>
           <h2 className="section-title mb-1">6. Third-party services</h2>
           <p>
-            Sending by email may use Google (Gmail API) or an SMTP mailbox you connect; sending by WhatsApp uses
-            WhatsApp Web on your own account. Those services are governed by their own terms, and you are
+            Sending uses WhatsApp Web on your own account, which is governed by its own terms, and you are
             responsible for complying with them.
           </p>
         </section>

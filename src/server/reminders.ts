@@ -19,7 +19,7 @@ export async function createReminder(_userId: string, raw: unknown) {
     .object({
       invoiceId: z.string(),
       type: z.enum(["OVERDUE", "BEFORE_DUE"]).default("OVERDUE"),
-      channel: z.enum(["EMAIL", "WHATSAPP"]).default("EMAIL"),
+      channel: z.enum(["WHATSAPP"]).default("WHATSAPP"),
       scheduledAt: z.string().datetime(),
     })
     .parse(raw);

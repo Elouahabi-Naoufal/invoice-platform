@@ -4,7 +4,6 @@
  * secret-protected cron endpoint — never callable as client actions.
  */
 import { prisma } from "@/lib/prisma";
-import { sendInvoiceEmail } from "@/server/email";
 import { sendInvoiceViaWhatsApp } from "@/server/whatsapp-send";
 import { createDraftInvoice, finalizeInvoice } from "@/server/invoices";
 
@@ -63,19 +62,15 @@ interface ReminderRow {
   channel: string;
 }
 
-/** Send one reminder through its channel and mark it sent. */
+/** Send one reminder over WhatsApp and mark it sent. */
 export async function dispatchReminder(reminder: ReminderRow) {
-  if (reminder.channel === "WHATSAPP") {
-    await sendInvoiceViaWhatsApp(reminder.ownerId, reminder.invoiceId);
-  } else {
-    await sendInvoiceEmail(reminder.ownerId, reminder.invoiceId);
-  }
+  await sendInvoiceViaWhatsApp(reminder.ownerId, reminder.invoiceId);
   await prisma.reminder.update({
     where: { id: reminder.id },
     data: { sentAt: new Date(), attempts: { increment: 1 }, lastError: null },
   });
   await prisma.invoiceEvent.create({
-    data: { invoiceId: reminder.invoiceId, actorId: reminder.ownerId, type: "reminder_sent", metadata: reminder.channel },
+    data: { invoiceId: reminder.invoiceId, actorId: reminder.ownerId, type: "reminder_sent", metadata: "WHATSAPP" },
   });
 }
 
@@ -140,10 +135,7 @@ export async function runDueRecurring(
         data: { lastGeneratedInvoiceId: invoice.id, lastError: null },
       });
       generated += 1;
-      if (t.autoSend && t.sendChannel === "EMAIL") {
-        await sendInvoiceEmail(t.ownerId, invoice.id);
-        sent += 1;
-      } else if (t.autoSend && t.sendChannel === "WHATSAPP") {
+      if (t.autoSend && t.sendChannel === "WHATSAPP") {
         await sendInvoiceViaWhatsApp(t.ownerId, invoice.id);
         sent += 1;
       }

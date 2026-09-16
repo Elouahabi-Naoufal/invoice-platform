@@ -33,7 +33,6 @@ export default function PrivacyPage() {
           <ul className="ml-5 list-disc">
             <li><strong>Account data:</strong> your name, email address and a hashed password.</li>
             <li><strong>Business data you enter:</strong> companies, clients, invoices, quotes, credit notes, payments, products and notes.</li>
-            <li><strong>Connected email:</strong> if you connect a mailbox (SMTP or Google), we store the address, settings and an encrypted credential or OAuth refresh token needed to send on your behalf.</li>
             <li><strong>WhatsApp:</strong> if you enable WhatsApp sending, we store the linked-session credentials on the server so messages can be sent from your account.</li>
             <li><strong>Technical data:</strong> a session cookie and basic server logs required to operate and secure the service.</li>
           </ul>
@@ -43,7 +42,7 @@ export default function PrivacyPage() {
           <h2 className="section-title mb-1">3. How we use your data</h2>
           <ul className="ml-5 list-disc">
             <li>To provide the service: create, store and render your invoices and reports.</li>
-            <li>To send invoices, quotes and reminders to your clients through the email or WhatsApp account you connect.</li>
+            <li>To send invoices, quotes and reminders to your clients through the WhatsApp account you connect.</li>
             <li>To authenticate you and keep your account secure.</li>
             <li>To comply with legal obligations, including invoice retention.</li>
           </ul>
@@ -60,9 +59,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="section-title mb-1">5. Third-party services</h2>
           <p>
-            When you choose to connect them, we use Google (Gmail API) to send email, and WhatsApp Web to send
-            messages, strictly on your behalf and only to the recipients you specify. We do not sell your data
-            and we do not use it for advertising. Your use of those services is also governed by their own terms.
+            We use WhatsApp Web to send messages strictly on your behalf and only to the recipients you specify.
+            We do not sell your data and we do not use it for advertising. Your use of WhatsApp is also governed
+            by its own terms.
           </p>
         </section>
 
@@ -78,9 +77,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="section-title mb-1">7. Security</h2>
           <p>
-            Traffic is encrypted with HTTPS. Email credentials and OAuth tokens are encrypted at rest with
-            AES-256-GCM. Access to the application and its database is restricted to the operator. No method of
-            storage is perfectly secure, but we take reasonable measures to protect your data.
+            Traffic is encrypted with HTTPS. Access to the application and its database is restricted to the
+            operator. No method of storage is perfectly secure, but we take reasonable measures to protect your data.
           </p>
         </section>
 

@@ -61,7 +61,6 @@ export function RecurringForm({ companies, clients, defaultCompanyId, onDone }: 
         <div><label className="label">Auto-send channel</label>
           <select name="sendChannel" className="input" defaultValue="NONE">
             <option value="NONE">None (generate only)</option>
-            <option value="EMAIL">Email</option>
             <option value="WHATSAPP">WhatsApp</option>
           </select>
         </div>

@@ -23,7 +23,7 @@ const recSchema = z.object({
     taxExempt: z.boolean().default(false),
   })).min(1),
   autoSend: z.boolean().default(false),
-  sendChannel: z.enum(["NONE", "EMAIL", "WHATSAPP"]).default("NONE"),
+  sendChannel: z.enum(["NONE", "WHATSAPP"]).default("NONE"),
   active: z.boolean().default(true),
 });
 

@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Send, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, MessageCircle, FileDown } from "lucide-react";
-import { finalize, pay, cancel, duplicate, markSentOp, deleteDraft, decideQuote, convertDevis, revokePublicLink } from "@/server/invoice-ops";
+import { Download, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, MessageCircle, FileDown } from "lucide-react";
+import { finalize, pay, cancel, duplicate, deleteDraft, decideQuote, convertDevis, revokePublicLink } from "@/server/invoice-ops";
 import { Modal, useToast } from "@/components/ui";
 import { formatMoney, invoiceShareText, whatsAppShareUrl } from "@/domain/invoice";
 
@@ -21,7 +21,6 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
   const [confirmFin, setConfirmFin] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [sendOpen, setSendOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
   const [waTo, setWaTo] = useState(inv.buyerPhone ?? "");
   const [waBusy, setWaBusy] = useState(false);
@@ -29,7 +28,6 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
   const [method, setMethod] = useState("BANK_TRANSFER");
   const [ref, setRef] = useState("");
   const [reason, setReason] = useState("");
-  const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function run(label: string, fn: () => Promise<unknown>, go?: string) {
@@ -43,26 +41,6 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
       const msg = e instanceof Error ? e.message : "Operation failed";
       setErr(msg);
       toast({ kind: "err", title: label + " failed", body: msg });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function send() {
-    setErr(""); setBusy(true);
-    try {
-      const res = await fetch(`/api/invoices/${inv.id}/send`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      await markSentOp(inv.id, to);
-      toast({ kind: "ok", title: "Invoice sent", body: `Delivered to ${to}` });
-      setSendOpen(false);
-      r.refresh();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Send failed";
-      setErr(msg);
-      toast({ kind: "err", title: "Unable to send invoice", body: "The email provider rejected the message. Check your email configuration and try again." });
     } finally {
       setBusy(false);
     }
@@ -129,7 +107,6 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
           <button onClick={() => { setAmt(inv.remaining / 100); setPayOpen(true); }} className="btn-primary btn-sm">
             Record payment · {formatMoney(inv.remaining, inv.currency)}
           </button>
-          <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
           <button onClick={() => setWaOpen(true)} className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp PDF</button>
           <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> Share link</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
@@ -161,7 +138,6 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
               toast({ kind: "err", title: "Conversion failed", body: msg });
             } finally { setBusy(false); }
           }} className="btn-accent btn-sm"><ArrowRight size={14} /> Convert to facture</button>
-          <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>
           <button onClick={() => setWaOpen(true)} className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp PDF</button>
           <a href={waLink()} target="_blank" rel="noreferrer" className="btn-outline btn-sm"><MessageCircle size={14} /> Share link</a>
           <button onClick={copyLink} className="btn-outline btn-sm"><Copy size={14} /> Copy link</button>
@@ -217,19 +193,6 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
           <div className="flex justify-end gap-2">
             <button onClick={() => setCancelOpen(false)} className="btn-ghost">Keep invoice</button>
             <button disabled={busy || !reason.trim()} onClick={() => run("Invoice cancelled", () => cancel(inv.id, reason))} className="btn-danger">{busy ? "Cancelling…" : "Cancel invoice"}</button>
-          </div>
-        </Modal>
-      )}
-
-      {sendOpen && (
-        <Modal title="Send invoice" onClose={() => setSendOpen(false)}>
-          <div className="grid gap-3">
-            <div><label className="label">Recipient</label><input value={to} onChange={(e) => setTo(e.target.value)} placeholder="client@company.ma" type="email" className="input" /></div>
-            <p className="hint">Sends the PDF attachment plus the secure public link. The invoice is only marked sent after the provider confirms delivery.</p>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setSendOpen(false)} className="btn-ghost">Cancel</button>
-              <button disabled={busy || !to.includes("@")} onClick={send} className="btn-primary">{busy ? "Sending…" : "Send"}</button>
-            </div>
           </div>
         </Modal>
       )}
