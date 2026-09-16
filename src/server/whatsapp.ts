@@ -73,6 +73,16 @@ async function loadWwebjs(): Promise<typeof import("whatsapp-web.js")> {
   return import("whatsapp-web.js");
 }
 
+/** Confirms the framenavigated re-injection patch is present at runtime. */
+async function isWwebjsPatched(): Promise<boolean> {
+  try {
+    const file = path.join(process.cwd(), "node_modules", "whatsapp-web.js", "src", "Client.js");
+    return (await fs.readFile(file, "utf8")).includes("wwjs-patched-framenavigated");
+  } catch {
+    return false;
+  }
+}
+
 export function whatsappClientId(): string {
   return process.env.WHATSAPP_CLIENT_ID?.trim() || "invoice-platform";
 }
@@ -251,6 +261,7 @@ async function startClient(): Promise<void> {
       log(
         "info",
         `starting chrome=${resolveChromePath() ?? "(puppeteer default)"} ` +
+          `patched=${await isWwebjsPatched()} ` +
           `xdg_config=${process.env.XDG_CONFIG_HOME ?? "(unset)"} ` +
           `xdg_cache=${process.env.XDG_CACHE_HOME ?? "(unset)"}`
       );
