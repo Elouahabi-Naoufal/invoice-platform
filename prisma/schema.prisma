@@ -103,6 +103,7 @@ model Client {
   isAssujetti     Boolean  @default(true) // false = particulier B2C, ICE non requis
   defaultCurrency String   @default("MAD")
   notes           String?
+  portalToken     String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -153,6 +154,7 @@ model Invoice {
   taxBreakdown          String? // JSON [{rateBps, taxable, tax}]
   // share / send
   publicToken           String?   @unique
+  publicTokenExpiresAt  DateTime?
   portalShared          Boolean   @default(false)
   sentAt                DateTime?
   sentTo                String?
@@ -269,6 +271,10 @@ model RecurringTemplate {
   lines                 String   // JSON
   lastGeneratedAt       DateTime?
   lastGeneratedInvoiceId String?
+  nextRunAt             DateTime?
+  autoSend              Boolean  @default(false)
+  sendChannel           String   @default("NONE") // NONE | EMAIL | WHATSAPP
+  lastError             String?
   active                Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -279,6 +285,7 @@ model RecurringTemplate {
 
   @@index([ownerId])
   @@index([ownerId, active])
+  @@index([active, nextRunAt])
 }
 
 // ── Overdue reminders (relances) ──
@@ -298,6 +305,7 @@ model Reminder {
 
   @@index([ownerId, scheduledAt])
   @@index([invoiceId])
+  @@index([sentAt, scheduledAt])
 }
 
 // ── Payment links (v1: simple token) ──
@@ -321,6 +329,7 @@ model PaymentLink {
 model Member {
   id          String    @id @default(cuid())
   ownerId     String
+  userId      String?   @unique
   email       String
   displayName String?
   role        String    @default("VIEWER") // OWNER | ADMIN | VIEWER

@@ -29,15 +29,19 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
       ) : (
         <div className="card overflow-hidden">
           <table className="tbl">
-            <thead><tr><th>Name</th><th>Client</th><th>Period</th><th>Last</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Client</th><th>Period</th><th>Next run</th><th>Last</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {templates.map((t) => (
                 <tr key={t.id}>
-                  <td className="font-medium">{t.name}<span className="meta block">{t.docType} · {t.currency} · {t.paymentTerms}</span></td>
+                  <td className="font-medium">{t.name}<span className="meta block">{t.docType} · {t.currency} · {t.paymentTerms}{t.autoSend && t.sendChannel !== "NONE" ? ` · auto-send ${t.sendChannel.toLowerCase()}` : ""}</span></td>
                   <td className="text-ink-500">{(t.client as { companyName?: string; name?: string } | null)?.companyName ?? (t.client as { name?: string } | null)?.name ?? (t.clientId ?? "—")}</td>
                   <td className="tabular-nums">{t.periodDays} days</td>
+                  <td className="tabular-nums text-ink-500">{t.active && t.nextRunAt ? new Date(t.nextRunAt).toLocaleDateString() : "—"}</td>
                   <td className="tabular-nums text-ink-500">{t.lastGeneratedAt ? new Date(t.lastGeneratedAt).toLocaleDateString() : "—"}</td>
-                  <td>{t.active ? <span className="badge badge-emerald">Active</span> : <span className="badge">Paused</span>}</td>
+                  <td>
+                    {t.active ? <span className="badge badge-emerald">Active</span> : <span className="badge">Paused</span>}
+                    {t.lastError ? <span className="badge badge-amber ml-1" title={t.lastError}>Error</span> : null}
+                  </td>
                   <td className="text-right"><RecurringActions id={t.id} active={t.active} /></td>
                 </tr>
               ))}

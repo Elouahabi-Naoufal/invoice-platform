@@ -2,11 +2,12 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { z } from "zod";
+import { computeNextRun, generateFromTemplate } from "@/server/automation";
 
 const recSchema = z.object({
   name: z.string().min(2),
-  companyId: z.string().optional(),
-  clientId: z.string().optional(),
+  companyId: z.string().min(1),
+  clientId: z.string().min(1),
   docType: z.enum(["FACTURE", "DEVIS"]).default("FACTURE"),
   currency: z.string().default("MAD"),
   paymentTerms: z.string().default("D30"),
@@ -21,6 +22,8 @@ const recSchema = z.object({
     taxRateBps: z.number().int().min(0).max(10000).default(2000),
     taxExempt: z.boolean().default(false),
   })).min(1),
+  autoSend: z.boolean().default(false),
+  sendChannel: z.enum(["NONE", "EMAIL", "WHATSAPP"]).default("NONE"),
   active: z.boolean().default(true),
 });
 
@@ -34,11 +37,30 @@ export async function listRecurringTemplates(_userId?: string) {
   return templates.map((t) => ({ ...t, lines: t.lines ? JSON.parse(t.lines) : [] }));
 }
 
-export async function createRecurringTemplate(userId: string, raw: unknown) {
+async function assertRelations(ownerId: string, companyId: string, clientId: string) {
+  const [company, client] = await Promise.all([
+    prisma.company.findFirst({ where: { id: companyId, ownerId }, select: { id: true } }),
+    prisma.client.findFirst({ where: { id: clientId, ownerId }, select: { id: true } }),
+  ]);
+  if (!company) throw new Error("seller company not found");
+  if (!client) throw new Error("client not found");
+}
+
+export async function createRecurringTemplate(_userId: string, raw: unknown) {
   const u = await requireUser();
   const d = recSchema.parse(raw);
+  await assertRelations(u.id, d.companyId, d.clientId);
   const { lines, ...rest } = d as { lines: unknown[] } & Record<string, unknown>;
-  return prisma.recurringTemplate.create({ data: { ...rest, lines: JSON.stringify(lines), ownerId: u.id } as never });
+  const startDate = new Date(d.startDate);
+  return prisma.recurringTemplate.create({
+    data: {
+      ...rest,
+      startDate,
+      nextRunAt: startDate,
+      lines: JSON.stringify(lines),
+      ownerId: u.id,
+    } as never,
+  });
 }
 
 export async function updateRecurringTemplate(id: string, raw: unknown) {
@@ -46,8 +68,17 @@ export async function updateRecurringTemplate(id: string, raw: unknown) {
   const d = recSchema.partial().parse(raw) as Record<string, unknown>;
   const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId: u.id } });
   if (!t) throw new Error("Template not found");
+  if (typeof d.companyId === "string" || typeof d.clientId === "string") {
+    await assertRelations(u.id, (d.companyId as string) ?? t.companyId ?? "", (d.clientId as string) ?? t.clientId ?? "");
+  }
   const data: Record<string, unknown> = { ...d };
   if (Array.isArray(d.lines)) data.lines = JSON.stringify(d.lines);
+  if (typeof d.startDate === "string" || typeof d.periodDays === "number") {
+    const startDate = typeof d.startDate === "string" ? new Date(d.startDate) : t.startDate;
+    const periodDays = typeof d.periodDays === "number" ? d.periodDays : t.periodDays;
+    data.startDate = startDate;
+    data.nextRunAt = computeNextRun(startDate, periodDays, new Date());
+  }
   return prisma.recurringTemplate.update({ where: { id }, data: data as never });
 }
 
@@ -58,24 +89,22 @@ export async function toggleRecurringTemplate(id: string) {
   return prisma.recurringTemplate.update({ where: { id }, data: { active: !t.active } });
 }
 
+/** Manual "Generate now": creates + finalizes one invoice and advances the schedule. */
 export async function generateInvoiceFromTemplate(templateId: string) {
   const u = await requireUser();
-  const t = await prisma.recurringTemplate.findFirst({
-    where: { id: templateId, ownerId: u.id, active: true },
-    include: { client: true, company: true },
-  });
+  const t = await prisma.recurringTemplate.findFirst({ where: { id: templateId, ownerId: u.id, active: true } });
   if (!t) throw new Error("Template not found or inactive");
-  const lines = t.lines ? JSON.parse(t.lines) : [];
-  const today = new Date();
-  const dueDate = new Date(today.getTime() + t.periodDays * 86400000);
-  const { createDraftInvoice } = await import("@/server/invoices");
-  const d = await createDraftInvoice(u.id, {
-    companyId: t.companyId!, clientId: t.clientId!, docType: t.docType,
-    currency: t.currency, issueDate: today.toISOString().split("T")[0],
-    dueDate: dueDate.toISOString().split("T")[0], paymentTerms: t.paymentTerms, lines,
+  if (!t.companyId || !t.clientId) throw new Error("Template needs a seller company and a client");
+  const invoice = await generateFromTemplate(u.id, t);
+  const now = new Date();
+  await prisma.recurringTemplate.update({
+    where: { id: templateId },
+    data: {
+      lastGeneratedAt: now,
+      lastGeneratedInvoiceId: invoice.id,
+      nextRunAt: computeNextRun(t.nextRunAt ?? t.startDate, t.periodDays, now),
+      lastError: null,
+    },
   });
-  const { finalizeInvoice } = await import("@/server/invoices");
-  const f = await finalizeInvoice(u.id, d.id);
-  await prisma.recurringTemplate.update({ where: { id: templateId }, data: { lastGeneratedAt: today, lastGeneratedInvoiceId: f.id } });
-  return f;
+  return invoice;
 }

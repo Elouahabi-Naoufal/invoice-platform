@@ -15,16 +15,20 @@ export function RecurringForm({ companies, clients, onDone }: { companies: { id:
     fd.forEach((v, k) => { obj[k] = String(v); });
     const data = {
       name: obj.name?.trim(),
-      companyId: obj.companyId || undefined,
-      clientId: obj.clientId || undefined,
+      companyId: obj.companyId,
+      clientId: obj.clientId,
       docType: obj.docType || "FACTURE",
       currency: obj.currency || "MAD",
       paymentTerms: obj.paymentTerms || "D30",
       periodDays: Number(obj.periodDays),
       startDate: new Date(obj.startDate).toISOString(),
+      autoSend: obj.autoSend === "on",
+      sendChannel: obj.sendChannel || "NONE",
       lines: lines.filter((l) => l.description.trim()).map((l) => ({ ...l, quantityMilli: Number(l.quantityMilli) || 1000, unitPriceMinor: Math.round(Number(l.unitPriceMinor) * 1) || 0 })),
     };
     if (!data.name || data.name.length < 2) { setErr("Name required"); return; }
+    if (!data.companyId) { setErr("Select a seller company"); return; }
+    if (!data.clientId) { setErr("Select a client"); return; }
     if (!data.lines.length) { setErr("Add at least one line with description"); return; }
     try {
       await createRecurringTemplate("", data as never);
@@ -39,14 +43,26 @@ export function RecurringForm({ companies, clients, onDone }: { companies: { id:
         <div><label className="label">Period (days) *</label><input name="periodDays" type="number" min={1} defaultValue={30} required className="input" /></div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <div><label className="label">Seller company</label>
-          <select name="companyId" className="input" defaultValue={companies[0]?.id ?? ""}>
+        <div><label className="label">Seller company *</label>
+          <select name="companyId" required className="input" defaultValue={companies[0]?.id ?? ""}>
             <option value="">— select —</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.legalName}</option>)}
           </select>
         </div>
-        <div><label className="label">Client</label>
-          <select name="clientId" className="input">
+        <div><label className="label">Client *</label>
+          <select name="clientId" required className="input">
             <option value="">— select —</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.companyName || c.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" name="autoSend" /> Auto-send generated invoices
+        </label>
+        <div><label className="label">Auto-send channel</label>
+          <select name="sendChannel" className="input" defaultValue="NONE">
+            <option value="NONE">None (generate only)</option>
+            <option value="EMAIL">Email</option>
+            <option value="WHATSAPP">WhatsApp</option>
           </select>
         </div>
       </div>

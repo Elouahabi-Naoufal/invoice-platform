@@ -3,6 +3,7 @@ import { requireUser } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
 import { safeFindMany } from "@/lib/safe";
 import { ReminderForm } from "@/components/ReminderForm";
+import { ReminderActions } from "@/components/ReminderActions";
 import { formatMoney } from "@/domain/invoice";
 
 export default async function RelancesPage() {
@@ -14,7 +15,7 @@ export default async function RelancesPage() {
   const issued = await safeFindMany(() => prisma.invoice.findMany({ where: { ownerId: u.id, status: "ISSUED" }, select: { id: true, invoiceNumber: true, dueDate: true }, orderBy: { dueDate: "asc" }, take: 100 }), []);
   return (
     <div>
-      <div className="mb-5"><h1 className="page-title">Relances</h1><p className="meta mt-1">Overdue invoices and scheduled reminders — channel, date and invoice are all your choices.</p></div>
+      <div className="mb-5"><h1 className="page-title">Relances</h1><p className="meta mt-1">Overdue invoices and scheduled reminders. Reminders send automatically when due (email or WhatsApp); you can also send one now.</p></div>
       <div className="card mb-4 p-4"><h2 className="font-semibold mb-2">Schedule a reminder</h2><ReminderForm invoices={issued.map((i) => ({ ...i, dueDate: i.dueDate ? new Date(i.dueDate).toISOString() : null })) as never} /></div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card overflow-hidden">
@@ -34,10 +35,24 @@ export default async function RelancesPage() {
           <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Scheduled reminders</span></div>
           {reminders.length === 0 ? <p className="p-4 text-sm text-ink-500">No reminders yet</p> : (
             <table className="tbl">
-              <thead><tr><th>Invoice</th><th>When</th><th>Channel</th><th>Status</th></tr></thead>
+              <thead><tr><th>Invoice</th><th>When</th><th>Channel</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {reminders.map((r) => (
-                  <tr key={r.id}><td className="font-medium">{r.invoice.invoiceNumber}</td><td className="tabular-nums text-ink-500">{new Date(r.scheduledAt).toLocaleString()}</td><td className="text-ink-500">{r.channel}</td><td>{r.sentAt ? <span className="badge badge-emerald">Sent</span> : <span className="badge">Pending</span>}</td></tr>
+                  <tr key={r.id}>
+                    <td className="font-medium">{r.invoice.invoiceNumber}</td>
+                    <td className="tabular-nums text-ink-500">{new Date(r.scheduledAt).toLocaleString()}</td>
+                    <td className="text-ink-500">{r.channel}</td>
+                    <td>
+                      {r.sentAt ? (
+                        <span className="badge badge-emerald">Sent</span>
+                      ) : r.lastError ? (
+                        <span className="badge badge-amber" title={r.lastError}>Failed ({r.attempts})</span>
+                      ) : (
+                        <span className="badge">Pending</span>
+                      )}
+                    </td>
+                    <td className="text-right"><ReminderActions id={r.id} sent={!!r.sentAt} /></td>
+                  </tr>
                 ))}
               </tbody>
             </table>

@@ -40,14 +40,28 @@ export default async function Dashboard() {
   const active = companies.find((c) => c.id === activeId) ?? companies[0];
   const { items: rows } = await listInvoices({ companyId: active.id, pageSize: 100 });
   const live = rows.filter((r) => r.status !== "CANCELLED");
-  const outstanding = live.filter((r) => r.status === "ISSUED").reduce((a, r) => a + r.remaining, 0);
-  const overdueCount = live.filter((r) => r.display === "OVERDUE").length;
   const outstandingCount = live.filter((r) => r.status === "ISSUED").length;
+  const overdueCount = live.filter((r) => r.display === "OVERDUE").length;
   const month = new Date().toISOString().slice(0, 7);
-  const paidMonth = live
-    .flatMap((r) => r.payments.map((p) => ({ ...p, cur: r.currency })))
-    .filter((p) => new Date(p.paymentDate).toISOString().slice(0, 7) === month);
-  const paidMonthTotal = paidMonth.reduce((a, p) => a + p.amountMinor, 0);
+  // Never sum across currencies: group every figure by its currency.
+  const outstandingByCurrency = new Map<string, number>();
+  for (const r of live.filter((r) => r.status === "ISSUED")) {
+    outstandingByCurrency.set(r.currency, (outstandingByCurrency.get(r.currency) ?? 0) + r.remaining);
+  }
+  const paidByCurrency = new Map<string, number>();
+  let paymentCount = 0;
+  for (const r of live) {
+    for (const p of r.payments) {
+      if (new Date(p.paymentDate).toISOString().slice(0, 7) !== month) continue;
+      paidByCurrency.set(r.currency, (paidByCurrency.get(r.currency) ?? 0) + p.amountMinor);
+      paymentCount += 1;
+    }
+  }
+  const moneyList = (m: Map<string, number>) =>
+    [...m.entries()]
+      .filter(([, v]) => v !== 0)
+      .map(([c, v]) => formatMoney(v, c))
+      .join(" · ") || formatMoney(0, active.defaultCurrency);
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -64,15 +78,15 @@ export default async function Dashboard() {
           icon={<Wallet size={22} className="text-brand-600 dark:text-brand-400" />}
           tint="bg-brand-50 dark:bg-brand-500/15"
           label="Outstanding"
-          value={formatMoney(outstanding, active.defaultCurrency)}
+          value={moneyList(outstandingByCurrency)}
           sub={`${outstandingCount} open · ${overdueCount} overdue`}
         />
         <Metric
           icon={<ArrowDownLeft size={22} className="text-success-600 dark:text-success-500" />}
           tint="bg-success-50 dark:bg-success-500/15"
           label="Collected this month"
-          value={formatMoney(paidMonthTotal, active.defaultCurrency)}
-          sub={`${paidMonth.length} payments`}
+          value={moneyList(paidByCurrency)}
+          sub={`${paymentCount} payments`}
         />
         <div className="card flex items-center gap-4 p-5">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-ink-100 dark:bg-white/10">

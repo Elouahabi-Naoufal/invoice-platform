@@ -1,0 +1,221 @@
+/**
+ * Reporting engine — server-only (not a "use server" module).
+ * All totals are computed from ISSUED invoices (cancelled excluded from revenue).
+ * Money is integer minor units; never mix currencies in one figure.
+ */
+import { prisma } from "@/lib/prisma";
+import { divRoundHalfUp } from "@/domain/invoice";
+
+export interface ReportFilters {
+  companyId?: string;
+  from?: Date;
+  to?: Date;
+}
+
+interface InvoiceRow {
+  id: string;
+  status: string;
+  currency: string;
+  totalTTC: number;
+  issueDate: Date;
+  dueDate: Date | null;
+  taxBreakdown: string | null;
+  linesSnapshot: string | null;
+  clientId: string | null;
+  client: { companyName: string | null; name: string } | null;
+  buyerSnapshot: string | null;
+  payments: { amountMinor: number }[];
+}
+
+function parseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+  try {
+    const v: unknown = JSON.parse(raw);
+    return Array.isArray(v) ? (v as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function paidOf(inv: { payments: { amountMinor: number }[] }): number {
+  return inv.payments.reduce((a, p) => a + p.amountMinor, 0);
+}
+
+export interface CurrencySummary {
+  currency: string;
+  invoiced: number;
+  collected: number;
+  outstanding: number;
+  overdue: number;
+  count: number;
+}
+
+export interface TaxSummaryRow {
+  currency: string;
+  rateBps: number;
+  taxable: number;
+  tax: number;
+}
+
+export interface AgingRow {
+  currency: string;
+  current: number;
+  d1_30: number;
+  d31_60: number;
+  d61_90: number;
+  d90plus: number;
+  total: number;
+}
+
+export interface ClientSummaryRow {
+  clientId: string;
+  name: string;
+  currency: string;
+  invoiced: number;
+  collected: number;
+  outstanding: number;
+}
+
+export interface ProductSummaryRow {
+  description: string;
+  currency: string;
+  quantityMilli: number;
+  netHT: number;
+}
+
+export interface ReportData {
+  currency: CurrencySummary[];
+  tax: TaxSummaryRow[];
+  aging: AgingRow[];
+  byClient: ClientSummaryRow[];
+  byProduct: ProductSummaryRow[];
+  invoiceCount: number;
+}
+
+export async function buildReports(ownerId: string, filters: ReportFilters = {}): Promise<ReportData> {
+  const where: Record<string, unknown> = { ownerId, status: "ISSUED" };
+  if (filters.companyId) where.companyId = filters.companyId;
+  if (filters.from || filters.to) {
+    where.issueDate = {
+      ...(filters.from ? { gte: filters.from } : {}),
+      ...(filters.to ? { lte: filters.to } : {}),
+    };
+  }
+  const invoices = (await prisma.invoice.findMany({
+    where: where as never,
+    include: { payments: true, client: true },
+    orderBy: { issueDate: "asc" },
+  })) as unknown as InvoiceRow[];
+
+  const now = new Date();
+  const currencyMap = new Map<string, CurrencySummary>();
+  const taxMap = new Map<string, TaxSummaryRow>();
+  const agingMap = new Map<string, AgingRow>();
+  const clientMap = new Map<string, ClientSummaryRow>();
+  const productMap = new Map<string, ProductSummaryRow>();
+
+  const ensureCurrency = (c: string) => {
+    let row = currencyMap.get(c);
+    if (!row) {
+      row = { currency: c, invoiced: 0, collected: 0, outstanding: 0, overdue: 0, count: 0 };
+      currencyMap.set(c, row);
+    }
+    return row;
+  };
+  const ensureAging = (c: string) => {
+    let row = agingMap.get(c);
+    if (!row) {
+      row = { currency: c, current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90plus: 0, total: 0 };
+      agingMap.set(c, row);
+    }
+    return row;
+  };
+
+  for (const inv of invoices) {
+    const paid = paidOf(inv);
+    const remaining = inv.totalTTC - paid;
+    const cs = ensureCurrency(inv.currency);
+    cs.invoiced += inv.totalTTC;
+    cs.collected += paid;
+    cs.outstanding += Math.max(0, remaining);
+    cs.count += 1;
+
+    if (remaining > 0 && inv.dueDate && inv.dueDate < now) {
+      cs.overdue += remaining;
+      const days = Math.floor((now.getTime() - inv.dueDate.getTime()) / 86400000);
+      const ag = ensureAging(inv.currency);
+      if (days <= 30) ag.d1_30 += remaining;
+      else if (days <= 60) ag.d31_60 += remaining;
+      else if (days <= 90) ag.d61_90 += remaining;
+      else ag.d90plus += remaining;
+      ag.total += remaining;
+    } else if (remaining > 0) {
+      const ag = ensureAging(inv.currency);
+      ag.current += remaining;
+      ag.total += remaining;
+    }
+
+    for (const b of parseArray<{ rateBps: number; taxable: number; tax: number }>(inv.taxBreakdown)) {
+      const key = `${inv.currency}:${b.rateBps}`;
+      const row = taxMap.get(key) ?? { currency: inv.currency, rateBps: b.rateBps, taxable: 0, tax: 0 };
+      row.taxable += b.taxable;
+      row.tax += b.tax;
+      taxMap.set(key, row);
+    }
+
+    const name = inv.client?.companyName || inv.client?.name || buyerName(inv.buyerSnapshot) || "—";
+    const ckey = `${inv.clientId ?? name}:${inv.currency}`;
+    const crow = clientMap.get(ckey) ?? { clientId: inv.clientId ?? name, name, currency: inv.currency, invoiced: 0, collected: 0, outstanding: 0 };
+    crow.invoiced += inv.totalTTC;
+    crow.collected += paid;
+    crow.outstanding += Math.max(0, remaining);
+    clientMap.set(ckey, crow);
+
+    for (const l of parseArray<{ description: string; quantityMilli: number; unitPriceMinor: number; discountBps: number }>(inv.linesSnapshot)) {
+      const gross = divRoundHalfUp(l.quantityMilli * l.unitPriceMinor, 1000);
+      const net = gross - divRoundHalfUp(gross * l.discountBps, 10000);
+      const pkey = `${l.description}:${inv.currency}`;
+      const prow = productMap.get(pkey) ?? { description: l.description, currency: inv.currency, quantityMilli: 0, netHT: 0 };
+      prow.quantityMilli += l.quantityMilli;
+      prow.netHT += net;
+      productMap.set(pkey, prow);
+    }
+  }
+
+  const byNet = <T extends { netHT?: number; invoiced?: number }>(a: T, b: T) => (b.netHT ?? b.invoiced ?? 0) - (a.netHT ?? a.invoiced ?? 0);
+
+  return {
+    currency: [...currencyMap.values()].sort((a, b) => a.currency.localeCompare(b.currency)),
+    tax: [...taxMap.values()].sort((a, b) => a.currency.localeCompare(b.currency) || a.rateBps - b.rateBps),
+    aging: [...agingMap.values()].sort((a, b) => a.currency.localeCompare(b.currency)),
+    byClient: [...clientMap.values()].sort(byNet),
+    byProduct: [...productMap.values()].sort(byNet),
+    invoiceCount: invoices.length,
+  };
+}
+
+function buyerName(snapshot: string | null): string {
+  if (!snapshot) return "";
+  try {
+    const b = JSON.parse(snapshot) as { companyName?: string; name?: string };
+    return b.companyName || b.name || "";
+  } catch {
+    return "";
+  }
+}
+
+/** Flat CSV of the report (all sections), semicolon-separated for Excel/FR. */
+export function reportsToCsv(data: ReportData): string {
+  const esc = (v: unknown) => {
+    const s = String(v ?? "");
+    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows: string[] = [];
+  rows.push("section;currency;key;invoiced_or_taxable;collected_or_tax;outstanding");
+  for (const c of data.currency) rows.push(["summary", c.currency, c.count + " invoices", c.invoiced / 100, c.collected / 100, c.outstanding / 100].map(esc).join(";"));
+  for (const t of data.tax) rows.push(["tax", t.currency, `TVA ${t.rateBps / 100}%`, t.taxable / 100, t.tax / 100, ""].map(esc).join(";"));
+  for (const a of data.aging) rows.push(["aging", a.currency, "receivables", "", "", a.total / 100].map(esc).join(";"));
+  for (const cl of data.byClient) rows.push(["client", cl.currency, cl.name, cl.invoiced / 100, cl.collected / 100, cl.outstanding / 100].map(esc).join(";"));
+  for (const p of data.byProduct) rows.push(["product", p.currency, p.description, p.netHT / 100, "", ""].map(esc).join(";"));
+  return rows.join("\n");
+}

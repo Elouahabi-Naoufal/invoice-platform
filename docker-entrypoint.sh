@@ -32,6 +32,14 @@ fi
 
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
 
+echo ">> Starting automation worker (recurring invoices + reminders)..."
+if [ -n "${CRON_SECRET}" ] && [ "${SCHEDULER_ENABLED}" != "false" ]; then
+  run_as_nextjs node ./scripts/worker.mjs &
+  echo ">> automation worker started"
+else
+  echo ">> automation worker disabled (set CRON_SECRET to enable)"
+fi
+
 echo ">> Starting server..."
 if [ "$(id -u)" = "0" ] && command -v runuser >/dev/null 2>&1 && id nextjs >/dev/null 2>&1; then
   exec runuser -u nextjs -- "$@"
