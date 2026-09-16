@@ -6,7 +6,7 @@ export default function PublicFooter() {
       <Link href="/home" className="hover:text-ink-700 dark:hover:text-gray-200">Home</Link>
       <Link href="/privacy" className="hover:text-ink-700 dark:hover:text-gray-200">Privacy policy</Link>
       <Link href="/terms" className="hover:text-ink-700 dark:hover:text-gray-200">Terms of service</Link>
-      <span>© {new Date().getFullYear()} Invora</span>
+      <span>Invora — © {new Date().getFullYear()} Orbit Labs</span>
     </footer>
   );
 }

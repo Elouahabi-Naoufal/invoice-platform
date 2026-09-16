@@ -21,9 +21,10 @@ export default function PrivacyPage() {
         <section>
           <h2 className="section-title mb-1">1. Who we are</h2>
           <p>
-            Invora is an invoicing and finance application operated by the business that runs this
-            deployment, reachable at <a className="text-brand-600 hover:underline" href="https://invoice.naoufalelouahabi.com">invoice.naoufalelouahabi.com</a>.
-            For any privacy question or request, contact <a className="text-brand-600 hover:underline" href="mailto:contact@naoufalelouahabi.com">contact@naoufalelouahabi.com</a>.
+            Invora is an invoicing and finance application operated by <strong>Orbit Labs</strong>, reachable at{" "}
+            <a className="text-brand-600 hover:underline" href="https://invoice.naoufalelouahabi.com">invoice.naoufalelouahabi.com</a>.
+            For any privacy question or request, contact{" "}
+            <a className="text-brand-600 hover:underline" href="mailto:contact@naoufalelouahabi.com">contact@naoufalelouahabi.com</a>.
           </p>
         </section>
 

@@ -20,7 +20,10 @@ export default function TermsPage() {
       <div className="grid gap-6 text-[14px] leading-relaxed text-ink-700 dark:text-gray-300">
         <section>
           <h2 className="section-title mb-1">1. Acceptance</h2>
-          <p>By creating an account or using Invora, you agree to these terms. If you do not agree, do not use the service.</p>
+          <p>
+            Invora is provided by <strong>Orbit Labs</strong>. By creating an account or using Invora, you agree to
+            these terms. If you do not agree, do not use the service.
+          </p>
         </section>
 
         <section>
