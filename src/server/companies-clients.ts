@@ -4,18 +4,24 @@ import path from "path";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { companySchema, clientSchema } from "@/server/validation";
+import { publicUploadUrl, uploadDiskPath } from "@/lib/uploads";
 
 /** All queries scoped to ownerId — IDOR-safe by construction. */
 export async function listCompanies() {
   const u = await requireUser();
-  return prisma.company.findMany({ where: { ownerId: u.id, archived: false }, orderBy: { createdAt: "asc" } });
+  const companies = await prisma.company.findMany({ where: { ownerId: u.id, archived: false }, orderBy: { createdAt: "asc" } });
+  return companies.map((c) => ({
+    ...c,
+    logoPath: publicUploadUrl(c.logoPath),
+    signaturePath: publicUploadUrl(c.signaturePath),
+  }));
 }
 
 export async function getCompany(id: string) {
   const u = await requireUser();
   const c = await prisma.company.findFirst({ where: { id, ownerId: u.id } });
   if (!c) throw new Error("not found");
-  return c;
+  return { ...c, logoPath: publicUploadUrl(c.logoPath), signaturePath: publicUploadUrl(c.signaturePath) };
 }
 
 export async function createCompany(raw: unknown) {
@@ -80,7 +86,7 @@ export async function uploadLogo(companyId: string, form: FormData) {
     try { await fs.unlink(path.join(dir, `${companyId}.${e}`)); } catch { /* absent */ }
   }
   await fs.writeFile(path.join(dir, `${companyId}.png`), png);
-  const logoPath = `/uploads/logos/${companyId}.png`;
+  const logoPath = `/api/uploads/logos/${companyId}.png`;
   return prisma.company.update({ where: { id: companyId }, data: { logoPath } });
 }
 
@@ -123,17 +129,21 @@ export async function uploadSignature(companyId: string, form: FormData) {
   await fs.mkdir(dir, { recursive: true });
   try { await fs.unlink(path.join(dir, `${companyId}.sig.png`)); } catch { /* absent */ }
   await fs.writeFile(path.join(dir, `${companyId}.sig.png`), png);
-  const signaturePath = `/uploads/logos/${companyId}.sig.png`;
+  const signaturePath = `/api/uploads/logos/${companyId}.sig.png`;
   return prisma.company.update({ where: { id: companyId }, data: { signaturePath } });
 }
 export async function logoDataUri(logoPath: string | null | undefined): Promise<string | null> {
-  if (!logoPath || !logoPath.startsWith("/uploads/")) return null;
+  if (!logoPath) return null;
+  if (logoPath.startsWith("data:")) return logoPath;
+  const rel = uploadDiskPath(logoPath);
+  if (!rel) return null;
   try {
-    const abs = path.join(process.cwd(), "public", logoPath.replace(/^\/+/, ""));
-    if (!abs.startsWith(path.join(process.cwd(), "public"))) return null; // traversal guard
+    const root = path.join(process.cwd(), "public");
+    const abs = path.join(root, rel);
+    if (!abs.startsWith(root + path.sep)) return null; // traversal guard
     const buf = await fs.readFile(abs);
     const ext = path.extname(abs).slice(1).toLowerCase();
-    const mime = ext === "jpg" ? "image/jpeg" : ext === "webp" ? "image/webp" : "image/png";
+    const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : "image/png";
     return `data:${mime};base64,${buf.toString("base64")}`;
   } catch {
     return null;

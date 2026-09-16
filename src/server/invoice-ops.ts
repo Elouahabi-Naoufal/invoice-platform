@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { deriveDisplayStatus, calcInvoice } from "@/domain/invoice";
+import { publicUploadUrl } from "@/lib/uploads";
 import {
   createDraftInvoice as coreCreate,
   finalizeInvoice as coreFinalize,
@@ -185,12 +186,16 @@ export async function getInvoiceDetail(id: string) {
   });
   if (!inv) throw new Error("not found");
   const paid = inv.payments.reduce((a, p) => a + p.amountMinor, 0);
+  const sellerViewRaw = safeJsonParse(inv.sellerSnapshot, inv.company) as Record<string, unknown> | null;
+  const sellerView = sellerViewRaw && typeof sellerViewRaw === "object"
+    ? { ...sellerViewRaw, logoPath: publicUploadUrl(sellerViewRaw.logoPath as string | null | undefined), signaturePath: publicUploadUrl(sellerViewRaw.signaturePath as string | null | undefined) }
+    : sellerViewRaw;
   return {
     ...inv,
     paidAmount: paid,
     remaining: inv.totalTTC - paid,
     display: deriveDisplayStatus({ status: inv.status as "DRAFT" | "ISSUED" | "CANCELLED", totalTTC: inv.totalTTC, paidAmount: paid, dueDate: inv.dueDate, sentAt: inv.sentAt }),
-    sellerView: safeJsonParse(inv.sellerSnapshot, inv.company),
+    sellerView,
     buyerView: safeJsonParse(inv.buyerSnapshot, inv.client),
   };
 }
