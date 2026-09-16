@@ -216,6 +216,12 @@ async function startClient(): Promise<void> {
   runtime.startPromise = (async () => {
     try {
       await fs.mkdir(whatsappSessionDir(), { recursive: true });
+      log(
+        "info",
+        `starting chrome=${resolveChromePath() ?? "(puppeteer default)"} ` +
+          `xdg_config=${process.env.XDG_CONFIG_HOME ?? "(unset)"} ` +
+          `xdg_cache=${process.env.XDG_CACHE_HOME ?? "(unset)"}`
+      );
       if (!runtime.client) {
         const { Client: WhatsAppClient, LocalAuth } = await loadWwebjs();
         const client = new WhatsAppClient({

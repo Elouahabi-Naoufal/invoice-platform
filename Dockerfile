@@ -47,6 +47,11 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /app/data /app/public/uploads/logos \
   && chown -R nextjs:nodejs /app/data /app/public/uploads
 
+# Chromium's crashpad handler needs writable config/cache dirs. The `nextjs`
+# system user has no usable home, so point XDG dirs at /tmp (created in entrypoint).
+ENV XDG_CONFIG_HOME=/tmp/.chromium-config
+ENV XDG_CACHE_HOME=/tmp/.chromium-cache
+
 VOLUME ["/app/data", "/app/public/uploads"]
 
 EXPOSE 3007

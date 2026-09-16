@@ -20,6 +20,10 @@ run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
   || run_as_nextjs ./node_modules/.bin/prisma db push \
   || echo ">> WARNING: migration failed, continuing startup."
 
+# Writable XDG dirs for Chromium's crashpad handler (see Dockerfile ENV).
+run_as_nextjs mkdir -p "${XDG_CONFIG_HOME:-/tmp/.chromium-config}" "${XDG_CACHE_HOME:-/tmp/.chromium-cache}" \
+  || echo ">> WARNING: could not create Chromium XDG dirs."
+
 if [ "${SEED_ON_BOOT}" = "1" ]; then
   echo ">> SEED_ON_BOOT=1: topping up companies/clients (never deletes)..."
   run_as_nextjs node ./scripts/seed-data.mjs \

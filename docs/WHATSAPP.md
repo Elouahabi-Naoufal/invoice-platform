@@ -90,6 +90,11 @@ account ID, QR image, and sanitized errors are exposed to authenticated users.
 - If authentication fails repeatedly, reset the session and relink.
 - If the process restarts, reconnect once; LocalAuth restores the session when
   its volume is intact.
+- `chrome_crashpad_handler: --database is required` at launch means Chromium
+  could not write its config/cache dirs (the container user has no usable
+  home). The image sets `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` to writable `/tmp`
+  paths and the entrypoint creates them — do not override these with
+  read-only locations.
 
 ## Limitations
 
