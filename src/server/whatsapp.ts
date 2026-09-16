@@ -96,6 +96,24 @@ function sessionPath(): string {
   return path.join(whatsappSessionDir(), `session-${whatsappClientId()}`);
 }
 
+/**
+ * Chromium writes a Singleton* lock inside its user-data-dir. Because the
+ * session lives on a persistent volume, a lock left by a previous container
+ * (different hostname) blocks every later launch with "profile appears to be
+ * in use ... on another computer". These locks are meaningless across container
+ * restarts, so clear them before starting.
+ */
+async function clearStaleChromiumLock(): Promise<void> {
+  const dir = sessionPath();
+  for (const name of ["SingletonLock", "SingletonSocket", "SingletonCookie"]) {
+    try {
+      await fs.rm(path.join(dir, name), { force: true });
+    } catch {
+      // absent — nothing to clear
+    }
+  }
+}
+
 export async function whatsappSessionExists(): Promise<boolean> {
   try {
     const stats = await fs.stat(sessionPath());
@@ -258,6 +276,7 @@ async function startClient(): Promise<void> {
   runtime.startPromise = (async () => {
     try {
       await fs.mkdir(whatsappSessionDir(), { recursive: true });
+      await clearStaleChromiumLock();
       log(
         "info",
         `starting chrome=${resolveChromePath() ?? "(puppeteer default)"} ` +
