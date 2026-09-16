@@ -9,6 +9,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 FROM base AS deps
 COPY package.json package-lock.json ./
+COPY scripts ./scripts
 ENV NODE_ENV=development
 RUN npm ci --no-audit --no-fund
 
@@ -19,6 +20,7 @@ COPY . .
 RUN mkdir -p data public/uploads/logos
 ENV DATABASE_URL="file:./prisma/dev.db"
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN node scripts/patch-whatsapp-web.cjs
 RUN npx prisma generate
 RUN npm run build
 RUN npm prune --omit=dev --no-audit --no-fund
