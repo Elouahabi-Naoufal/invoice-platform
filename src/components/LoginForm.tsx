@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Receipt } from "lucide-react";
 import { login, register } from "@/server/auth";
 
 export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | "register"; singleUserClosed: boolean }) {
@@ -28,9 +27,8 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
       <div className="w-full max-w-[400px]">
         <div className="card p-8">
           <div className="mb-6 flex items-center gap-2.5">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500 text-white shadow-sm">
-              <Receipt size={20} />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/invora-mark.png" alt="Invora" className="h-9 w-9" />
             <span className="text-xl font-semibold tracking-tight">Invora</span>
           </div>
           <h1 className="page-title mb-1">{mode === "login" ? "Sign in" : "Create admin account"}</h1>

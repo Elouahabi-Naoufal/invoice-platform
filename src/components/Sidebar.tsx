@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Receipt, Package, Repeat, Bell, Link2, Shield, Handshake, Globe, FileDown, BarChart3 } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Building2, Settings, Plus, Package, Repeat, Bell, Link2, Shield, Handshake, Globe, FileDown, BarChart3 } from "lucide-react";
 
 const NAV = [
   {
@@ -33,8 +33,9 @@ export default function Sidebar() {
   return (
     <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-ink-200 bg-white px-4 py-5 max-lg:hidden dark:border-white/10 dark:bg-[#101828]">
       <Link href="/" className="mb-8 flex items-center gap-2.5 px-2">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-white shadow-sm">
-          <Receipt size={19} />
+        <span className="grid h-8 w-8 place-items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/invora-mark.png" alt="Invora" className="h-8 w-8" />
         </span>
         <span className="text-xl font-semibold tracking-tight text-ink-950 dark:text-white">
           Invora
