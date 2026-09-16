@@ -48,7 +48,13 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
             {mode === "login" ? <a href="/login/register" className="font-medium text-brand-600 hover:text-brand-700">Create the owner account</a> : <a href="/login" className="font-medium text-brand-600 hover:text-brand-700">Back to sign in</a>}
           </p>
         </div>
-        <p className="meta mt-4 text-center">Moroccan invoicing · art. 145 CGI ready</p>
+        <p className="mt-4 text-center text-[12px] text-ink-400">
+          <a href="/home" className="hover:text-ink-700 dark:hover:text-gray-200">Home</a>
+          {" · "}
+          <a href="/privacy" className="hover:text-ink-700 dark:hover:text-gray-200">Privacy policy</a>
+          {" · "}
+          <a href="/terms" className="hover:text-ink-700 dark:hover:text-gray-200">Terms of service</a>
+        </p>
       </div>
     </div>
   );
