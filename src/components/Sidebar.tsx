@@ -37,7 +37,7 @@ export default function Sidebar() {
           <Receipt size={19} />
         </span>
         <span className="text-xl font-semibold tracking-tight text-ink-950 dark:text-white">
-          Facturo
+          Invora
         </span>
       </Link>
       <nav className="flex flex-col gap-6">

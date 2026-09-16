@@ -1,4 +1,4 @@
-# Invoice Platform — v1 (real invoicing, not CRUD demo)
+# Invora — invoicing & finance for Moroccan businesses
 
 Fresh project at `50_100/invoice-platform`. Stack: Next.js 14 + React 18 + Prisma SQLite + Zod + @react-pdf/renderer.
 

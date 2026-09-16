@@ -12,6 +12,11 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
+export const metadata = {
+  title: "Invora",
+  description: "Invoicing and finance for Moroccan businesses — invoices, quotes, credit notes, payments, reports.",
+};
+
 async function sessionUser() {
   const token = (await cookies()).get("ip_session")?.value;
   if (!token) return null;

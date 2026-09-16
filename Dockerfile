@@ -1,4 +1,4 @@
-# Invoice Platform — production image (Next.js + Prisma + SQLite + sharp)
+# Invora — production image (Next.js + Prisma + SQLite + sharp)
 # Layering is deliberate: deps/ are cached and reused when only app code changes.
 FROM node:22-bookworm-slim AS base
 WORKDIR /app

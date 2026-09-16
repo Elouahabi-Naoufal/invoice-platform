@@ -31,7 +31,7 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500 text-white shadow-sm">
               <Receipt size={20} />
             </span>
-            <span className="text-xl font-semibold tracking-tight">Facturo</span>
+            <span className="text-xl font-semibold tracking-tight">Invora</span>
           </div>
           <h1 className="page-title mb-1">{mode === "login" ? "Sign in" : "Create admin account"}</h1>
           <p className="meta mb-6">

@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-echo ">> Invoice Platform starting..."
+echo ">> Invora starting..."
 
 mkdir -p /app/data /app/public/uploads/logos
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
