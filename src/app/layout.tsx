@@ -15,6 +15,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 export const metadata = {
   title: "Invora",
   description: "Invoicing and finance for Moroccan businesses — invoices, quotes, credit notes, payments, reports.",
+  // Google Search Console ownership verification (set GOOGLE_SITE_VERIFICATION
+  // to the content value of the HTML tag Google gives you).
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 async function sessionUser() {
