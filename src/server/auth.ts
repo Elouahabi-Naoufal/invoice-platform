@@ -93,6 +93,14 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return { ok: true };
 }
 
+export async function updateProfile(displayName: string) {
+  const user = await requireUser();
+  const name = String(displayName ?? "").trim();
+  if (name.length < 2) throw new Error("display name must be at least 2 characters");
+  await prisma.user.update({ where: { id: user.id }, data: { displayName: name } });
+  return { ok: true };
+}
+
 export async function logout() {
   (await cookies()).delete(COOKIE);
   (await cookies()).delete(ACTIVE_COMPANY);
