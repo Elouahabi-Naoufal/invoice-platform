@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createRecurringTemplate, toggleRecurringTemplate, generateInvoiceFromTemplate } from "@/server/recurring";
 import { useToast } from "@/components/ui";
 
-export function RecurringForm({ companies, clients, onDone }: { companies: { id: string; legalName: string }[]; clients: { id: string; name: string; companyName?: string | null }[]; onDone?: () => void }) {
+export function RecurringForm({ companies, clients, defaultCompanyId, onDone }: { companies: { id: string; legalName: string }[]; clients: { id: string; name: string; companyName?: string | null }[]; defaultCompanyId?: string | null; onDone?: () => void }) {
   const r = useRouter();
   const toast = useToast();
   const [lines, setLines] = useState([{ description: "", quantityMilli: 1000, unit: "piece", unitPriceMinor: 0, discountBps: 0, taxRateBps: 2000, taxExempt: false }]);
@@ -44,7 +44,7 @@ export function RecurringForm({ companies, clients, onDone }: { companies: { id:
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <div><label className="label">Seller company *</label>
-          <select name="companyId" required className="input" defaultValue={companies[0]?.id ?? ""}>
+          <select name="companyId" required className="input" defaultValue={defaultCompanyId ?? companies[0]?.id ?? ""}>
             <option value="">— select —</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.legalName}</option>)}
           </select>
         </div>

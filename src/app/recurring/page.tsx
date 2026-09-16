@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireActor } from "@/server/auth";
+import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
 import { safeFindMany } from "@/lib/safe";
 import { RecurringForm, RecurringActions } from "@/components/RecurringForm";
@@ -14,6 +14,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   const templates = await safeFindMany(() => prisma.recurringTemplate.findMany({ where: { ownerId }, include: { company: { select: { legalName: true } }, client: { select: { name: true, companyName: true } } }, orderBy: { createdAt: "desc" } }), []);
   const companies = await listCompanies();
   const clients = await listClients();
+  const activeCompanyId = await getActiveCompanyId();
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
@@ -21,7 +22,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
         <Link href="/recurring?new=1" className="btn-accent"><Plus size={15} /> New template</Link>
       </div>
       {searchParams.new !== undefined && (
-        <div className="card mb-4 p-5"><h2 className="font-semibold mb-3">New recurring template</h2><RecurringForm companies={companies as never} clients={clients as never} /></div>
+        <div className="card mb-4 p-5"><h2 className="font-semibold mb-3">New recurring template</h2><RecurringForm companies={companies as never} clients={clients as never} defaultCompanyId={activeCompanyId} /></div>
       )}
       {templates.length === 0 && searchParams.new === undefined ? (
         <EmptyState title="No templates" body="Create a template with name, period, client and lines — generate an invoice in one click." action={<Link href="/recurring?new=1" className="btn-accent"><Plus size={15} /> New template</Link>} />

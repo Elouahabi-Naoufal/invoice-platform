@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCompany, updateCompany, uploadLogo, uploadSignature } from "@/server/companies-clients";
+import { setActiveCompany } from "@/server/auth";
 import { useToast, Modal } from "@/components/ui";
 
 const ACCENTS = ["#1D4ED8", "#0F766E", "#334155", "#7C2D12", "#581C87", "#0E7490"];
@@ -209,7 +210,12 @@ export default function CompanyForm({ initial, onDone }: { initial?: C; onDone?:
     };
     try {
       if (initial?.id) { await updateCompany(String(initial.id), data); toast({ kind: "ok", title: "Company updated" }); }
-      else { await createCompany(data); toast({ kind: "ok", title: "Company created" }); }
+      else {
+        const created = await createCompany(data) as { id: string };
+        // Switch to the new company so the owner immediately works in the right entity.
+        if (created?.id) await setActiveCompany(created.id).catch(() => undefined);
+        toast({ kind: "ok", title: "Company created" });
+      }
       if (onDone) onDone();
       else { r.push("/companies"); r.refresh(); }
     } catch (e) {

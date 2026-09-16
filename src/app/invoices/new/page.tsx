@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireActor } from "@/server/auth";
+import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listCompanies, listClients } from "@/server/companies-clients";
 import { listProducts } from "@/server/products";
 import InvoiceBuilder, { DraftInit } from "@/components/InvoiceBuilder";
@@ -47,6 +47,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
   }
 
   const linkedType = searchParams.type === "RECTIFICATIVE" ? "RECTIFICATIVE" : undefined;
+  const activeCompanyId = await getActiveCompanyId();
 
-  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} linkedType={linkedType} draft={draft} catalog={catalog as never} />;
+  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} linkedType={linkedType} draft={draft} catalog={catalog as never} defaultCompanyId={activeCompanyId} />;
 }

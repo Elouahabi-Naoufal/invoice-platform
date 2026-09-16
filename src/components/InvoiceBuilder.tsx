@@ -35,15 +35,15 @@ function StepDot({ n, active, done }: { n: number; active: boolean; done: boolea
 
 export type CatalogItem = { id: string; name: string; description?: string | null; unit: string; unitPriceMinor: number; taxRateBps: number; taxExempt: boolean };
 
-export default function InvoiceBuilder({ companies, initialClients, linked, linkedType, draft, catalog }: {
+export default function InvoiceBuilder({ companies, initialClients, linked, linkedType, draft, catalog, defaultCompanyId }: {
   companies: Company[]; initialClients: Client[];
   linked?: { id: string; number: string | null } | null; linkedType?: string; draft?: DraftInit | null;
-  catalog?: CatalogItem[];
+  catalog?: CatalogItem[]; defaultCompanyId?: string | null;
 }) {
   const r = useRouter();
   const toast = useToast();
   const [step, setStep] = useState(0);
-  const [sellerId, setSellerId] = useState(draft?.companyId ?? companies[0]?.id ?? "");
+  const [sellerId, setSellerId] = useState(draft?.companyId ?? defaultCompanyId ?? companies[0]?.id ?? "");
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [buyerId, setBuyerId] = useState(draft?.clientId ?? "");
   const [q, setQ] = useState("");
