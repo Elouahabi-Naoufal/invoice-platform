@@ -4,12 +4,24 @@ export default {
   darkMode: "class",
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
+    // Tight, consistent radii — professional/enterprise feel (no pill cards).
+    borderRadius: {
+      none: "0px",
+      sm: "2px",
+      DEFAULT: "3px",
+      md: "4px",
+      lg: "4px",
+      xl: "4px",
+      "2xl": "4px",
+      "3xl": "4px",
+      full: "9999px",
+    },
     extend: {
       fontFamily: {
-        sans: ["var(--font-outfit)", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
-        // TailAdmin gray scale (mapped onto our ink tokens so pages reskin automatically)
+        // Neutral gray scale mapped onto our ink tokens so pages reskin automatically.
         ink: {
           950: "#101828",
           700: "#344054",
@@ -32,14 +44,10 @@ export default {
         error: { 50: "#FEF3F2", 500: "#F04438", 600: "#D92D20" },
         info: { 50: "#F0F9FF", 500: "#0BA5EC", 600: "#0086C9" },
       },
-      borderRadius: {
-        md: "8px",
-        lg: "12px",
-      },
       boxShadow: {
-        card: "0 1px 3px rgba(16,24,40,0.08)",
-        pop: "0 12px 32px rgba(16,24,40,0.18)",
-        doc: "0 2px 8px rgba(16,24,40,0.08), 0 12px 32px rgba(16,24,40,0.10)",
+        card: "0 1px 2px rgba(16,24,40,0.04)",
+        pop: "0 8px 24px rgba(16,24,40,0.14)",
+        doc: "0 1px 3px rgba(16,24,40,0.06), 0 10px 24px rgba(16,24,40,0.08)",
       },
     },
   },

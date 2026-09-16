@@ -13,26 +13,29 @@
   }
 }
 
-/* ============ TailAdmin-style system (Outfit, soft cards, brand blue) ============ */
+/* ============ Design system: crisp, professional, minimal radius ============ */
 @layer base {
   body {
     @apply bg-ink-50 text-ink-950 antialiased dark:bg-[#101828] dark:text-gray-100;
   }
   :focus-visible {
-    @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+    @apply outline-none ring-2 ring-brand-500/60 ring-offset-1;
+  }
+  h1, h2, h3 {
+    @apply tracking-tight;
   }
 }
 
 @layer components {
   /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-1.5 rounded px-3.5 py-2 text-[13px] font-medium transition disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-primary {
     @apply btn bg-ink-950 text-white hover:bg-ink-700 dark:bg-white dark:text-ink-950;
   }
   .btn-accent {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600 shadow-sm;
+    @apply btn bg-brand-500 text-white hover:bg-brand-600;
   }
   .btn-ghost {
     @apply btn text-ink-500 hover:bg-ink-100 hover:text-ink-950 dark:text-gray-300 dark:hover:bg-white/10;
@@ -44,52 +47,66 @@
     @apply btn border border-error-500/30 bg-white text-error-600 hover:bg-error-50 dark:bg-transparent dark:text-error-500;
   }
   .btn-sm {
-    @apply px-3 py-1.5 text-[13px];
+    @apply px-2.5 py-1.5 text-xs;
   }
 
   /* Inputs */
   .input {
-    @apply w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-gray-100;
+    @apply w-full rounded border border-ink-200 bg-white px-3 py-2 text-[13px] placeholder:text-ink-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-gray-100;
   }
   .label {
-    @apply block text-[13px] font-medium text-ink-700 mb-1.5 dark:text-gray-300;
+    @apply mb-1.5 block text-[12px] font-medium text-ink-700 dark:text-gray-300;
   }
   .hint {
-    @apply text-xs text-ink-400 mt-1;
+    @apply mt-1 text-[11px] text-ink-400;
   }
   .field-err {
-    @apply text-[13px] text-error-600 mt-1 font-medium;
+    @apply mt-1 text-[12px] font-medium text-error-600;
   }
 
   /* Surfaces */
   .card {
-    @apply rounded-2xl border border-ink-200 bg-white shadow-card dark:border-white/10 dark:bg-[#1D2939] dark:shadow-none;
+    @apply rounded border border-ink-200 bg-white shadow-card dark:border-white/10 dark:bg-[#1D2939] dark:shadow-none;
   }
   .section-title {
-    @apply text-[15px] font-semibold text-ink-950 dark:text-white;
+    @apply text-[14px] font-semibold text-ink-950 dark:text-white;
   }
   .page-title {
-    @apply text-2xl font-semibold text-ink-950 dark:text-white;
+    @apply text-[22px] font-semibold text-ink-950 dark:text-white;
   }
   .meta {
-    @apply text-[13px] text-ink-500 dark:text-gray-400;
+    @apply text-[12px] text-ink-500 dark:text-gray-400;
+  }
+
+  /* Status / tags */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-sm border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[11px] font-medium text-ink-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300;
+  }
+  .badge-emerald {
+    @apply border-success-500/30 bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500;
+  }
+  .badge-amber {
+    @apply border-warning-500/30 bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-500;
+  }
+  .badge-info {
+    @apply border-info-500/30 bg-info-50 text-info-600 dark:bg-info-500/15 dark:text-info-500;
   }
 
   /* Tables */
   .tbl {
-    @apply w-full text-sm;
+    @apply w-full text-[13px];
   }
   .tbl thead th {
-    @apply text-left text-xs font-medium uppercase text-ink-500 bg-ink-50/60 border-y border-ink-200 px-5 py-3 dark:bg-white/5 dark:border-white/10 dark:text-gray-400;
+    @apply border-y border-ink-200 bg-ink-50/70 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400;
   }
   .tbl tbody td {
-    @apply border-b border-ink-100 px-5 py-4 align-middle dark:border-white/5;
+    @apply border-b border-ink-100 px-4 py-3 align-middle dark:border-white/5;
   }
   .tbl tbody tr:last-child td {
     @apply border-b-0;
   }
   .tbl tbody tr {
-    @apply hover:bg-ink-50/70 transition-colors dark:hover:bg-white/5;
+    @apply transition-colors hover:bg-ink-50/70 dark:hover:bg-white/5;
   }
   .num {
     @apply text-right tabular-nums;
@@ -98,9 +115,9 @@
 
   /* Nav */
   .navlink {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-500 hover:bg-ink-100 hover:text-ink-950 transition-colors dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white;
+    @apply flex items-center gap-3 rounded px-3 py-2 text-[13px] font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-950 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white;
   }
   .navlink-active {
-    @apply bg-brand-50 text-brand-600 font-semibold dark:bg-brand-500/15 dark:text-brand-400;
+    @apply bg-brand-50 font-semibold text-brand-600 dark:bg-brand-500/15 dark:text-brand-400;
   }
 }

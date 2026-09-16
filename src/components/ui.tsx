@@ -17,7 +17,7 @@ const STATUS_STYLE: Record<string, string> = {
 export function StatusBadge({ value }: { value: string }) {
   const label = value.replace(/_/g, " ");
   return (
-    <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[value] ?? STATUS_STYLE.DRAFT}`}>
+    <span className={`inline-flex items-center justify-center gap-1 rounded-sm px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[value] ?? STATUS_STYLE.DRAFT}`}>
       {label}
     </span>
   );

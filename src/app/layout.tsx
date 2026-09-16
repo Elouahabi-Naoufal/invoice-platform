@@ -1,4 +1,4 @@
-import { Outfit } from "next/font/google";
+import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +10,7 @@ import LocaleToggle from "@/components/LocaleToggle";
 import { Toaster } from "@/components/ui";
 import "./globals.css";
 
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 async function sessionUser() {
   const token = (await cookies()).get("ip_session")?.value;
@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = (await cookies()).get("ip_locale")?.value ?? "fr";
   const dir = locale === "ar" ? "rtl" : "ltr";
   return (
-    <html lang={locale} dir={dir} className={outfit.variable}>
+    <html lang={locale} dir={dir} className={inter.variable}>
       <body className="font-sans">
         <Toaster>
           {user ? (

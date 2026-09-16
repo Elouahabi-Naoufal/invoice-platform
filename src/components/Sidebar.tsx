@@ -25,7 +25,7 @@ const NAV = [
   {
     group: "General",
     items: [
-      { href: "/settings", label: "Settings", icon: Settings, exact: false },
+      { href: "/settings", label: "Settings", icon: Settings, exact: true },
       { href: "/settings/email", label: "Email", icon: Mail, exact: true },
       { href: "/settings/whatsapp", label: "WhatsApp", icon: MessageCircle, exact: true },
     ],
@@ -35,7 +35,7 @@ const NAV = [
 export default function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="flex w-[260px] shrink-0 flex-col border-r border-ink-200 bg-white px-4 py-6 max-lg:hidden dark:border-white/10 dark:bg-[#101828]">
+    <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col overflow-y-auto border-r border-ink-200 bg-white px-4 py-5 max-lg:hidden dark:border-white/10 dark:bg-[#101828]">
       <Link href="/" className="mb-8 flex items-center gap-2.5 px-2">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-white shadow-sm">
           <Receipt size={19} />
