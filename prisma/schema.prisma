@@ -24,11 +24,14 @@ model User {
 model EmailSettings {
   id             String   @id @default(cuid())
   ownerId        String   @unique
+  authType       String   @default("SMTP") // SMTP | GOOGLE
   host           String
   port           Int      @default(587)
   secure         Boolean  @default(false)
   username       String?
   passwordEnc    String? // AES-256-GCM encrypted SMTP password
+  oauthRefreshTokenEnc String? // AES-256-GCM encrypted Google refresh token
+  googleEmail    String? // address connected via Google
   fromAddress    String
   fromName       String?
   replyTo        String?

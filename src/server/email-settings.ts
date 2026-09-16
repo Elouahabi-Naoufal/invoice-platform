@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
 import { encryptSecret } from "@/lib/crypto";
-import { buildTransport, fromHeader } from "@/server/email-transport";
+import { buildTransport, buildGoogleTransport, fromHeader } from "@/server/email-transport";
+import { googleConfig } from "@/server/google-oauth";
 
 const schema = z.object({
   host: z.string().min(1),
@@ -21,9 +22,13 @@ export async function getEmailSettings() {
   const { ownerId } = await requireActor();
   const s = await prisma.emailSettings.findUnique({ where: { ownerId } });
   const envFallback = Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
-  if (!s) return { configured: false, envFallback };
+  const googleAvailable = googleConfig().configured;
+  if (!s) return { configured: false, envFallback, googleAvailable };
   return {
     configured: true,
+    authType: s.authType,
+    googleEmail: s.googleEmail ?? "",
+    googleAvailable,
     enabled: s.enabled,
     host: s.host,
     port: s.port,
@@ -69,15 +74,23 @@ export async function testEmailSettings(to: string) {
   const s = await prisma.emailSettings.findUnique({ where: { ownerId } });
   if (!s) throw new Error("Connect an email first");
   const { decryptSecret } = await import("@/lib/crypto");
-  const transport = buildTransport({
-    host: s.host,
-    port: s.port,
-    secure: s.secure,
-    username: s.username ?? undefined,
-    password: decryptSecret(s.passwordEnc) ?? undefined,
-    fromAddress: s.fromAddress,
-    fromName: s.fromName ?? undefined,
-  });
+  let transport;
+  if (s.authType === "GOOGLE" && s.oauthRefreshTokenEnc) {
+    const { clientId, clientSecret } = googleConfig();
+    const refreshToken = decryptSecret(s.oauthRefreshTokenEnc);
+    if (!clientId || !clientSecret || !refreshToken) throw new Error("Google connection is not configured");
+    transport = buildGoogleTransport({ user: s.fromAddress, clientId, clientSecret, refreshToken });
+  } else {
+    transport = buildTransport({
+      host: s.host,
+      port: s.port,
+      secure: s.secure,
+      username: s.username ?? undefined,
+      password: decryptSecret(s.passwordEnc) ?? undefined,
+      fromAddress: s.fromAddress,
+      fromName: s.fromName ?? undefined,
+    });
+  }
   try {
     await transport.verify();
     await transport.sendMail({

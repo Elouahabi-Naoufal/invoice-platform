@@ -5,6 +5,9 @@ import { useToast } from "@/components/ui";
 
 interface Settings {
   configured: boolean;
+  authType?: string;
+  googleEmail?: string;
+  googleAvailable?: boolean;
   enabled?: boolean;
   host?: string;
   port?: number;
@@ -27,7 +30,7 @@ const PRESETS: { label: string; host: string; port: number; secure: boolean }[] 
   { label: "Custom SMTP", host: "", port: 587, secure: false },
 ];
 
-export default function EmailSettings() {
+export default function EmailSettings({ connected, error }: { connected?: string; error?: string } = {}) {
   const toast = useToast();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [busy, setBusy] = useState<"" | "save" | "test" | "disconnect">("");
@@ -71,6 +74,12 @@ export default function EmailSettings() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (connected === "google") toast({ kind: "ok", title: "Gmail connected", body: "Invoices will be sent from your Google account." });
+    if (error) toast({ kind: "err", title: "Google connection failed", body: error });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, error]);
 
   function applyPreset(label: string) {
     const p = PRESETS.find((x) => x.label === label);
@@ -138,8 +147,26 @@ export default function EmailSettings() {
 
   return (
     <div className="grid gap-3">
+      {settings.googleAvailable && (
+        <div className="card p-5">
+          <h2 className="section-title mb-1">Google / Gmail</h2>
+          {settings.authType === "GOOGLE" ? (
+            <p className="text-[13px] text-ink-500 dark:text-stone-400">
+              Connected as <strong className="text-ink-700 dark:text-gray-200">{settings.googleEmail || settings.fromAddress}</strong>.
+              Invoices and reminders are sent through your Google account.
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-[13px] text-ink-500 dark:text-stone-400">
+                Connect your Gmail or Google Workspace account with Google sign-in — no password needed.
+              </p>
+              <a href="/api/email/google/connect" className="btn-primary btn-sm inline-flex">Connect with Google</a>
+            </>
+          )}
+        </div>
+      )}
       <div className="card p-5">
-        <h2 className="section-title mb-1">Connect your email</h2>
+        <h2 className="section-title mb-1">{settings.authType === "GOOGLE" ? "Or use SMTP" : "Connect your email (SMTP)"}</h2>
         <p className="mb-4 text-[13px] text-ink-500 dark:text-stone-400">
           Invoices, reminders and quotes are sent from this mailbox. Use an app password for Gmail/Outlook
           (not your normal login password).

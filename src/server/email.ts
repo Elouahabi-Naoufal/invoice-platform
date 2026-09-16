@@ -1,7 +1,8 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
-import { buildTransport, fromHeader } from "@/server/email-transport";
+import { buildTransport, buildGoogleTransport, fromHeader } from "@/server/email-transport";
+import { googleConfig } from "@/server/google-oauth";
 import { decryptSecret } from "@/lib/crypto";
 
 export interface SendInvoiceEmailOptions {
@@ -37,6 +38,19 @@ function str(v: unknown): string {
 async function resolveSmtp(ownerId: string): Promise<{ transport: ReturnType<typeof buildTransport>; from: string; replyTo?: string }> {
   const settings = await prisma.emailSettings.findUnique({ where: { ownerId } });
   if (settings && settings.enabled) {
+    const from = fromHeader({ fromAddress: settings.fromAddress, fromName: settings.fromName ?? undefined });
+    const replyTo = settings.replyTo ?? undefined;
+    if (settings.authType === "GOOGLE" && settings.oauthRefreshTokenEnc) {
+      const { clientId, clientSecret } = googleConfig();
+      const refreshToken = decryptSecret(settings.oauthRefreshTokenEnc);
+      if (clientId && clientSecret && refreshToken) {
+        return {
+          transport: buildGoogleTransport({ user: settings.fromAddress, clientId, clientSecret, refreshToken }),
+          from,
+          replyTo,
+        };
+      }
+    }
     return {
       transport: buildTransport({
         host: settings.host,
@@ -47,8 +61,8 @@ async function resolveSmtp(ownerId: string): Promise<{ transport: ReturnType<typ
         fromAddress: settings.fromAddress,
         fromName: settings.fromName ?? undefined,
       }),
-      from: fromHeader({ fromAddress: settings.fromAddress, fromName: settings.fromName ?? undefined }),
-      replyTo: settings.replyTo ?? undefined,
+      from,
+      replyTo,
     };
   }
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
