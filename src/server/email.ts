@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
+import { buildTransport, fromHeader } from "@/server/email-transport";
+import { decryptSecret } from "@/lib/crypto";
 
 export interface SendInvoiceEmailOptions {
   to?: string | null;
@@ -28,6 +30,43 @@ function str(v: unknown): string {
 }
 
 /**
+ * Resolve the outbound mail transport for an owner:
+ * 1. the owner's connected mailbox (Settings → Email), else
+ * 2. environment SMTP (SMTP_HOST/SMTP_FROM) as a fallback.
+ */
+async function resolveSmtp(ownerId: string): Promise<{ transport: ReturnType<typeof buildTransport>; from: string; replyTo?: string }> {
+  const settings = await prisma.emailSettings.findUnique({ where: { ownerId } });
+  if (settings && settings.enabled) {
+    return {
+      transport: buildTransport({
+        host: settings.host,
+        port: settings.port,
+        secure: settings.secure,
+        username: settings.username ?? undefined,
+        password: decryptSecret(settings.passwordEnc) ?? undefined,
+        fromAddress: settings.fromAddress,
+        fromName: settings.fromName ?? undefined,
+      }),
+      from: fromHeader({ fromAddress: settings.fromAddress, fromName: settings.fromName ?? undefined }),
+      replyTo: settings.replyTo ?? undefined,
+    };
+  }
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
+  if (SMTP_HOST && SMTP_FROM) {
+    return {
+      transport: nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: Number(SMTP_PORT ?? 587),
+        secure: Number(SMTP_PORT ?? 587) === 465,
+        auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+      }),
+      from: SMTP_FROM,
+    };
+  }
+  throw new Error("Email not configured — connect your email in Settings");
+}
+
+/**
  * Send an ISSUED invoice PDF by email and mark it sent server-side.
  * Server-only (not a "use server" action): ownerId must come from an
  * authenticated request or the scheduler. Marks SENT only after SMTP accepts.
@@ -48,8 +87,7 @@ export async function sendInvoiceEmail(
   const to = (opts.to || inv.client?.email || str(buyer.email)).trim();
   if (!to || !to.includes("@")) throw new Error("recipient invalid");
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
-  if (!SMTP_HOST || !SMTP_FROM) throw new Error("SMTP not configured — not marked sent");
+  const { transport, from, replyTo } = await resolveSmtp(ownerId);
 
   const seller = parseSnapshot(inv.sellerSnapshot);
   const { buffer, filename } = await renderInvoicePdfBuffer({ invoiceId: inv.id, ownerId });
@@ -57,16 +95,11 @@ export async function sendInvoiceEmail(
   const defaultSubject = `Facture ${inv.invoiceNumber} — ${str(seller.legalName)}`.trim();
   const defaultText = `Bonjour,\n\nVeuillez trouver ci-joint la facture ${inv.invoiceNumber} (${(inv.totalTTC / 100).toFixed(2)} ${inv.currency}).\nLien public : ${publicUrl}\n\nCordialement.`;
 
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT ?? 587),
-    secure: Number(SMTP_PORT ?? 587) === 465,
-    auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-  });
   try {
-    await transporter.sendMail({
-      from: SMTP_FROM,
+    await transport.sendMail({
+      from,
       to,
+      replyTo,
       subject: opts.subject || defaultSubject,
       text: opts.message || defaultText,
       attachments: [{ filename, content: buffer }],

@@ -15,8 +15,33 @@ model User {
   displayName  String
   createdAt    DateTime @default(now())
 
-  companies Company[]
-  events    InvoiceEvent[]
+  companies     Company[]
+  events        InvoiceEvent[]
+  emailSettings EmailSettings?
+}
+
+// ── Per-owner outbound email connection (the business owner's own mailbox) ──
+model EmailSettings {
+  id             String   @id @default(cuid())
+  ownerId        String   @unique
+  host           String
+  port           Int      @default(587)
+  secure         Boolean  @default(false)
+  username       String?
+  passwordEnc    String? // AES-256-GCM encrypted SMTP password
+  fromAddress    String
+  fromName       String?
+  replyTo        String?
+  enabled        Boolean  @default(true)
+  lastTestAt     DateTime?
+  lastTestOk     Boolean?
+  lastTestError  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
 }
 
 // ── Seller profiles ──

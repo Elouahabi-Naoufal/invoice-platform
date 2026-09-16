@@ -22,12 +22,12 @@ export default async function SettingsPage() {
           </p>
         </div>
         <div className="card p-5">
-          <h2 className="section-title mb-1">Email delivery (SMTP)</h2>
+          <h2 className="section-title mb-1">Email</h2>
           <p className="text-[13px] text-ink-500 dark:text-stone-400">
-            Configure <code className="rounded bg-ink-100 dark:bg-white/10 px-1 text-[12px]">SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / SMTP_FROM</code> in
-            <code className="rounded bg-ink-100 dark:bg-white/10 px-1 text-[12px]"> .env</code> and restart.
-            Without SMTP, sending fails explicitly — an invoice is never marked sent on a provider failure.
+            Connect your own business mailbox so invoices, quotes and reminders are sent from your address.
+            Credentials are encrypted at rest; use an app password for Gmail/Outlook.
           </p>
+          <Link href="/settings/email" className="btn-outline btn-sm mt-3 inline-flex">Connect email</Link>
         </div>
         <div className="card p-5">
           <h2 className="section-title mb-1">WhatsApp sending</h2>
