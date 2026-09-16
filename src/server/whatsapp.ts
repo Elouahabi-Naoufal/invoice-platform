@@ -138,23 +138,44 @@ async function qrImageFor(qr: string): Promise<string | null> {
 function waitForReady(client: Client, timeoutMs: number): Promise<void> {
   if (runtime.phase === "ready") return Promise.resolve();
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`WhatsApp client not ready after ${Math.round(timeoutMs / 1000)}s`));
-    }, timeoutMs);
-    const onReady = () => {
-      cleanup();
-      resolve();
-    };
-    const onFailure = (message: string) => {
-      cleanup();
-      reject(new Error(message || "WhatsApp authentication failed"));
-    };
-    const cleanup = () => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
+      clearInterval(poller);
       client.off("ready", onReady);
       client.off("auth_failure", onFailure);
+      fn();
     };
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error(`WhatsApp client not ready after ${Math.round(timeoutMs / 1000)}s`)));
+    }, timeoutMs);
+    const onReady = () => finish(resolve);
+    const onFailure = (message: string) =>
+      finish(() => reject(new Error(message || "WhatsApp authentication failed")));
+    // Fallback: the `ready` event can be missed on SPA re-injection (known
+    // whatsapp-web.js bug). Poll the WhatsApp Web socket state instead.
+    const poller = setInterval(() => {
+      if (runtime.phase === "ready") {
+        finish(resolve);
+        return;
+      }
+      void (async () => {
+        try {
+          const state = (await client.getState()) as unknown as string | null;
+          if (state === "CONNECTED") {
+            const info = client.info as Client["info"] | undefined;
+            const account = info?.wid?._serialized ?? info?.pushname ?? runtime.account;
+            setPhase("ready", { account, qr: null, qrImage: null, qrIssuedAt: null, lastError: null });
+            log("info", `ready (state poll) account=${account ?? "unknown"}`);
+            finish(resolve);
+          }
+        } catch {
+          // socket not ready yet — keep polling until the timeout
+        }
+      })();
+    }, 3000);
     client.on("ready", onReady);
     client.on("auth_failure", onFailure);
   });
@@ -212,6 +233,17 @@ async function startClient(): Promise<void> {
   if (runtime.client && runtime.phase === "ready") return;
   if (runtime.startPromise) return runtime.startPromise;
 
+  // whatsapp-web.js initialize() is not idempotent: a previously failed/stopped
+  // client must be destroyed and replaced, never re-initialized.
+  if (runtime.client && !["ready", "starting", "qr"].includes(runtime.phase)) {
+    try {
+      await runtime.client.destroy();
+    } catch {
+      // best effort
+    }
+    runtime.client = null;
+  }
+
   if (!runtime.client) setPhase("starting", { lastError: null });
   runtime.startPromise = (async () => {
     try {
@@ -226,10 +258,24 @@ async function startClient(): Promise<void> {
         const { Client: WhatsAppClient, LocalAuth } = await loadWwebjs();
         const client = new WhatsAppClient({
           authStrategy: new LocalAuth({ clientId: whatsappClientId(), dataPath: whatsappSessionDir() }),
+          authTimeoutMs: readyTimeoutMs(),
+          // Always load the current WhatsApp Web build; a stale local cache is a
+          // known cause of "authenticated but never ready".
+          webVersionCache: { type: "none" },
           puppeteer: {
             headless: process.env.WHATSAPP_HEADLESS !== "false",
             executablePath: resolveChromePath(),
-            args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--disable-software-rasterizer",
+              "--no-first-run",
+              "--disable-background-timer-throttling",
+              "--disable-backgrounding-occluded-windows",
+              "--disable-renderer-backgrounding",
+            ],
           },
         });
         attachHandlers(client);
@@ -242,6 +288,15 @@ async function startClient(): Promise<void> {
       // A timeout while a QR is displayed is not fatal: the user may still scan it.
       if (runtime.phase !== "qr" && runtime.phase !== "ready") {
         setPhase("failed", { lastError: message });
+        // Discard the stuck browser so the next attempt starts a fresh client.
+        if (runtime.client) {
+          try {
+            await runtime.client.destroy();
+          } catch {
+            // best effort
+          }
+          runtime.client = null;
+        }
       }
       log("error", `start failed: ${message}`);
       throw error instanceof Error ? error : new Error(message);

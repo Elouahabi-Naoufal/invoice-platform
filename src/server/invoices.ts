@@ -1,7 +1,10 @@
-"use server";
 /**
  * APPLICATION layer — enforces lifecycle, immutability, snapshots, atomic numbering.
  * DOMAIN (calcInvoice) decides totals; PRESENTATION (UI/PDF) never decides legality.
+ *
+ * Server-only module (NOT a "use server" action module): ownerId must come from
+ * an authenticated session via the invoice-ops façade. Exposing these as actions
+ * would let a client pass an arbitrary ownerId.
  */
 import { prisma } from "@/lib/prisma";
 import { amountInWords, calcInvoice, deriveDueDate, isValidICE } from "@/domain/invoice";
@@ -15,6 +18,17 @@ function toCalcLines(lines: { quantityMilli: number; unitPriceMinor: number; dis
 
 export async function createDraftInvoice(ownerId: string, raw: unknown) {
   const data = invoiceCreateSchema.parse(raw);
+  // IDOR guard: related records must belong to the same owner.
+  const [company, client] = await Promise.all([
+    prisma.company.findFirst({ where: { id: data.companyId, ownerId }, select: { id: true } }),
+    prisma.client.findFirst({ where: { id: data.clientId, ownerId }, select: { id: true } }),
+  ]);
+  if (!company) throw new Error("seller company not found");
+  if (!client) throw new Error("buyer client not found");
+  if (data.linkedInvoiceId) {
+    const linked = await prisma.invoice.findFirst({ where: { id: data.linkedInvoiceId, ownerId }, select: { id: true } });
+    if (!linked) throw new Error("linked invoice not found");
+  }
   if ((data.docType === "AVOIR" || data.docType === "RECTIFICATIVE") && !data.linkedInvoiceId)
     throw new Error(`${data.docType} requires linkedInvoiceId`);
   if ((data.docType === "AVOIR" || data.docType === "RECTIFICATIVE") && !data.correctionReason?.trim())
@@ -138,17 +152,13 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
   const frozenAccent = ((inv.company as { accentColor?: string }).accentColor || "#1D4ED8").trim() || "#1D4ED8";
 
   const result = await prisma.$transaction(async (tx) => {
-    let series = await tx.numberingSeries.findUnique({
+    // Atomic numbering: upsert + increment in one statement (no read-modify-write race).
+    const series = await tx.numberingSeries.upsert({
       where: { companyId_prefix_year: { companyId: inv.companyId!, prefix, year } },
+      create: { companyId: inv.companyId!, prefix, year, lastNo: 1 },
+      update: { lastNo: { increment: 1 } },
     });
-    if (!series) {
-      series = await tx.numberingSeries.create({
-        data: { companyId: inv.companyId!, prefix, year, lastNo: 0 },
-      });
-    }
-    const next = series.lastNo + 1;
-    await tx.numberingSeries.update({ where: { id: series.id }, data: { lastNo: next } });
-    const number = `${prefix}-${year}-${String(next).padStart(4, "0")}`;
+    const number = `${prefix}-${year}-${String(series.lastNo).padStart(4, "0")}`;
 
     const sellerSnapshot = JSON.stringify({
       legalName: inv.company!.legalName,
@@ -200,8 +210,9 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
       }))
     );
 
-    return tx.invoice.update({
-      where: { id: invoiceId },
+    // Guarded transition: only a DRAFT may become ISSUED (idempotency + race safety).
+    const updated = await tx.invoice.updateMany({
+      where: { id: invoiceId, status: "DRAFT" },
       data: {
         status: "ISSUED",
         invoiceNumber: number,
@@ -217,9 +228,11 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
         finalizedAt: new Date(),
         publicToken: nanoid(32),
         ...(inv.docType === "DEVIS" ? { quoteStatus: "PENDING" } : {}),
-        events: { create: [{ actorId: ownerId, type: "finalized", metadata: number }] },
       },
     });
+    if (updated.count === 0) throw new Error("only DRAFT can be finalized");
+    await tx.invoiceEvent.create({ data: { invoiceId, actorId: ownerId, type: "finalized", metadata: number } });
+    return tx.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
   });
   return result;
 }
@@ -335,38 +348,40 @@ export async function createAvoirDraft(ownerId: string, originalInvoiceId: strin
 
 export async function recordPayment(ownerId: string, invoiceId: string, raw: unknown) {
   const data = paymentSchema.parse(raw);
-  const inv = await prisma.invoice.findFirst({
-    where: { id: invoiceId, ownerId },
-    include: { payments: true },
-  });
-  if (!inv) throw new Error("not found");
-  if (inv.status !== "ISSUED") throw new Error("only ISSUED invoices accept payments");
   if (data.amountMinor <= 0) throw new Error("bad amount");
-  if (inv.currency && (raw as { currency?: string }).currency && (raw as { currency?: string }).currency !== inv.currency)
-    throw new Error("payment currency must match invoice");
-  const paid = inv.payments.reduce((a, p) => a + p.amountMinor, 0);
-  if (paid + data.amountMinor > inv.totalTTC) throw new Error("overpayment blocked in v1");
-  const pay = await prisma.payment.create({
-    data: {
-      invoiceId,
-      amountMinor: data.amountMinor,
-      currency: inv.currency,
-      paymentDate: data.paymentDate,
-      method: data.method,
-      reference: data.reference,
-      notes: data.notes,
-    },
+  return prisma.$transaction(async (tx) => {
+    const inv = await tx.invoice.findFirst({
+      where: { id: invoiceId, ownerId },
+      include: { payments: true },
+    });
+    if (!inv) throw new Error("not found");
+    if (inv.status !== "ISSUED") throw new Error("only ISSUED invoices accept payments");
+    if (inv.currency && (raw as { currency?: string }).currency && (raw as { currency?: string }).currency !== inv.currency)
+      throw new Error("payment currency must match invoice");
+    const paid = inv.payments.reduce((a, p) => a + p.amountMinor, 0);
+    if (paid + data.amountMinor > inv.totalTTC) throw new Error("overpayment blocked in v1");
+    const pay = await tx.payment.create({
+      data: {
+        invoiceId,
+        amountMinor: data.amountMinor,
+        currency: inv.currency,
+        paymentDate: data.paymentDate,
+        method: data.method,
+        reference: data.reference,
+        notes: data.notes,
+      },
+    });
+    const newPaid = paid + data.amountMinor;
+    await tx.invoiceEvent.create({
+      data: {
+        invoiceId,
+        actorId: ownerId,
+        type: newPaid >= inv.totalTTC ? "paid" : "payment_recorded",
+        metadata: JSON.stringify({ amountMinor: data.amountMinor, method: data.method }),
+      },
+    });
+    return pay;
   });
-  const newPaid = paid + data.amountMinor;
-  await prisma.invoiceEvent.create({
-    data: {
-      invoiceId,
-      actorId: ownerId,
-      type: newPaid >= inv.totalTTC ? "paid" : "payment_recorded",
-      metadata: JSON.stringify({ amountMinor: data.amountMinor, method: data.method }),
-    },
-  });
-  return pay;
 }
 
 export async function cancelInvoice(ownerId: string, invoiceId: string, reason: string) {

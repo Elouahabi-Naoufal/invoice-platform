@@ -34,6 +34,11 @@ const sampleCompanies = [
     legalForm: "SARL",
     capitalSocial: 500000,
     cnss: "00 12345 00000",
+    ice: "100000000000044",
+    identifiantFiscal: "10101010",
+    rc: "RC12345",
+    rcCity: "Casablanca",
+    patente: "TP12345",
   },
   {
     legalName: "Merzouka Consulting SARL",
@@ -55,6 +60,11 @@ const sampleCompanies = [
     legalForm: "SARL",
     capitalSocial: 250000,
     cnss: "00 23456 00000",
+    ice: "200000000000088",
+    identifiantFiscal: "20202020",
+    rc: "RC23456",
+    rcCity: "Marrakech",
+    patente: "TP23456",
   },
   {
     legalName: "Sahara Logistics SARL",
@@ -76,6 +86,11 @@ const sampleCompanies = [
     legalForm: "SARL",
     capitalSocial: 300000,
     cnss: "00 34567 00000",
+    ice: "300000000000035",
+    identifiantFiscal: "30303030",
+    rc: "RC34567",
+    rcCity: "Agadir",
+    patente: "TP34567",
   },
 ];
 
@@ -216,10 +231,34 @@ async function main() {
   const finalCompanies = await prisma.company.count({ where: { ownerId: owner.id, archived: false } });
   const finalCustomers = await prisma.client.count({ where: { ownerId: owner.id } });
 
+  // Repair demo companies that predate legal-identifier seeding: without valid
+  // ICE/IF/patente, invoices cannot be finalized (art.145). Only touches
+  // companies matching a known sample legalName and only fills empty fields.
+  const repairedCompanies = [];
+  for (const data of sampleCompanies) {
+    const existing = await prisma.company.findFirst({
+      where: { ownerId: owner.id, legalName: data.legalName },
+    });
+    if (existing && (!existing.ice || !existing.identifiantFiscal || !existing.patente)) {
+      await prisma.company.update({
+        where: { id: existing.id },
+        data: {
+          ice: existing.ice || data.ice,
+          identifiantFiscal: existing.identifiantFiscal || data.identifiantFiscal,
+          rc: existing.rc || data.rc,
+          rcCity: existing.rcCity || data.rcCity,
+          patente: existing.patente || data.patente,
+        },
+      });
+      repairedCompanies.push(existing.id);
+    }
+  }
+
   console.log(JSON.stringify({
     ownerEmail: owner.email,
     createdCompanies: createdCompanies.map((record) => record.id),
     createdCustomers: createdCustomers.map((record) => record.id),
+    repairedCompanies,
     finalCompanies,
     finalCustomers,
   }, null, 2));

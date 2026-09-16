@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { z } from "zod";
 
-export async function listMembers(userId: string) {
-  return prisma.member.findMany({ where: { ownerId: userId, revokedAt: null }, orderBy: { role: "desc" } });
+export async function listMembers(_userId?: string) {
+  const u = await requireUser();
+  return prisma.member.findMany({ where: { ownerId: u.id, revokedAt: null }, orderBy: { role: "desc" } });
 }
 
 export async function inviteMember(userId: string, raw: unknown) {

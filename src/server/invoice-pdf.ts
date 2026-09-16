@@ -1,4 +1,8 @@
-"use server";
+/**
+ * Shared PDF renderer for API sends.
+ * Renders from frozen snapshots when present (same legal source as the PDF route).
+ * Server-only (NOT a "use server" action): callers must enforce auth/lifecycle.
+ */
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";

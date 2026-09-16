@@ -7,13 +7,13 @@ function esc(v: unknown): string {
 }
 
 /** Build CSV for comptable: columns are fixed but values are fully dynamic per invoice. */
-export async function buildInvoicesCsv(ownerId: string, opts?: { from?: string; to?: string }): Promise<string> {
+export async function buildInvoicesCsv(ownerId: string, opts?: { from?: Date; to?: Date }): Promise<string> {
   const where: Record<string, unknown> = { ownerId };
   if (opts?.from || opts?.to) {
-    const d: Record<string, string> = {};
-    if (opts?.from) d.gte = opts.from;
-    if (opts?.to) d.lte = opts.to;
-    where.issueDate = d;
+    where.issueDate = {
+      ...(opts.from ? { gte: opts.from } : {}),
+      ...(opts.to ? { lte: opts.to } : {}),
+    };
   }
   const rows = await prisma.invoice.findMany({ where: where as never, orderBy: { issueDate: "asc" }, take: 1000 });
   const header = ["number", "docType", "status", "issueDate", "dueDate", "client", "currency", "subtotalHT", "totalTVA", "totalTTC", "notes"].join(";");

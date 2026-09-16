@@ -1,4 +1,7 @@
-"use server";
+/**
+ * WhatsApp settings read/write. Server-only (NOT a "use server" action):
+ * ownerId must come from the authenticated API route.
+ */
 import { prisma } from "@/lib/prisma";
 import { getActiveCompanyId } from "@/server/auth";
 import {

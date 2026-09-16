@@ -20,11 +20,19 @@ export default async function DetailPage({ params }: { params: { id: string } })
   if (sellerView.signatureData && String(sellerView.signatureData).startsWith("data:")) {
     sellerView.signaturePath = String(sellerView.signatureData);
   }
-  const buckets = (inv.taxBreakdown ? JSON.parse(inv.taxBreakdown) : []) as { rateBps: number; taxable: number; tax: number }[];
-  const lines = (inv.linesSnapshot ? JSON.parse(inv.linesSnapshot) : inv.lines.map((l) => ({
-    description: l.description, quantityMilli: l.quantityMilli, unit: l.unit,
-    unitPriceMinor: l.unitPriceMinor, discountBps: l.discountBps, taxRateBps: l.taxRateBps, taxExempt: l.taxExempt,
-  })));
+  const buckets = (() => {
+    if (!inv.taxBreakdown) return [];
+    try { return JSON.parse(inv.taxBreakdown) as { rateBps: number; taxable: number; tax: number }[]; } catch { return []; }
+  })();
+  const lines = (() => {
+    if (inv.linesSnapshot) {
+      try { return JSON.parse(inv.linesSnapshot); } catch { /* fall through to live lines */ }
+    }
+    return inv.lines.map((l) => ({
+      description: l.description, quantityMilli: l.quantityMilli, unit: l.unit,
+      unitPriceMinor: l.unitPriceMinor, discountBps: l.discountBps, taxRateBps: l.taxRateBps, taxExempt: l.taxExempt,
+    }));
+  })();
 
   return (
     <div>

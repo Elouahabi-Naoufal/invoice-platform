@@ -1,9 +1,13 @@
+/**
+ * WhatsApp invoice sending. Server-only (NOT a "use server" action):
+ * ownerId must come from the authenticated API route.
+ */
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
 import { whatsappGateway, type WhatsAppGateway } from "@/server/whatsapp";
 import {
   DEFAULT_WHATSAPP_TEMPLATE,
-  isWhatsAppSendLocked,
+  WHATSAPP_SEND_LOCK_TTL_MS,
   normalizeWhatsAppRecipient,
   renderWhatsAppTemplate,
   sanitizeWhatsAppError,
@@ -64,11 +68,6 @@ export async function sendInvoiceViaWhatsApp(
     };
   }
 
-  const now = new Date();
-  if (isWhatsAppSendLocked(inv.whatsappStatus, inv.whatsappLastAttemptAt, now)) {
-    throw new Error("WhatsApp send already in progress");
-  }
-
   const buyer = parseSnapshot(inv.buyerSnapshot);
   const seller = parseSnapshot(inv.sellerSnapshot);
   const to = normalizeWhatsAppRecipient(options.to ?? inv.client?.phone ?? buyer.phone);
@@ -86,10 +85,22 @@ export async function sendInvoiceViaWhatsApp(
     dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
   });
 
-  await prisma.invoice.update({
-    where: { id: inv.id },
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - WHATSAPP_SEND_LOCK_TTL_MS);
+  // Atomic claim: only one concurrent request can move the row into SENDING.
+  const claim = await prisma.invoice.updateMany({
+    where: {
+      id: inv.id,
+      ownerId,
+      status: "ISSUED",
+      OR: [
+        { whatsappStatus: { in: ["NOT_SENT", "FAILED"] } },
+        { whatsappStatus: "SENDING", whatsappLastAttemptAt: { lt: staleBefore } },
+      ],
+    },
     data: { whatsappStatus: "SENDING", whatsappLastAttemptAt: now, whatsappError: null },
   });
+  if (claim.count === 0) throw new Error("WhatsApp send already in progress");
   console.info(`[whatsapp] attempt invoice=${inv.id} to=${to}`);
 
   try {

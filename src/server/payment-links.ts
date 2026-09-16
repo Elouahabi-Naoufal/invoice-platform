@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { z } from "zod";
 
-export async function listPaymentLinks(userId: string) {
+export async function listPaymentLinks(_userId?: string) {
+  const u = await requireUser();
   return prisma.paymentLink.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: u.id },
     include: { invoice: { select: { invoiceNumber: true, totalTTC: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -28,12 +29,25 @@ export async function getPaymentLink(token: string) {
 }
 
 export async function recordPaymentLinkUse(token: string, amountMinor: number) {
-  const link = await prisma.paymentLink.findFirst({ where: { token, usedAt: null } });
-  if (!link) throw new Error("Invalid link");
-  const inv = await prisma.invoice.findFirst({ where: { id: link.invoiceId } });
-  if (!inv) throw new Error("Invoice not found");
-  return prisma.$transaction([
-    prisma.paymentLink.update({ where: { id: link.id }, data: { usedAt: new Date() } }),
-    prisma.payment.create({ data: { invoiceId: link.invoiceId, amountMinor, currency: inv.currency, method: "ONLINE", reference: link.token } as never }),
-  ]);
+  if (!Number.isInteger(amountMinor) || amountMinor <= 0) throw new Error("Invalid amount");
+  return prisma.$transaction(async (tx) => {
+    const link = await tx.paymentLink.findFirst({
+      where: { token, usedAt: null, expiresAt: { gt: new Date() } },
+    });
+    if (!link) throw new Error("Link expired or not found");
+    const inv = await tx.invoice.findFirst({
+      where: { id: link.invoiceId, status: "ISSUED" },
+      include: { payments: true },
+    });
+    if (!inv) throw new Error("Invoice not found or not payable");
+    const paid = inv.payments.reduce((a, p) => a + p.amountMinor, 0);
+    if (paid + amountMinor > inv.totalTTC) throw new Error("Amount exceeds remaining balance");
+    // Atomic claim: prevents two concurrent redemptions of the same link.
+    const claim = await tx.paymentLink.updateMany({ where: { id: link.id, usedAt: null }, data: { usedAt: new Date() } });
+    if (claim.count === 0) throw new Error("Link already used");
+    await tx.payment.create({
+      data: { invoiceId: inv.id, amountMinor, currency: inv.currency, method: "ONLINE", reference: link.token } as never,
+    });
+    return { ok: true };
+  });
 }

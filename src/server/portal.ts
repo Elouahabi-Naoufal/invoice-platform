@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { z } from "zod";
 
-export async function listPublicInvoices(userId: string) {
+export async function listPublicInvoices(_userId?: string) {
+  const u = await requireUser();
   return prisma.invoice.findMany({
-    where: { ownerId: userId, status: "ISSUED", portalShared: true },
+    where: { ownerId: u.id, status: "ISSUED", portalShared: true },
     orderBy: { createdAt: "desc" },
   });
 }

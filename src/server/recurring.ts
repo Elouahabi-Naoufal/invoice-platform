@@ -24,9 +24,10 @@ const recSchema = z.object({
   active: z.boolean().default(true),
 });
 
-export async function listRecurringTemplates(userId: string) {
+export async function listRecurringTemplates(_userId?: string) {
+  const u = await requireUser();
   const templates = await prisma.recurringTemplate.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: u.id },
     include: { lastGeneratedInvoice: { select: { invoiceNumber: true } }, company: { select: { legalName: true } }, client: { select: { name: true } } },
     orderBy: { name: "asc" },
   });

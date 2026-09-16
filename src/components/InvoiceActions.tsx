@@ -126,7 +126,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
 
       {inv.status === "ISSUED" && inv.docType !== "DEVIS" && (
         <>
-          <button onClick={() => setPayOpen(true)} className="btn-primary btn-sm">
+          <button onClick={() => { setAmt(inv.remaining / 100); setPayOpen(true); }} className="btn-primary btn-sm">
             Record payment · {formatMoney(inv.remaining, inv.currency)}
           </button>
           <button onClick={() => setSendOpen(true)} className="btn-outline btn-sm"><Send size={14} /> Send</button>

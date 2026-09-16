@@ -64,7 +64,7 @@ export function RecurringForm({ companies, clients, onDone }: { companies: { id:
             <input type="number" step="0.001" value={l.quantityMilli / 1000} onChange={(e) => setLines((a) => a.map((x, j) => j === i ? { ...x, quantityMilli: Math.round(Number(e.target.value) * 1000) } : x))} className="input" placeholder="Qty" />
             <input value={l.unit} onChange={(e) => setLines((a) => a.map((x, j) => j === i ? { ...x, unit: e.target.value } : x))} className="input" placeholder="Unit" />
             <input type="number" step="0.01" value={l.unitPriceMinor / 100} onChange={(e) => setLines((a) => a.map((x, j) => j === i ? { ...x, unitPriceMinor: Math.round(Number(e.target.value) * 100) } : x))} className="input" placeholder="Price HT" />
-            <select value={l.taxRateBps} onChange={(e) => setLines((a) => a.map((x, j) => j === i ? { ...x, taxRateBps: Number(e.target.value), taxExempt: Number(e.target.value) === -1 } : x))} className="input"><option value={2000}>20%</option><option value={1000}>10%</option><option value={0}>0%</option><option value={-1}>Exo</option></select>
+            <select value={l.taxExempt ? -1 : l.taxRateBps} onChange={(e) => { const v = Number(e.target.value); setLines((a) => a.map((x, j) => j === i ? { ...x, taxRateBps: v < 0 ? 0 : v, taxExempt: v < 0 } : x)); }} className="input"><option value={2000}>20%</option><option value={1000}>10%</option><option value={0}>0%</option><option value={-1}>Exo</option></select>
             <button type="button" onClick={() => setLines((a) => a.filter((_, j) => j !== i))} className="btn-ghost btn-sm">×</button>
           </div>
         ))}
@@ -82,7 +82,7 @@ export function RecurringActions({ id, active }: { id: string; active: boolean }
   return (
     <span className="flex gap-1">
       <button onClick={async () => { await toggleRecurringTemplate(id); toast({ kind: "ok", title: active ? "Paused" : "Activated" }); r.refresh(); }} className="btn-ghost btn-sm">{active ? "Pause" : "Activate"}</button>
-      <button onClick={async () => { const inv = await generateInvoiceFromTemplate(id) as { id: string }; toast({ kind: "ok", title: "Invoice generated" }); r.push(`/invoices/${inv.id}`); }} className="btn-primary btn-sm">Generate now</button>
+      <button onClick={async () => { try { const inv = await generateInvoiceFromTemplate(id) as { id: string }; toast({ kind: "ok", title: "Invoice generated" }); r.push(`/invoices/${inv.id}`); } catch (e) { toast({ kind: "err", title: "Generation failed", body: e instanceof Error ? e.message : "Unknown error" }); } }} className="btn-primary btn-sm">Generate now</button>
     </span>
   );
 }

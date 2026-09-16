@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
+import { requireUser } from "@/server/auth";
 import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
 
 /**
- * Primary engine: @react-pdf/renderer (v3, pinned for React 18).
- * Full-bleed A4 stationery, fully controlled layout — no browser involved.
- * Totals come from calcInvoice(), the same engine as the web preview.
+ * Authenticated owner-only PDF download.
+ * Public downloads use /api/i/[token]/pdf (token-scoped, ISSUED only).
  */
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return new NextResponse("unauthorized", { status: 401 });
+  }
   let pdf;
   try {
-    pdf = await renderInvoicePdfBuffer({ invoiceId: params.id });
+    pdf = await renderInvoicePdfBuffer({ invoiceId: params.id, ownerId: user.id });
   } catch {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

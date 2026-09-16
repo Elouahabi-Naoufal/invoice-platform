@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { z } from "zod";
 
-export async function listReminders(userId: string) {
+export async function listReminders(_userId?: string) {
+  const u = await requireUser();
   return prisma.reminder.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: u.id },
     include: { invoice: { select: { invoiceNumber: true, totalTTC: true, dueDate: true } } },
     orderBy: { scheduledAt: "asc" },
   });
@@ -19,9 +20,10 @@ export async function createReminder(userId: string, raw: unknown) {
   return prisma.reminder.create({ data: { ...d, ownerId: u.id } as never });
 }
 
-export async function listOverdue(userId: string) {
+export async function listOverdue(_userId?: string) {
+  const u = await requireUser();
   return prisma.invoice.findMany({
-    where: { ownerId: userId, status: "ISSUED", dueDate: { lt: new Date().toISOString().split("T")[0] } },
+    where: { ownerId: u.id, status: "ISSUED", dueDate: { lt: new Date() } },
     orderBy: { dueDate: "asc" },
   });
 }

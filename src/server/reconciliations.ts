@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/server/auth";
 import { z } from "zod";
 
-export async function listReconciliations(userId: string) {
+export async function listReconciliations(_userId?: string) {
+  const u = await requireUser();
   return prisma.avoirInvoice.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: u.id },
     include: { avoir: true, invoice: { select: { invoiceNumber: true, totalTTC: true } } },
     orderBy: { createdAt: "desc" },
   });

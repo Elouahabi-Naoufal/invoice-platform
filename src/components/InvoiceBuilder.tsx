@@ -48,8 +48,8 @@ export default function InvoiceBuilder({ companies, initialClients, linked, draf
   const [buyerId, setBuyerId] = useState(draft?.clientId ?? "");
   const [q, setQ] = useState("");
   const [showNew, setShowNew] = useState(false);
-  const [docType, setDocType] = useState(draft?.docType ?? "FACTURE");
-  const [issueDate, setIssueDate] = useState(draft?.issueDate ?? "2026-09-09");
+  const [docType, setDocType] = useState(draft?.docType ?? (linked ? "AVOIR" : "FACTURE"));
+  const [issueDate, setIssueDate] = useState(draft?.issueDate ?? new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(draft?.dueDate ?? "");
   const [validUntil, setValidUntil] = useState(draft?.validUntil ?? "");
   const [currency, setCurrency] = useState(draft?.currency ?? "MAD");

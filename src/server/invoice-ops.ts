@@ -69,6 +69,15 @@ async function assertOwnsInvoice(ownerId: string, id: string) {
   if (!inv) throw new Error("not found"); // IDOR-safe: no existence leak across owners
 }
 
+function safeJsonParse<T>(raw: string | null | undefined, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 /** DRAFT-only edit (lines + details). ISSUED/CANCELLED rejected — immutability. */
 export async function updateDraft(id: string, raw: unknown) {
   const u = await requireUser();
@@ -77,6 +86,19 @@ export async function updateDraft(id: string, raw: unknown) {
   if (inv.status !== "DRAFT") throw new Error("immutable: only DRAFT editable");
   const { invoiceCreateSchema, lineSchema } = await import("@/server/validation");
   const patch = invoiceCreateSchema.partial().extend({ lines: lineSchema.array().min(1).optional() }).parse(raw);
+  // IDOR guard: patched relations must belong to the same owner.
+  if (patch.companyId) {
+    const c = await prisma.company.findFirst({ where: { id: patch.companyId, ownerId: u.id }, select: { id: true } });
+    if (!c) throw new Error("seller company not found");
+  }
+  if (patch.clientId) {
+    const c = await prisma.client.findFirst({ where: { id: patch.clientId, ownerId: u.id }, select: { id: true } });
+    if (!c) throw new Error("buyer client not found");
+  }
+  if (patch.linkedInvoiceId) {
+    const l = await prisma.invoice.findFirst({ where: { id: patch.linkedInvoiceId, ownerId: u.id }, select: { id: true } });
+    if (!l) throw new Error("linked invoice not found");
+  }
   const lines = patch.lines;
   let totals: { subtotalHT: number; totalTVA: number; totalTTC: number; buckets: { rateBps: number; taxable: number; tax: number }[] } | null = null;
   if (lines) {
@@ -114,14 +136,21 @@ export async function listInvoices(filter?: { status?: string; companyId?: strin
   const u = await requireUser();
   const page = Math.max(1, filter?.page ?? 1);
   const pageSize = Math.min(100, Math.max(5, filter?.pageSize ?? 25));
+  const dateOrUndefined = (v?: string) => {
+    if (!v) return undefined;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  };
+  const status = ["DRAFT", "ISSUED", "CANCELLED"].includes(filter?.status ?? "") ? filter!.status : undefined;
+  const docType = ["FACTURE", "DEVIS", "AVOIR", "RECTIFICATIVE"].includes(filter?.docType ?? "") ? filter!.docType : undefined;
+  const from = dateOrUndefined(filter?.from);
+  const to = dateOrUndefined(filter?.to);
   const where = {
     ownerId: u.id,
-    ...(filter?.status ? { status: filter.status } : {}),
+    ...(status ? { status } : {}),
     ...(filter?.companyId ? { companyId: filter.companyId } : {}),
-    ...(filter?.docType ? { docType: filter.docType } : {}),
-    ...(filter?.from || filter?.to
-      ? { issueDate: { ...(filter.from ? { gte: new Date(filter.from) } : {}), ...(filter.to ? { lte: new Date(filter.to) } : {}) } }
-      : {}),
+    ...(docType ? { docType } : {}),
+    ...(from || to ? { issueDate: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
     ...(filter?.q
       ? { OR: [{ invoiceNumber: { contains: filter.q } }, { notes: { contains: filter.q } }, { poNumber: { contains: filter.q } }] }
       : {}),
@@ -161,7 +190,7 @@ export async function getInvoiceDetail(id: string) {
     paidAmount: paid,
     remaining: inv.totalTTC - paid,
     display: deriveDisplayStatus({ status: inv.status as "DRAFT" | "ISSUED" | "CANCELLED", totalTTC: inv.totalTTC, paidAmount: paid, dueDate: inv.dueDate, sentAt: inv.sentAt }),
-    sellerView: inv.sellerSnapshot ? JSON.parse(inv.sellerSnapshot) : inv.company,
-    buyerView: inv.buyerSnapshot ? JSON.parse(inv.buyerSnapshot) : inv.client,
+    sellerView: safeJsonParse(inv.sellerSnapshot, inv.company),
+    buyerView: safeJsonParse(inv.buyerSnapshot, inv.client),
   };
 }
