@@ -33,3 +33,7 @@ npm run dev    # :3001
 
 ## Deploys
 Pushes to `main` auto-deploy to https://invoice.naoufalelouahabi.com via Dokploy webhook.
+
+## Multiple businesses
+This app is deployed **once per business** (own container, domain, database, secrets
+and WhatsApp session). See `docs/MULTI_DEPLOY.md` for the provisioning checklist.
