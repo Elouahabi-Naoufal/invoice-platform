@@ -241,7 +241,7 @@ export default function CompanyForm({ initial, onDone }: { initial?: C; onDone?:
 
 export function CompanyModal({ initial, onClose }: { initial?: C; onClose: () => void }) {
   return (
-    <Modal title={initial ? "Edit company" : "New company"} onClose={onClose} wide>
+    <Modal title={initial ? "Edit company" : "New company"} onClose={onClose} size="lg">
       <CompanyForm initial={initial} onDone={onClose} />
     </Modal>
   );
