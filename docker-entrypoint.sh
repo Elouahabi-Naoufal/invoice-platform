@@ -20,6 +20,20 @@ run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
   || run_as_nextjs ./node_modules/.bin/prisma db push \
   || echo ">> WARNING: migration failed, continuing startup."
 
+# Hub database (admin panel, multi-tenant management)
+if [ -n "${HUB_DATABASE_URL}" ]; then
+  echo ">> Running hub prisma migrate deploy..."
+  run_as_nextjs ./node_modules/.bin/prisma migrate deploy --schema prisma/hub.prisma \
+    || run_as_nextjs ./node_modules/.bin/prisma db push --schema prisma/hub.prisma \
+    || echo ">> WARNING: hub migration failed."
+
+  if [ -n "${HUB_ADMIN_PASSWORD}" ]; then
+    echo ">> Seeding super admin..."
+    run_as_nextjs node ./scripts/seed-hub.mjs \
+      || echo ">> WARNING: hub seed failed (might already exist)."
+  fi
+fi
+
 # Writable XDG dirs for Chromium's crashpad handler (see Dockerfile ENV).
 run_as_nextjs mkdir -p "${XDG_CONFIG_HOME:-/tmp/.chromium-config}" "${XDG_CACHE_HOME:-/tmp/.chromium-cache}" \
   || echo ">> WARNING: could not create Chromium XDG dirs."
