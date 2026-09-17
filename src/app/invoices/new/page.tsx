@@ -5,7 +5,7 @@ import { listProducts } from "@/server/products";
 import InvoiceBuilder, { DraftInit } from "@/components/InvoiceBuilder";
 import { prisma } from "@/lib/prisma";
 
-export default async function NewInvoicePage({ searchParams }: { searchParams: { linked?: string; edit?: string; type?: string } }) {
+export default async function NewInvoicePage({ searchParams }: { searchParams: { linked?: string; edit?: string; type?: string; template?: string } }) {
   let ownerId = "";
   try {
     ownerId = (await requireActor()).ownerId;
@@ -49,5 +49,31 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: {
   const linkedType = searchParams.type === "RECTIFICATIVE" ? "RECTIFICATIVE" : undefined;
   const activeCompanyId = await getActiveCompanyId();
 
-  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} linkedType={linkedType} draft={draft} catalog={catalog as never} defaultCompanyId={activeCompanyId} />;
+  // "From a template": prefill the builder with the template's fields and lines.
+  let prefill = draft;
+  if (!draft && searchParams.template) {
+    const t = await prisma.recurringTemplate.findFirst({ where: { id: searchParams.template, ownerId } });
+    if (t) {
+      prefill = {
+        docType: t.docType,
+        currency: t.currency,
+        issueDate: new Date().toISOString().slice(0, 10),
+        dueDate: null,
+        validUntil: null,
+        paymentTerms: t.paymentTerms,
+        paymentMode: null,
+        poNumber: null,
+        notes: null,
+        invDiscountBps: 0,
+        invDiscountFixedMinor: 0,
+        companyId: t.companyId,
+        clientId: t.clientId,
+        correctionReason: null,
+        linkedInvoiceId: null,
+        lines: t.lines ? JSON.parse(t.lines) : [],
+      };
+    }
+  }
+
+  return <InvoiceBuilder companies={companies as never} initialClients={clients as never} linked={linked} linkedType={linkedType} draft={prefill} catalog={catalog as never} defaultCompanyId={activeCompanyId} />;
 }

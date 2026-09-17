@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus } from "lucide-react";
 import { NAV_GROUPS } from "@/components/nav";
 import { cn } from "@/components/ui";
+import NewInvoiceMenu from "@/components/NewInvoiceMenu";
 
 export default function Sidebar() {
   const path = usePathname();
@@ -39,9 +39,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="border-t border-ink-100 px-3.5 py-3 dark:border-white/10">
-        <Link href="/invoices/new" className="btn-accent w-full">
-          <Plus size={16} /> New invoice
-        </Link>
+        <NewInvoiceMenu up />
         <div className="mt-3 rounded border border-brand-100 bg-brand-50/70 p-3 dark:border-brand-500/20 dark:bg-brand-500/10">
           <p className="text-[12px] font-semibold text-brand-700 dark:text-brand-400">Art. 211 CGI</p>
           <p className="meta mt-0.5">Invoices are kept 10 years and stay immutable once finalized.</p>

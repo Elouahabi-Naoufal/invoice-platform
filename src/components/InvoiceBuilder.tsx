@@ -12,7 +12,7 @@ import { useToast, Modal } from "@/components/ui";
 type Company = Record<string, string | number | null | undefined> & { id: string; legalName: string };
 type Client = { id: string; type: string; name: string; companyName?: string | null; ice?: string | null; address?: string | null; city?: string | null; clientIF?: string | null; clientRC?: string | null };
 export type DraftInit = {
-  id: string; docType: string; currency: string; issueDate: string; dueDate: string | null; validUntil: string | null;
+  id?: string; docType: string; currency: string; issueDate: string; dueDate: string | null; validUntil: string | null;
   paymentTerms: string; paymentMode: string | null; poNumber: string | null; notes: string | null;
   invDiscountBps: number; invDiscountFixedMinor: number; companyId: string | null; clientId: string | null;
   correctionReason: string | null; linkedInvoiceId: string | null;
@@ -169,7 +169,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, link
             invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: Math.round(invDiscFixed * 100),
         lines: lines.map((l) => ({ ...l })),
       };
-      if (draft) {
+      if (draft?.id) {
         await updateDraft(draft.id, payload);
         clearStoredDraft();
         toast({ kind: "ok", title: "Draft updated" });

@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SlidersHorizontal, MessageCircle, Lock, Workflow, Database } from "lucide-react";
+import { SlidersHorizontal, MessageCircle, Lock, Workflow, Database, Percent } from "lucide-react";
 
 const TABS = [
   { href: "/settings", label: "General", icon: SlidersHorizontal, exact: true },
   { href: "/settings/whatsapp", label: "WhatsApp", icon: MessageCircle, exact: true },
+  { href: "/settings/rates", label: "Rates", icon: Percent, exact: true },
   { href: "/settings/security", label: "Security", icon: Lock, exact: true },
   { href: "/settings/automation", label: "Automation", icon: Workflow, exact: true },
   { href: "/settings/data", label: "Data", icon: Database, exact: true },

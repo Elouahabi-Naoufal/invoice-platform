@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/server/auth";
 import { getWhatsAppStatus } from "@/server/whatsapp";
 import ProfileForm from "@/components/ProfileForm";
-import { MessageCircle, Lock, Workflow, Database, CheckCircle2, XCircle } from "lucide-react";
+import { MessageCircle, Lock, Workflow, Database, Percent, CheckCircle2, XCircle } from "lucide-react";
 
 function StatusLine({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -19,6 +19,7 @@ export default async function SettingsGeneralPage() {
 
   const sections = [
     { href: "/settings/whatsapp", icon: MessageCircle, title: "WhatsApp", body: whatsapp?.connected ? "Connected — sending via WhatsApp Web." : "Pair a phone with a QR code." },
+    { href: "/settings/rates", icon: Percent, title: "Rates & charges", body: "Define your own rates for payroll, expenses and calculations." },
     { href: "/settings/security", icon: Lock, title: "Security", body: "Change your password." },
     { href: "/settings/automation", icon: Workflow, title: "Automation", body: "Recurring invoices and reminders." },
     { href: "/settings/data", icon: Database, title: "Data & backup", body: "Exports, archiving and numbering." },
