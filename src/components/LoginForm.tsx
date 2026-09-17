@@ -33,7 +33,7 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
           </div>
           <h1 className="page-title mb-1">{mode === "login" ? "Sign in" : "Create admin account"}</h1>
           <p className="meta mb-6">
-            {mode === "login" ? "Welcome back — sign in to manage your invoices." : singleUserClosed ? "Single-user mode: registration is closed. Please sign in." : "First run — this creates the owner account."}
+            {mode === "login" ? "Welcome back — sign in to manage your invoices." : singleUserClosed ? "Registration is closed." : "Create your account to start invoicing."}
           </p>
           <form action={submit} className="grid gap-4">
             {mode === "register" && !singleUserClosed && (
@@ -45,7 +45,7 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
             <button type="submit" disabled={busy} className="btn-accent mt-1 w-full">{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
           </form>
           <p className="meta mt-5 text-center">
-            {mode === "login" ? <a href="/login/register" className="font-medium text-brand-600 hover:text-brand-700">Create the owner account</a> : <a href="/login" className="font-medium text-brand-600 hover:text-brand-700">Back to sign in</a>}
+            {mode === "login" ? <a href="/login/register" className="font-medium text-brand-600 hover:text-brand-700">Create an account</a> : <a href="/login" className="font-medium text-brand-600 hover:text-brand-700">Back to sign in</a>}
           </p>
         </div>
         <p className="mt-4 text-center text-[12px] text-ink-400">
