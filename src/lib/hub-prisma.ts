@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/hub-client";
+import { PrismaClient } from "./hub-client";
 
 const globalForHub = globalThis as unknown as { hubPrisma?: PrismaClient };
 

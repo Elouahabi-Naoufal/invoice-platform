@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/hub-client";
+import { PrismaClient } from "../src/lib/hub-client/index.js";
 import bcrypt from "bcryptjs";
 
 const hubPrisma = new PrismaClient();
