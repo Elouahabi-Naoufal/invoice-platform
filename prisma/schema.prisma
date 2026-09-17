@@ -179,7 +179,6 @@ model Invoice {
   payments        Payment[]
   events          InvoiceEvent[]
   reminders  Reminder[]
-  paymentLinks PaymentLink[]
   reconciliations AvoirInvoice[] @relation("InvoiceRef")
   avoirInvoices AvoirInvoice[] @relation("AvoirRef")
   lastGeneratedRecurring RecurringTemplate[] @relation("RecurringLastGen")
@@ -306,23 +305,6 @@ model Reminder {
   @@index([ownerId, scheduledAt])
   @@index([invoiceId])
   @@index([sentAt, scheduledAt])
-}
-
-// ── Payment links (v1: simple token) ──
-model PaymentLink {
-  id          String    @id @default(cuid())
-  ownerId     String
-  invoiceId   String
-  token       String    @unique
-  amountMinor Int?
-  expiresAt   DateTime?
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@index([ownerId])
-  @@index([token])
 }
 
 // ── Team members (v1: owner/admin/viewer) ──

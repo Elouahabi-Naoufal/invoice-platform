@@ -90,7 +90,6 @@ Invora is a self-hosted **invoicing and finance web app for Moroccan businesses*
 - **Product** — catalog item.
 - **RecurringTemplate** — schedule (periodDays, startDate, nextRunAt), lines JSON, autoSend, sendChannel, lastGeneratedInvoiceId, lastError.
 - **Reminder** — invoice, type, channel (WHATSAPP), scheduledAt, sentAt, attempts, lastError.
-- **PaymentLink** — invoice, token, amountMinor, expiresAt, usedAt.
 - **Member** — team member (ownerId, userId, email, role, inviteToken, acceptedAt, revokedAt).
 - **AvoirInvoice** — credit-note reconciliation (avoirId, invoiceId, amountMinor).
 

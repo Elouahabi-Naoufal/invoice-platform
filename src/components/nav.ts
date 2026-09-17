@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, Users, Building2, Settings, Package, Repeat, Bell,
-  Link2, Shield, Handshake, Globe, FileDown, BarChart3,
+  Shield, Handshake, Globe, FileDown, BarChart3,
 } from "lucide-react";
 
 export interface NavItem {
@@ -31,7 +31,6 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/recurring", label: "Recurring", icon: Repeat },
       { href: "/relances", label: "Reminders", icon: Bell },
-      { href: "/payment-links", label: "Payment links", icon: Link2 },
       { href: "/lettrage", label: "Lettrage", icon: Handshake },
     ],
   },
