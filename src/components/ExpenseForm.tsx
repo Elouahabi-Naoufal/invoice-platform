@@ -25,6 +25,7 @@ export function ExpenseForm({ rates }: { rates: Rate[] }) {
         taxRateBps: Math.round(Number(obj.taxRate || 0) * 100),
         taxExempt: obj.taxExempt === "on",
         rateIds,
+        currency: obj.currency || "MAD",
         paymentMethod: obj.paymentMethod,
         reference: obj.reference || null,
         billable: obj.billable === "on",
@@ -48,6 +49,7 @@ export function ExpenseForm({ rates }: { rates: Rate[] }) {
       <div><label className="label">Amount HT *</label><input name="amount" type="number" step="0.01" min={0} required defaultValue={0} className="input" /></div>
       <div><label className="label">VAT %</label><input name="taxRate" type="number" step="0.01" min={0} defaultValue={20} className="input" /></div>
       <div><label className="label">Payment</label><select name="paymentMethod" className="input" defaultValue="BANK_TRANSFER"><option value="BANK_TRANSFER">Bank transfer</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="CHECK">Check</option><option value="OTHER">Other</option></select></div>
+      <div><label className="label">Currency</label><input name="currency" defaultValue="MAD" className="input" /></div>
       <div><label className="label">Reference</label><input name="reference" className="input" /></div>
       <div className="flex items-end gap-4">
         <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" name="taxExempt" /> VAT exempt</label>

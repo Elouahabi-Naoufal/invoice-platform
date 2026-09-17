@@ -236,9 +236,9 @@ export async function buildProfitAndLoss(
   });
   const expenses = await prisma.expense.findMany({
     where: { ownerId, ...(range ? { date: range } : {}) },
-    select: { amountHTMinor: true, taxRateBps: true, taxExempt: true, totalMinor: true },
+    select: { amountHTMinor: true, taxRateBps: true, taxExempt: true, totalMinor: true, currency: true },
   });
-  const payslips = await prisma.payslip.findMany({ where: { ownerId }, select: { period: true, employerCostMinor: true } });
+  const payslips = await prisma.payslip.findMany({ where: { ownerId }, select: { period: true, employerCostMinor: true, currency: true } });
 
   const rows = new Map<string, PnLRow>();
   const ensure = (c: string): PnLRow => {
@@ -259,12 +259,14 @@ export async function buildProfitAndLoss(
   }
 
   const base = ensure(baseCurrency);
+  void base;
   for (const e of expenses) {
+    const row = ensure(e.currency);
     const vat = expenseVat(e.amountHTMinor, e.taxRateBps, e.taxExempt);
     const charges = Math.max(0, e.totalMinor - e.amountHTMinor - vat);
-    base.expensesHT += e.amountHTMinor;
-    base.expenseCharges += charges;
-    base.vatDeductible += vat;
+    row.expensesHT += e.amountHTMinor;
+    row.expenseCharges += charges;
+    row.vatDeductible += vat;
   }
   const inRange = (period: string) => {
     if (!from && !to) return true;
@@ -273,7 +275,7 @@ export async function buildProfitAndLoss(
     if (to && p > to.toISOString().slice(0, 10)) return false;
     return true;
   };
-  for (const p of payslips) if (inRange(p.period)) base.payrollCost += p.employerCostMinor;
+  for (const p of payslips) if (inRange(p.period)) ensure(p.currency).payrollCost += p.employerCostMinor;
 
   for (const row of rows.values()) {
     row.netProfit = row.revenueHT - row.expensesHT - row.expenseCharges - row.payrollCost;

@@ -372,6 +372,7 @@ model Expense {
   taxExempt      Boolean  @default(false)
   charges        String? // JSON [{rateId,name,amountMinor}]
   totalMinor     Int      @default(0) // HT + TVA + charges
+  currency       String   @default("MAD")
   paymentMethod  String   @default("BANK_TRANSFER")
   reference      String?
   billable       Boolean  @default(false)

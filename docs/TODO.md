@@ -15,9 +15,9 @@ Living list of what's next. Done items move to the app overview.
 - [x] Expenses CSV export (`/api/exports/expenses`).
 - [x] **Billable expenses → invoice**: one click creates draft invoice(s), grouped by company + client.
 - [x] Payslips: **Mark paid** + payroll CSV export (`/api/exports/payroll`).
-- [ ] Rates: allow **editing** (currently add/remove).
-- [ ] Expenses: use the **company currency** (currently assumed MAD) and link VAT to the VAT report precisely.
-- [ ] Put **net profit** on the Dashboard (currently only on Reports).
+- [x] Rates: **editing** supported (add / edit / remove).
+- [x] Expenses: **company currency** per expense (lists, CSV, P&L all use it).
+- [x] **Net profit** on the Dashboard (this year) and full P&L + VAT on Reports.
 - [ ] Auto-create ledger entries from invoices/payments/expenses (link by id) for true reconciliation.
 
 ## Product / UX

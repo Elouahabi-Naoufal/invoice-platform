@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Plus, Wallet, ArrowDownLeft, AlertTriangle, FileText, Users, BarChart3, MessageCircle } from "lucide-react";
-import { requireUser, getActiveCompanyId } from "@/server/auth";
+import { ArrowRight, Plus, Wallet, ArrowDownLeft, AlertTriangle, FileText, Users, BarChart3, MessageCircle, TrendingUp } from "lucide-react";
+import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
+import { buildProfitAndLoss } from "@/server/reports";
 import { StatusBadge, EmptyState, PageHeader, StatCard, SectionCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 
 export default async function Dashboard() {
-  try { await requireUser(); } catch { redirect("/login"); }
+  let ownerId = "";
+  try { ownerId = (await requireActor()).ownerId; } catch { redirect("/login"); }
   const companies = await listCompanies();
   if (companies.length === 0) {
     return (
@@ -54,6 +56,12 @@ export default async function Dashboard() {
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
+  const pnl = await buildProfitAndLoss(ownerId, { companyId: active.id, from: yearStart, baseCurrency: active.defaultCurrency });
+  const profitRow = pnl.find((p) => p.currency === active.defaultCurrency) ?? pnl[0];
+  const netProfit = profitRow?.netProfit ?? 0;
+  const netCurrency = profitRow?.currency ?? active.defaultCurrency;
+
   const quick = [
     { href: "/invoices/new", label: "New invoice", icon: Plus },
     { href: "/clients?new=1", label: "Add client", icon: Users },
@@ -69,7 +77,15 @@ export default async function Dashboard() {
         actions={<Link href="/invoices/new" className="btn-accent"><Plus size={15} /> New invoice</Link>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          tone={netProfit < 0 ? "error" : "success"}
+          icon={<TrendingUp size={20} />}
+          label="Net profit · this year"
+          value={moneyList(new Map([[netCurrency, netProfit]]))}
+          sub="revenue − expenses − payroll"
+          href="/reports"
+        />
         <StatCard
           tone="brand"
           icon={<Wallet size={20} />}

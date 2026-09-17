@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createRate, archiveRate } from "@/server/rates";
+import { createRate, archiveRate, updateRate } from "@/server/rates";
 import { useToast, EmptyState, PageHeader } from "@/components/ui";
 import { applyRate } from "@/domain/charges";
 import { formatMoney } from "@/domain/invoice";
@@ -17,6 +17,8 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
   const r = useRouter();
   const toast = useToast();
   const [err, setErr] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editing = rates.find((x) => x.id === editingId) ?? null;
   const [calcRateId, setCalcRateId] = useState(rates[0]?.id ?? "");
   const [base, setBase] = useState(0);
   const selected = rates.find((x) => x.id === calcRateId);
@@ -26,7 +28,7 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
     setErr("");
     const obj = Object.fromEntries([...fd.entries()].map(([k, v]) => [k, String(v)]));
     try {
-      await createRate({
+      const payload = {
         name: obj.name.trim(),
         kind: obj.kind,
         percentBps: Math.round(Number(obj.percent || 0) * 100),
@@ -34,8 +36,11 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
         capMinor: obj.cap ? Math.round(Number(obj.cap) * 100) : null,
         appliesTo: obj.appliesTo,
         notes: obj.notes || null,
-      });
-      toast({ kind: "ok", title: "Rate added" });
+      };
+      if (editingId) await updateRate(editingId, payload);
+      else await createRate(payload);
+      toast({ kind: "ok", title: editingId ? "Rate updated" : "Rate added" });
+      setEditingId(null);
       r.refresh();
     } catch (e) {
       const m = e instanceof Error ? e.message : "Failed";
@@ -59,17 +64,20 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
       <PageHeader title="Rates & charges" description="Define any rate yourself — no country assumptions. Use them in payroll, on expenses, or in the calculator." />
 
       <div className="card p-5">
-        <h2 className="section-title mb-3">Add a rate</h2>
-        <form action={submit} className="grid gap-3 md:grid-cols-2">
-          <div><label className="label">Name *</label><input name="name" required placeholder="e.g. CNSS employer, Insurance…" className="input" /></div>
-          <div><label className="label">Type</label><select name="kind" className="input" defaultValue="PERCENT"><option value="PERCENT">Percentage</option><option value="FIXED">Fixed amount</option></select></div>
-          <div><label className="label">Percent (%)</label><input name="percent" type="number" step="0.01" min={0} defaultValue={0} className="input" /></div>
-          <div><label className="label">Fixed amount</label><input name="fixed" type="number" step="0.01" min={0} defaultValue={0} className="input" /></div>
-          <div><label className="label">Cap (optional)</label><input name="cap" type="number" step="0.01" min={0} className="input" /></div>
-          <div><label className="label">Applies to</label><select name="appliesTo" className="input" defaultValue="ANY">{Object.entries(APPLIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-          <div className="md:col-span-2"><label className="label">Notes</label><input name="notes" className="input" /></div>
+        <h2 className="section-title mb-3">{editing ? `Edit “${editing.name}”` : "Add a rate"}</h2>
+        <form key={editingId ?? "new"} action={submit} className="grid gap-3 md:grid-cols-2">
+          <div><label className="label">Name *</label><input name="name" required defaultValue={editing?.name ?? ""} placeholder="e.g. CNSS employer, Insurance…" className="input" /></div>
+          <div><label className="label">Type</label><select name="kind" className="input" defaultValue={editing?.kind ?? "PERCENT"}><option value="PERCENT">Percentage</option><option value="FIXED">Fixed amount</option></select></div>
+          <div><label className="label">Percent (%)</label><input name="percent" type="number" step="0.01" min={0} defaultValue={editing ? editing.percentBps / 100 : 0} className="input" /></div>
+          <div><label className="label">Fixed amount</label><input name="fixed" type="number" step="0.01" min={0} defaultValue={editing ? editing.fixedMinor / 100 : 0} className="input" /></div>
+          <div><label className="label">Cap (optional)</label><input name="cap" type="number" step="0.01" min={0} defaultValue={editing?.capMinor ? editing.capMinor / 100 : ""} className="input" /></div>
+          <div><label className="label">Applies to</label><select name="appliesTo" className="input" defaultValue={editing?.appliesTo ?? "ANY"}>{Object.entries(APPLIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+          <div className="md:col-span-2"><label className="label">Notes</label><input name="notes" defaultValue={editing?.notes ?? ""} className="input" /></div>
           {err && <p className="field-err md:col-span-2">{err}</p>}
-          <div className="md:col-span-2"><button className="btn-primary btn-sm">Add rate</button></div>
+          <div className="flex gap-2 md:col-span-2">
+            <button className="btn-primary btn-sm">{editing ? "Save changes" : "Add rate"}</button>
+            {editing && <button type="button" onClick={() => setEditingId(null)} className="btn-ghost btn-sm">Cancel</button>}
+          </div>
         </form>
       </div>
 
@@ -96,7 +104,10 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
                   <td>{x.kind === "PERCENT" ? `${x.percentBps / 100}%` : formatMoney(x.fixedMinor, "MAD")}</td>
                   <td className="text-ink-500">{x.capMinor ? formatMoney(x.capMinor, "MAD") : "—"}</td>
                   <td className="text-ink-500">{APPLIES[x.appliesTo] ?? x.appliesTo}</td>
-                  <td className="text-right"><button onClick={() => remove(x.id)} className="btn-ghost btn-sm hover:text-red-700">Remove</button></td>
+                  <td className="text-right">
+                    <button onClick={() => setEditingId(x.id)} className="btn-ghost btn-sm">Edit</button>
+                    <button onClick={() => remove(x.id)} className="btn-ghost btn-sm hover:text-red-700">Remove</button>
+                  </td>
                 </tr>
               ))}
             </tbody>

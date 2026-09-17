@@ -29,8 +29,7 @@ export default async function ExpensesPage() {
   const byCurrency = new Map<string, number>();
   let billable = 0;
   for (const e of expenses) {
-    const cur = "MAD";
-    byCurrency.set(cur, (byCurrency.get(cur) ?? 0) + e.totalMinor);
+    byCurrency.set(e.currency, (byCurrency.get(e.currency) ?? 0) + e.totalMinor);
     if (e.billable) billable += 1;
   }
   const total = [...byCurrency.entries()].map(([c, v]) => formatMoney(v, c)).join(" · ") || formatMoney(0, "MAD");
@@ -72,9 +71,9 @@ export default async function ExpensesPage() {
                     <td className="tabular-nums text-ink-500">{new Date(e.date).toLocaleDateString()}</td>
                     <td className="font-medium">{e.description}{e.supplier ? <span className="meta block">{e.supplier}</span> : null}</td>
                     <td className="text-ink-500">{e.category ?? "—"}</td>
-                    <td className="num tabular-nums">{formatMoney(e.amountHTMinor, "MAD")}</td>
-                    <td className="num tabular-nums text-ink-500">{chargesTotal ? formatMoney(chargesTotal, "MAD") : "—"}</td>
-                    <td className="num font-medium tabular-nums">{formatMoney(e.totalMinor, "MAD")}</td>
+                    <td className="num tabular-nums">{formatMoney(e.amountHTMinor, e.currency)}</td>
+                    <td className="num tabular-nums text-ink-500">{chargesTotal ? formatMoney(chargesTotal, e.currency) : "—"}</td>
+                    <td className="num font-medium tabular-nums">{formatMoney(e.totalMinor, e.currency)}</td>
                     <td className="text-right"><ExpenseRowDelete id={e.id} /></td>
                   </tr>
                 );
