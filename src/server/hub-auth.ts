@@ -1,17 +1,21 @@
 "use server";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { hubPrisma } from "@/lib/hub-prisma";
 import bcrypt from "bcryptjs";
 
 const SESSION_COOKIE = "hub_admin_session";
 const SESSION_MS = 8 * 3600_000;
 
-export async function adminLogin(email: string, password: string) {
-  const key = email.toLowerCase().trim();
-  if (!key || !key.includes("@")) throw new Error("valid email required");
-  const admin = await hubPrisma.superAdmin.findUnique({ where: { email: key } });
-  if (!admin || !(await bcrypt.compare(password, admin.passwordHash)))
-    throw new Error("invalid credentials");
+export async function adminLogin(formData: FormData) {
+  const email = String(formData.get("email") ?? "").toLowerCase().trim();
+  const password = String(formData.get("password") ?? "");
+  if (!email || !email.includes("@")) throw new Error("valid email required");
+  if (!password) throw new Error("password required");
+  const admin = await hubPrisma.superAdmin.findUnique({ where: { email } });
+  if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
+    return redirect("/admin/login?error=invalid+credentials");
+  }
   const expiresAt = new Date(Date.now() + SESSION_MS);
   const session = await hubPrisma.hubSession.create({
     data: { adminId: admin.id, expiresAt },
@@ -24,7 +28,7 @@ export async function adminLogin(email: string, password: string) {
     sameSite: "lax",
     path: "/admin",
   });
-  return { id: admin.id, email: admin.email };
+  redirect("/admin");
 }
 
 export async function adminLogout() {
@@ -34,6 +38,7 @@ export async function adminLogout() {
     await hubPrisma.hubSession.delete({ where: { id: sid } }).catch(() => undefined);
     cookie.delete(SESSION_COOKIE);
   }
+  redirect("/");
 }
 
 export async function requireAdmin() {
