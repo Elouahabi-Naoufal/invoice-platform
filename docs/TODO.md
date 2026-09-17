@@ -18,7 +18,7 @@ Living list of what's next. Done items move to the app overview.
 - [x] Rates: **editing** supported (add / edit / remove).
 - [x] Expenses: **company currency** per expense (lists, CSV, P&L all use it).
 - [x] **Net profit** on the Dashboard (this year) and full P&L + VAT on Reports.
-- [ ] Auto-create ledger entries from invoices/payments/expenses (link by id) for true reconciliation.
+- [x] Auto-create ledger entries: client payments post IN, expenses and paid payslips post OUT (first account in that currency).
 
 ## Product / UX
 - [ ] In-app reminders of what's due (notifications), separate from client reminders.

@@ -95,7 +95,24 @@ export async function deletePayslip(id: string) {
 
 export async function markPayslipPaid(id: string) {
   const { ownerId } = await requireWrite();
-  const p = await prisma.payslip.findFirst({ where: { id, ownerId } });
+  const p = await prisma.payslip.findFirst({ where: { id, ownerId }, include: { employee: { select: { fullName: true } } } });
   if (!p) throw new Error("not found");
-  return prisma.payslip.update({ where: { id }, data: { status: "PAID", paidAt: new Date() } });
+  const updated = await prisma.payslip.update({ where: { id }, data: { status: "PAID", paidAt: new Date() } });
+  // Auto-post the employer cost to the money ledger.
+  const account = await prisma.account.findFirst({ where: { ownerId, currency: p.currency, active: true }, orderBy: { createdAt: "asc" } });
+  if (account && p.employerCostMinor > 0) {
+    await prisma.ledgerEntry.create({
+      data: {
+        ownerId,
+        accountId: account.id,
+        direction: "OUT",
+        amountMinor: p.employerCostMinor,
+        currency: p.currency,
+        label: `Salary ${p.period} — ${p.employee.fullName}`,
+        category: "Payroll",
+        date: new Date(),
+      },
+    });
+  }
+  return updated;
 }

@@ -48,7 +48,7 @@ export async function createExpense(raw: unknown) {
   const { lines, total: chargesTotal } = computeCharges(rates.map(toRateLike), d.amountHTMinor);
   const vat = expenseVat(d.amountHTMinor, d.taxRateBps, d.taxExempt);
   const totalMinor = d.amountHTMinor + vat + chargesTotal;
-  return prisma.expense.create({
+  const expense = await prisma.expense.create({
     data: {
       ownerId,
       companyId: d.companyId || null,
@@ -69,6 +69,25 @@ export async function createExpense(raw: unknown) {
       notes: d.notes || null,
     } as never,
   });
+
+  // Auto-post the outflow to the money ledger.
+  const account = await prisma.account.findFirst({ where: { ownerId, currency: d.currency, active: true }, orderBy: { createdAt: "asc" } });
+  if (account) {
+    await prisma.ledgerEntry.create({
+      data: {
+        ownerId,
+        accountId: account.id,
+        direction: "OUT",
+        amountMinor: totalMinor,
+        currency: d.currency,
+        label: d.description,
+        category: d.category || "Expense",
+        expenseId: expense.id,
+        date: d.date,
+      },
+    });
+  }
+  return expense;
 }
 
 export async function deleteExpense(id: string) {
