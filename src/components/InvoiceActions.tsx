@@ -14,6 +14,14 @@ type Inv = {
   whatsappStatus: string; whatsappSentTo?: string | null; whatsappSentAt?: string | null; whatsappError?: string | null;
 };
 
+function makePaymentRef(method: string): string {
+  const prefix = method === "BANK_TRANSFER" ? "VIR" : method === "CASH" ? "ESP" : method === "CARD" ? "CARD" : method === "CHECK" ? "CHQ" : "PAY";
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const rand = String(Math.floor(Math.random() * 9000) + 1000);
+  return `${prefix}-${ymd}-${rand}`;
+}
+
 export default function InvoiceActions({ inv }: { inv: Inv }) {
   const r = useRouter();
   const toast = useToast();
@@ -27,8 +35,35 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
   const [amt, setAmt] = useState(inv.remaining / 100);
   const [method, setMethod] = useState("BANK_TRANSFER");
   const [ref, setRef] = useState("");
+  const [payNotes, setPayNotes] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function openPay() {
+    setErr("");
+    setAmt(inv.remaining / 100);
+    setMethod("BANK_TRANSFER");
+    setRef(makePaymentRef("BANK_TRANSFER"));
+    setPayNotes("");
+    setPayOpen(true);
+  }
+
+  async function submitPayment() {
+    if (busy) return;
+    setErr(""); setBusy(true);
+    try {
+      await pay(inv.id, { amountMinor: Math.round(amt * 100), method, reference: ref.trim() || undefined, notes: payNotes.trim() || undefined });
+      toast({ kind: "ok", title: "Payment recorded" });
+      setPayOpen(false);
+      r.refresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Payment failed";
+      setErr(msg);
+      toast({ kind: "err", title: "Unable to record payment", body: msg });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(label: string, fn: () => Promise<unknown>, go?: string) {
     setErr(""); setBusy(true);
@@ -104,7 +139,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
 
       {inv.status === "ISSUED" && inv.docType !== "DEVIS" && (
         <>
-          <button onClick={() => { setAmt(inv.remaining / 100); setPayOpen(true); }} className="btn-primary btn-sm">
+          <button onClick={openPay} className="btn-primary btn-sm">
             Record payment · {formatMoney(inv.remaining, inv.currency)}
           </button>
           <button onClick={() => setWaOpen(true)} className="btn-outline btn-sm"><MessageCircle size={14} /> WhatsApp PDF</button>
@@ -175,11 +210,24 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
         <Modal title={`Record payment — ${formatMoney(inv.remaining, inv.currency)} remaining`} onClose={() => setPayOpen(false)}>
           <div className="grid gap-3">
             <div><label className="label">Amount ({inv.currency})</label><input type="number" step="0.01" min={0.01} max={inv.remaining / 100} value={amt} onChange={(e) => setAmt(Number(e.target.value))} className="input num" /></div>
-            <div><label className="label">Method</label><select value={method} onChange={(e) => setMethod(e.target.value)} className="input"><option value="BANK_TRANSFER">Bank transfer</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="CHECK">Check</option><option value="OTHER">Other</option></select></div>
-            <div><label className="label">Reference</label><input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. VIR-2026-118" className="input" /></div>
+            <div><label className="label">Method</label>
+              <select
+                value={method}
+                onChange={(e) => {
+                  const m = e.target.value;
+                  setMethod(m);
+                  setRef((prev) => (/^(VIR|ESP|CARD|CHQ|PAY)-\d{8}-\d{4}$/.test(prev) ? makePaymentRef(m) : prev));
+                }}
+                className="input"
+              >
+                <option value="BANK_TRANSFER">Bank transfer</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="CHECK">Check</option><option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div><label className="label">Reference</label><input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="auto-generated" className="input" /></div>
+            <div><label className="label">Notes</label><textarea value={payNotes} onChange={(e) => setPayNotes(e.target.value)} rows={2} placeholder="Optional note about this payment" className="input" /></div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setPayOpen(false)} className="btn-ghost">Cancel</button>
-              <button disabled={busy} onClick={() => run("Payment recorded", () => pay(inv.id, { amountMinor: Math.round(amt * 100), method, reference: ref || undefined }))} className="btn-primary">{busy ? "Saving…" : "Record"}</button>
+              <button disabled={busy || amt <= 0} onClick={submitPayment} className="btn-primary">{busy ? "Recording…" : "Record payment"}</button>
             </div>
           </div>
         </Modal>

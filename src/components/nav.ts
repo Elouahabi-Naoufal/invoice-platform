@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, Users, Building2, Settings, Package, Repeat, Bell,
-  Shield, Handshake, Globe, FileDown, BarChart3,
+  Shield, Handshake, FileDown, BarChart3,
 } from "lucide-react";
 
 export interface NavItem {
@@ -37,7 +37,6 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Sharing",
     items: [
-      { href: "/portal", label: "Client portal", icon: Globe },
       { href: "/exports", label: "Exports", icon: FileDown },
     ],
   },

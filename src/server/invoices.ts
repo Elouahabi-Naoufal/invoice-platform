@@ -16,6 +16,16 @@ function toCalcLines(lines: { quantityMilli: number; unitPriceMinor: number; dis
   return lines.map((l) => ({ ...l }));
 }
 
+/** Atomically allocate the next number in a series (used for invoice numbering and PO refs). */
+async function allocateNumber(companyId: string, prefix: string, year: number): Promise<string> {
+  const series = await prisma.numberingSeries.upsert({
+    where: { companyId_prefix_year: { companyId, prefix, year } },
+    create: { companyId, prefix, year, lastNo: 1 },
+    update: { lastNo: { increment: 1 } },
+  });
+  return `${prefix}-${year}-${String(series.lastNo).padStart(4, "0")}`;
+}
+
 export async function createDraftInvoice(ownerId: string, raw: unknown) {
   const data = invoiceCreateSchema.parse(raw);
   // IDOR guard: related records must belong to the same owner.
@@ -44,6 +54,8 @@ export async function createDraftInvoice(ownerId: string, raw: unknown) {
     invDiscountBps: data.invDiscountBps,
     invDiscountFixedMinor: data.invDiscountFixedMinor,
   });
+  // Purchase-order reference is auto-assigned (PO-YYYY-NNNN) unless the user typed one.
+  const poNumber = data.poNumber?.trim() || (await allocateNumber(data.companyId, "PO", data.issueDate.getFullYear()));
   const inv = await prisma.invoice.create({
     data: {
       ownerId,
@@ -60,7 +72,7 @@ export async function createDraftInvoice(ownerId: string, raw: unknown) {
       dueDate,
       paymentTerms: data.paymentTerms,
       paymentMode: (data as { paymentMode?: string }).paymentMode,
-      poNumber: data.poNumber,
+      poNumber,
       clientRef: data.clientRef,
       projectRef: data.projectRef,
       notes: data.notes,

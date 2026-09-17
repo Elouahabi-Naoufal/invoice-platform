@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Plus, Trash2, Copy, GripVertical } from "lucide-react";
 import { calcInvoice } from "@/domain/invoice";
@@ -67,13 +67,65 @@ export default function InvoiceBuilder({ companies, initialClients, linked, link
   const [saving, setSaving] = useState(false);
   const [tried, setTried] = useState(false);
 
+  // ── Draft persistence: survive an accidental refresh without retyping ──
+  const storageKey = `invora:invoice-draft:${draft?.id ?? linked?.id ?? "new"}`;
+  const hydrated = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const s = JSON.parse(raw) as Record<string, unknown>;
+        if (typeof s.sellerId === "string" && s.sellerId) setSellerId(s.sellerId);
+        if (typeof s.buyerId === "string") setBuyerId(s.buyerId);
+        if (typeof s.docType === "string") setDocType(s.docType);
+        if (typeof s.issueDate === "string") setIssueDate(s.issueDate);
+        if (typeof s.dueDate === "string") setDueDate(s.dueDate);
+        if (typeof s.validUntil === "string") setValidUntil(s.validUntil);
+        if (typeof s.currency === "string") setCurrency(s.currency);
+        if (typeof s.paymentMode === "string") setPaymentMode(s.paymentMode);
+        if (typeof s.paymentTerms === "string") setPaymentTerms(s.paymentTerms);
+        if (typeof s.poNumber === "string") setPoNumber(s.poNumber);
+        if (typeof s.correctionReason === "string") setCorrectionReason(s.correctionReason);
+        if (typeof s.notes === "string") setNotes(s.notes);
+        if (typeof s.invDiscPct === "number") setInvDiscPct(s.invDiscPct);
+        if (typeof s.invDiscFixed === "number") setInvDiscFixed(s.invDiscFixed);
+        if (Array.isArray(s.lines) && s.lines.length > 0) setLines(s.lines as PreviewLine[]);
+        toast({ kind: "ok", title: "Unsaved invoice restored", body: "We recovered what you were editing." });
+      }
+    } catch {
+      // ignore malformed storage
+    }
+    hydrated.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          sellerId, buyerId, docType, issueDate, dueDate, validUntil, currency, paymentMode,
+          paymentTerms, poNumber, correctionReason, notes, invDiscPct, invDiscFixed, lines,
+        }));
+      } catch {
+        // storage full/unavailable — non-fatal
+      }
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey, sellerId, buyerId, docType, issueDate, dueDate, validUntil, currency, paymentMode, paymentTerms, poNumber, correctionReason, notes, invDiscPct, invDiscFixed, lines]);
+
+  function clearStoredDraft() {
+    try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+  }
+
   const seller = companies.find((c) => c.id === sellerId);
   const buyer = clients.find((c) => c.id === buyerId);
 
   const calc = useMemo(() => {
     try { return calcInvoice({ lines, invDiscountBps: Math.round(invDiscPct * 100), invDiscountFixedMinor: Math.round(invDiscFixed * 100) }); }
     catch { return null; }
-  }, [lines, invDiscPct]);
+  }, [lines, invDiscPct, invDiscFixed]);
 
   async function search() {
     setClients(await listClients(q) as Client[]);
@@ -119,10 +171,12 @@ export default function InvoiceBuilder({ companies, initialClients, linked, link
       };
       if (draft) {
         await updateDraft(draft.id, payload);
+        clearStoredDraft();
         toast({ kind: "ok", title: "Draft updated" });
         r.push(`/invoices/${draft.id}`);
       } else {
         const inv = await createDraft(payload);
+        clearStoredDraft();
         toast({ kind: "ok", title: "Draft saved" });
         r.push(`/invoices/${(inv as { id: string }).id}`);
       }

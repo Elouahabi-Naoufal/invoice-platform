@@ -25,7 +25,7 @@ Invora is a self-hosted **invoicing and finance web app for Moroccan businesses*
 - **Money:** integer minor units (centimes), prices entered HT, per-line TVA rates (0/7/10/14/20 + exempt), line and invoice-level discounts (percentage + fixed).
 - **Sending:** WhatsApp only. The owner links their phone once via QR; invoices are sent as PDF documents with a configurable message template and public link.
 - **Automation:** recurring invoices auto-generate and reminders auto-send on schedule, via a background worker.
-- **Public links:** each issued invoice has a high-entropy public token (view/PDF, revocable and expirable); each client can have a private portal token.
+- **Public links:** each issued invoice has a high-entropy public token (view/PDF, revocable and expirable).
 
 ## 4. Public pages (no login)
 | Route | What it contains |
@@ -37,7 +37,6 @@ Invora is a self-hosted **invoicing and finance web app for Moroccan businesses*
 | `/login/register` | Create the single owner account (display name, email, password ≥ 8). |
 | `/invite/[token]` | Accept a team invite: shows the organization and role, lets the invitee set a name + password and create their login. |
 | `/i/[token]` | Public invoice view: number, total/paid/remaining, Download PDF, WhatsApp share button. Logs a "viewed" event. |
-| `/portal/client/[token]` | Private per-client portal: lists only that client's shared issued invoices with links to view the PDF. |
 
 ## 5. Authenticated pages (app)
 | Route | What it contains |
@@ -53,7 +52,6 @@ Invora is a self-hosted **invoicing and finance web app for Moroccan businesses*
 | `/recurring` | Recurring invoice templates: name, company, client, doc type, currency, terms, period (days), start date, lines, auto-send channel (None/WhatsApp); table shows next run, last generated, status, errors; actions: Pause/Activate, Generate now. |
 | `/relances` | Reminders: schedule a WhatsApp reminder on an issued invoice (type, date); overdue invoices list; scheduled reminders table with status (Sent/Pending/Failed) and actions (Send now, delete). |
 | `/lettrage` | Credit-note reconciliation: link an AVOIR to an issued invoice with an amount; list of reconciliations; remove. |
-| `/portal` | Client portal management: per-client private portal link (generate/copy/revoke), and a table of issued invoices with a "Shared in portal" toggle. |
 | `/exports` | Exports hub: accounting CSV (date range) and UBL e-invoice links, plus explanation. |
 | `/members` | Team: invite by email + role (VIEWER read-only / ADMIN manage); table of members (email, role, invited, status, invite link); revoke. |
 | `/settings` | **Settings hub** with tabs (General, WhatsApp, Security, Automation, Data): account (display name), sending-channel status, cards linking to each section. |
@@ -81,8 +79,8 @@ Invora is a self-hosted **invoicing and finance web app for Moroccan businesses*
 - **User** — owner account (email, passwordHash, displayName).
 - **Company** — seller profile + Moroccan identifiers + bank + logo/signature + prefixes + accent + taxRegime.
 - **NumberingSeries** — per company/prefix/year counter.
-- **Client** — buyer (person/company, ICE/IF/RC, phone, currency, portalToken).
-- **Invoice** — status, docType, linkedInvoiceId, dates, snapshots (seller/buyer/lines), totals, taxBreakdown, publicToken (+ expiry), portalShared, WhatsApp status fields, sentAt/viewedAt/finalizedAt/cancelledAt.
+- **Client** — buyer (person/company, ICE/IF/RC, phone, currency).
+- **Invoice** — status, docType, linkedInvoiceId, dates, snapshots (seller/buyer/lines), totals, taxBreakdown, publicToken (+ expiry), WhatsApp status fields, sentAt/viewedAt/finalizedAt/cancelledAt.
 - **InvoiceLine** — description, quantityMilli, unit, unitPriceMinor, discountBps, taxRateBps, taxExempt.
 - **Payment** — amountMinor, currency, date, method, reference.
 - **InvoiceEvent** — activity log (created/finalized/sent/viewed/payment/paid/cancelled/duplicated/reminder_sent/whatsapp_sent/whatsapp_failed).

@@ -103,7 +103,6 @@ model Client {
   isAssujetti     Boolean  @default(true) // false = particulier B2C, ICE non requis
   defaultCurrency String   @default("MAD")
   notes           String?
-  portalToken     String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -155,7 +154,6 @@ model Invoice {
   // share / send
   publicToken           String?   @unique
   publicTokenExpiresAt  DateTime?
-  portalShared          Boolean   @default(false)
   sentAt                DateTime?
   sentTo                String?
   whatsappStatus        String    @default("NOT_SENT") // NOT_SENT | SENDING | SENT | FAILED

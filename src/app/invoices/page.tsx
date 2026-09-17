@@ -11,12 +11,13 @@ import { formatMoney } from "@/domain/invoice";
 const STATUSES = ["", "DRAFT", "ISSUED", "CANCELLED"];
 const TYPES = ["", "FACTURE", "DEVIS", "AVOIR", "RECTIFICATIVE"];
 
-export default async function InvoicesPage({ searchParams }: { searchParams: { status?: string; docType?: string; q?: string; from?: string; to?: string; page?: string } }) {
+export default async function InvoicesPage({ searchParams }: { searchParams: { status?: string; docType?: string; q?: string; from?: string; to?: string; page?: string; company?: string } }) {
   try { await requireUser(); } catch { redirect("/login"); }
   const companies = await listCompanies();
+  if (companies.length === 0) redirect("/companies?new=1");
   const activeId = await getActiveCompanyId();
-  const companyId = activeId ?? companies[0]?.id;
-  if (!companyId) redirect("/companies?new=1");
+  const companyParam = searchParams.company ?? "";
+  const companyId = companyParam === "all" ? undefined : (companyParam || activeId || companies[0]?.id);
 
   const page = Math.max(1, Number(searchParams.page ?? 1) || 1);
   const { items: rows, total, pages } = await listInvoices({
@@ -46,6 +47,10 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
 
       <div className="card mb-4 p-3">
         <form className="flex flex-wrap items-center gap-2" action="/invoices" method="get">
+          <select name="company" defaultValue={companyParam === "all" ? "all" : (companyParam || companyId || "all")} className="input w-auto min-w-[170px]" aria-label="Company">
+            <option value="all">All companies</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.legalName}</option>)}
+          </select>
           <div className="relative min-w-[200px] flex-1">
             <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
             <input name="q" defaultValue={searchParams.q ?? ""} placeholder="Search number, reference, notes…" className="input pl-8" />
@@ -53,6 +58,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
           <input type="date" name="from" defaultValue={searchParams.from ?? ""} className="input w-auto" aria-label="From" />
           <input type="date" name="to" defaultValue={searchParams.to ?? ""} className="input w-auto" aria-label="To" />
           {searchParams.docType ? <input type="hidden" name="docType" value={searchParams.docType} /> : null}
+          {searchParams.status ? <input type="hidden" name="status" value={searchParams.status} /> : null}
           <button className="btn-outline btn-sm">Apply</button>
         </form>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-100 pt-3 dark:border-white/5">
