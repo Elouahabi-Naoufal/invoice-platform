@@ -65,7 +65,7 @@ const s = StyleSheet.create({
   topBar: { height: 5 },
   body: { paddingHorizontal: 36, paddingTop: 26, flex: 1, flexDirection: "column" },
   header: { flexDirection: "row", alignItems: "center", gap: 14 },
-  logo: { width: 110, height: 52, objectFit: "contain" },
+  logo: { width: 170, height: 84, objectFit: "contain" },
   headerInfo: { flex: 1 },
   headerName: { fontSize: 16, fontWeight: "bold" },
   headerSub: { color: MUTED, marginTop: 2, fontSize: 9 },

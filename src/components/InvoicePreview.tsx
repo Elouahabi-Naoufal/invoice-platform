@@ -34,7 +34,7 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
         <div className="flex items-center gap-4">
           {doc.seller.logoPath ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={String(doc.seller.logoPath)} alt="" className="h-[52px] w-[110px] shrink-0 object-contain object-left" />
+            <img src={String(doc.seller.logoPath)} alt="" className="h-[84px] w-[170px] shrink-0 object-contain object-left" />
           ) : null}
           <div className="min-w-0">
             <div className="text-[16px] font-bold tracking-tight">{doc.seller.legalName || "Vendeur"}</div>

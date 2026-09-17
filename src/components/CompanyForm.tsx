@@ -64,9 +64,9 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
         <div className="col-span-2 flex items-center gap-4">
           {(initial?.logoPath as string) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={initial?.logoPath as string} alt="Company logo" className="h-12 w-12 rounded-md border border-ink-200 dark:border-white/10 object-contain" />
+            <img src={initial?.logoPath as string} alt="Company logo" className="h-20 w-20 rounded-md border border-ink-200 dark:border-white/10 object-contain" />
           ) : (
-            <span className="grid h-12 w-12 place-items-center rounded-md bg-ink-950 text-lg font-semibold text-white">
+            <span className="grid h-20 w-20 place-items-center rounded-md bg-ink-950 text-lg font-semibold text-white">
               {(v("legalName") || "?").slice(0, 1).toUpperCase()}
             </span>
           )}

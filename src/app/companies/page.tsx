@@ -30,9 +30,9 @@ export default async function CompaniesPage({ searchParams }: { searchParams: { 
             <div key={c.id} className="card flex items-start gap-3.5 p-4">
               {c.logoPath ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.logoPath} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-ink-200 dark:border-white/10 object-contain" />
+                <img src={c.logoPath} alt="" className="h-16 w-16 shrink-0 rounded-lg border border-ink-200 dark:border-white/10 object-contain" />
               ) : (
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-ink-950 text-base font-semibold text-white">
+                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-ink-950 text-base font-semibold text-white">
                   {c.legalName.slice(0, 1).toUpperCase()}
                 </span>
               )}
