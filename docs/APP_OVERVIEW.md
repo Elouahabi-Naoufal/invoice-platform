@@ -52,7 +52,6 @@ Invora is a self-hosted **invoicing and finance web app for Moroccan businesses*
 | `/products` | Product/service catalog: list + form (name, description, unit, unit price HT, TVA, exempt, optional company); used to fill invoice lines. |
 | `/recurring` | Recurring invoice templates: name, company, client, doc type, currency, terms, period (days), start date, lines, auto-send channel (None/WhatsApp); table shows next run, last generated, status, errors; actions: Pause/Activate, Generate now. |
 | `/relances` | Reminders: schedule a WhatsApp reminder on an issued invoice (type, date); overdue invoices list; scheduled reminders table with status (Sent/Pending/Failed) and actions (Send now, delete). |
-| `/payment-links` | Payment links per invoice: create a token with an optional amount; list with token, invoice, amount, expiry, status. (Reference/reconciliation only — no online gateway.) |
 | `/lettrage` | Credit-note reconciliation: link an AVOIR to an issued invoice with an amount; list of reconciliations; remove. |
 | `/portal` | Client portal management: per-client private portal link (generate/copy/revoke), and a table of issued invoices with a "Shared in portal" toggle. |
 | `/exports` | Exports hub: accounting CSV (date range) and UBL e-invoice links, plus explanation. |
