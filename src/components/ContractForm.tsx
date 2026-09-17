@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createContract, deleteContract } from "@/server/contracts";
 import { useToast } from "@/components/ui";
+import { PAYMENT_TERM_OPTIONS } from "@/lib/options";
 
 interface Client { id: string; name: string; companyName?: string | null }
 
@@ -38,7 +39,7 @@ export function ContractForm({ clients }: { clients: Client[] }) {
       <div><label className="label">Currency</label><input name="currency" defaultValue="MAD" className="input" /></div>
       <div><label className="label">Period (days)</label><input name="periodDays" type="number" min={1} defaultValue={30} className="input" /></div>
       <div><label className="label">VAT %</label><input name="taxRate" type="number" step="0.01" min={0} defaultValue={20} className="input" /></div>
-      <div><label className="label">Terms</label><select name="paymentTerms" className="input" defaultValue="D30"><option value="ON_RECEIPT">On receipt</option><option value="D7">D7</option><option value="D15">D15</option><option value="D30">D30</option><option value="D60">D60</option></select></div>
+      <div><label className="label">Terms</label><select name="paymentTerms" className="input" defaultValue="D30">{PAYMENT_TERM_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
       <div><label className="label">Start</label><input name="startDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="input" /></div>
       <div><label className="label">End (optional)</label><input name="endDate" type="date" className="input" /></div>
       <div className="md:col-span-2"><label className="label">Notes</label><input name="notes" className="input" /></div>

@@ -1,4 +1,5 @@
 import { calcInvoice, formatMoney } from "@/domain/invoice";
+import { docTitle, formatIsoAsDdMmYyyy, normalizeAccent } from "@/domain/presentation";
 
 export interface PreviewLine {
   description: string; quantityMilli: number; unit: string;
@@ -15,21 +16,15 @@ export interface PreviewDoc {
 }
 
 function accentOf(seller: PreviewDoc["seller"]): string {
-  const a = String(seller.accentColor ?? "#1D4ED8");
-  return /^#[0-9A-Fa-f]{6}$/.test(a) ? a : "#1D4ED8";
+  return normalizeAccent(seller.accentColor);
 }
-
-const ddmmyyyy = (iso: string) => {
-  const [y, m, d] = iso.split("-");
-  return y && m && d ? `${d}/${m}/${y}` : iso;
-};
 
 /** A4 stationery preview — same calcInvoice() engine and same composition as the PDF. */
 export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
   const calc = calcInvoice({ lines: doc.lines, invDiscountBps: doc.invDiscountBps, invDiscountFixedMinor: doc.invDiscountFixedMinor });
   const accent = accentOf(doc.seller);
   const fmt = (m: number) => formatMoney(m, doc.currency, doc.locale.startsWith("en") ? "en-GB" : "fr-MA");
-  const title = doc.docType === "AVOIR" ? "AVOIR" : doc.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : doc.docType === "DEVIS" ? "DEVIS" : "FACTURE";
+  const title = docTitle(doc.docType);
   const sellerIds = [doc.seller.ice && `ICE : ${doc.seller.ice}`, doc.seller.identifiantFiscal && `IF : ${doc.seller.identifiantFiscal}`, doc.seller.rc && `RC : ${doc.seller.rc}${doc.seller.rcCity ? ` ${doc.seller.rcCity}` : ""}`, doc.seller.patente && `TP : ${doc.seller.patente}`].filter(Boolean);
 
   return (
@@ -58,9 +53,9 @@ export default function InvoicePreview({ doc }: { doc: PreviewDoc }) {
           <div className="text-right">
             <div className="text-[13px] font-bold">N° {doc.invoiceNumber ?? <em className="font-normal not-italic text-ink-400">Brouillon — sans numéro</em>}</div>
             <div className="mt-1 text-ink-500">
-              <div>Date : {ddmmyyyy(doc.issueDate)}</div>
-              {doc.dueDate && <div>Échéance : {ddmmyyyy(doc.dueDate)}</div>}
-              {doc.docType === "DEVIS" && doc.validUntil && <div>Valable jusqu'au : {ddmmyyyy(doc.validUntil)}</div>}
+              <div>Date : {formatIsoAsDdMmYyyy(doc.issueDate)}</div>
+              {doc.dueDate && <div>Échéance : {formatIsoAsDdMmYyyy(doc.dueDate)}</div>}
+              {doc.docType === "DEVIS" && doc.validUntil && <div>Valable jusqu'au : {formatIsoAsDdMmYyyy(doc.validUntil)}</div>}
               <div>Devise : {doc.currency}</div>
               {doc.poNumber && <div>Cde client : {doc.poNumber}</div>}
             </div>

@@ -4,6 +4,7 @@ import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listCompanies } from "@/server/companies-clients";
 import { buildReports, buildProfitAndLoss } from "@/server/reports";
 import { formatMoney } from "@/domain/invoice";
+import { buildQueryString } from "@/lib/query";
 import { EmptyState } from "@/components/ui";
 
 function parseDate(v?: string): Date | undefined {
@@ -33,11 +34,8 @@ export default async function ReportsPage({
   const baseCurrency = companies.find((c) => c.id === companyId)?.defaultCurrency ?? "MAD";
   const pnl = await buildProfitAndLoss(ownerId, { companyId, from, to, baseCurrency });
   const fmt = (m: number, c: string) => formatMoney(m, c);
-  const qs = (patch: Record<string, string>) => {
-    const p = new URLSearchParams({ ...(companyId ? { companyId } : {}), ...(searchParams.from ? { from: searchParams.from } : {}), ...(searchParams.to ? { to: searchParams.to } : {}), ...patch });
-    Object.entries(patch).forEach(([k, v]) => { if (!v) p.delete(k); });
-    return `/reports?${p.toString()}`;
-  };
+  const qs = (patch: Record<string, string>) =>
+    buildQueryString("/reports", { companyId, from: searchParams.from, to: searchParams.to }, patch);
 
   return (
     <div>

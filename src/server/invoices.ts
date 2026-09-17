@@ -8,6 +8,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { amountInWords, calcInvoice, deriveDueDate, isValidICE } from "@/domain/invoice";
+import { normalizeAccent } from "@/domain/presentation";
 import { invoiceCreateSchema, paymentSchema } from "@/server/validation";
 import { logoDataUri } from "@/server/companies-clients";
 import { nanoid } from "nanoid";
@@ -161,7 +162,7 @@ export async function finalizeInvoice(ownerId: string, invoiceId: string) {
   // Later logo/signature/accent changes must never alter an issued invoice — PDF stays reproducible.
   const frozenLogo = await logoDataUri(inv.company!.logoPath);
   const frozenSignature = await logoDataUri((inv.company as { signaturePath?: string }).signaturePath);
-  const frozenAccent = ((inv.company as { accentColor?: string }).accentColor || "#1D4ED8").trim() || "#1D4ED8";
+  const frozenAccent = normalizeAccent((inv.company as { accentColor?: string }).accentColor);
 
   const result = await prisma.$transaction(async (tx) => {
     // Atomic numbering: upsert + increment in one statement (no read-modify-write race).

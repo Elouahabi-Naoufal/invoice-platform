@@ -7,6 +7,7 @@ import { listCompanies } from "@/server/companies-clients";
 import { StatusBadge, EmptyState, PageHeader } from "@/components/ui";
 import InvoiceRow from "@/components/InvoiceRow";
 import { formatMoney } from "@/domain/invoice";
+import { buildQueryString } from "@/lib/query";
 
 const STATUSES = ["", "DRAFT", "ISSUED", "CANCELLED"];
 const TYPES = ["", "FACTURE", "DEVIS", "AVOIR", "RECTIFICATIVE"];
@@ -30,12 +31,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: { s
     page,
   });
 
-  const qs = (patch: Record<string, string>) => {
-    const p = new URLSearchParams({ ...searchParams, ...patch });
-    Object.entries(patch).forEach(([k, v]) => { if (!v) p.delete(k); });
-    p.delete("page");
-    return `/invoices?${p.toString()}`;
-  };
+  const qs = (patch: Record<string, string>) => buildQueryString("/invoices", { ...searchParams }, patch, ["page"]);
 
   return (
     <div>

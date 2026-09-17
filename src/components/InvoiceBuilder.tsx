@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Plus, Trash2, Copy, GripVertical } from "lucide-react";
 import { calcInvoice } from "@/domain/invoice";
+import { normalizeAccent } from "@/domain/presentation";
+import { CURRENCY_OPTIONS, PAYMENT_TERM_OPTIONS } from "@/lib/options";
 import InvoicePreview, { PreviewLine } from "@/components/InvoicePreview";
 import ClientForm from "@/components/ClientForm";
 import { createDraft, updateDraft } from "@/server/invoice-ops";
@@ -194,7 +196,7 @@ export default function InvoiceBuilder({ companies, initialClients, linked, link
     address: String(seller.address ?? ""), city: String(seller.city ?? ""),
     ice: String(seller.ice ?? ""), identifiantFiscal: String(seller.identifiantFiscal ?? ""),
     patente: String(seller.patente ?? ""), rc: String(seller.rc ?? ""), rcCity: String(seller.rcCity ?? ""),
-    cnss: String(seller.cnss ?? ""), accentColor: String(seller.accentColor ?? "#1D4ED8"),
+    cnss: String(seller.cnss ?? ""), accentColor: normalizeAccent(seller.accentColor),
     logoPath: String(seller.logoPath ?? ""), signaturePath: String(seller.signaturePath ?? ""),
   } : {};
   const buyerView = buyer ? {
@@ -280,9 +282,9 @@ export default function InvoiceBuilder({ companies, initialClients, linked, link
                 ) : (
                   <div><label className="label">Due date</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" /><p className="hint">Empty = derived from terms</p></div>
                 )}
-                <div><label className="label">Currency</label><select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input"><option>MAD</option><option>EUR</option><option>USD</option><option>GBP</option></select></div>
+                <div><label className="label">Currency</label><select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input">{CURRENCY_OPTIONS.map((c) => <option key={c}>{c}</option>)}</select></div>
                 <div><label className="label">Payment</label><select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="input"><option>VIREMENT</option><option>ESPECES</option><option>CHEQUE</option><option>EFFET</option></select></div>
-                <div><label className="label">Terms</label><select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input"><option value="ON_RECEIPT">Due on receipt</option><option value="D7">7 days</option><option value="D15">15 days</option><option value="D30">30 days</option><option value="D60">60 days</option><option value="CUSTOM">Custom</option></select></div>
+                <div><label className="label">Terms</label><select value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input">{PAYMENT_TERM_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
                 <div><label className="label">Purchase order</label><input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="BC-…" className="input" /></div>
                 <div><label className="label">Invoice discount %</label><input type="number" min={0} max={100} value={invDiscPct} onChange={(e) => setInvDiscPct(Number(e.target.value))} className="input" /></div>
                 <div><label className="label">Fixed discount ({currency})</label><input type="number" min={0} step="0.01" value={invDiscFixed} onChange={(e) => setInvDiscFixed(Number(e.target.value))} className="input" /></div>

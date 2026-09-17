@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createRecurringTemplate, toggleRecurringTemplate, generateInvoiceFromTemplate } from "@/server/recurring";
 import { useToast } from "@/components/ui";
+import { PAYMENT_TERM_OPTIONS } from "@/lib/options";
 
 export function RecurringForm({ companies, clients, defaultCompanyId, onDone }: { companies: { id: string; legalName: string }[]; clients: { id: string; name: string; companyName?: string | null }[]; defaultCompanyId?: string | null; onDone?: () => void }) {
   const r = useRouter();
@@ -68,7 +69,7 @@ export function RecurringForm({ companies, clients, defaultCompanyId, onDone }: 
       <div className="grid gap-3 md:grid-cols-4">
         <div><label className="label">Doc type</label><select name="docType" className="input" defaultValue="FACTURE"><option value="FACTURE">Facture</option><option value="DEVIS">Devis</option></select></div>
         <div><label className="label">Currency</label><input name="currency" defaultValue="MAD" className="input" /></div>
-        <div><label className="label">Payment terms</label><select name="paymentTerms" className="input" defaultValue="D30"><option value="ON_RECEIPT">On receipt</option><option value="D7">D7</option><option value="D15">D15</option><option value="D30">D30</option><option value="D60">D60</option></select></div>
+        <div><label className="label">Payment terms</label><select name="paymentTerms" className="input" defaultValue="D30">{PAYMENT_TERM_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
         <div><label className="label">Start date *</label><input name="startDate" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="input" /></div>
       </div>
       <div className="card p-3">

@@ -5,6 +5,7 @@ import { Download, Copy, Pencil, Trash2, Ban, Plus, Check, X, ArrowRight, Messag
 import { finalize, pay, cancel, duplicate, deleteDraft, decideQuote, convertDevis, revokePublicLink } from "@/server/invoice-ops";
 import { Modal, useToast } from "@/components/ui";
 import { formatMoney, invoiceShareText, whatsAppShareUrl } from "@/domain/invoice";
+import { PAYMENT_METHOD_OPTIONS } from "@/lib/options";
 
 type Inv = {
   id: string; status: string; docType: string; invoiceNumber: string | null;
@@ -220,7 +221,7 @@ export default function InvoiceActions({ inv }: { inv: Inv }) {
                 }}
                 className="input"
               >
-                <option value="BANK_TRANSFER">Bank transfer</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="CHECK">Check</option><option value="OTHER">Other</option>
+                {PAYMENT_METHOD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div><label className="label">Reference</label><input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="auto-generated" className="input" /></div>

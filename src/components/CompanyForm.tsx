@@ -5,6 +5,7 @@ import { createCompany, updateCompany, uploadLogo, uploadSignature } from "@/ser
 import { setActiveCompany } from "@/server/auth";
 import { useToast } from "@/components/ui";
 import { formatZodError } from "@/lib/errors";
+import { CURRENCY_OPTIONS } from "@/lib/options";
 
 const ACCENTS = ["#1D4ED8", "#0F766E", "#334155", "#7C2D12", "#581C87", "#0E7490"];
 
@@ -106,7 +107,7 @@ export function CompanyFormFields({ initial }: { initial?: C }) {
       </Section>
       <Section title="Invoice defaults">
         <F label="Default currency">
-          <select name="defaultCurrency" defaultValue={v("defaultCurrency") || "MAD"} className="input"><option>MAD</option><option>EUR</option><option>USD</option><option>GBP</option></select>
+          <select name="defaultCurrency" defaultValue={v("defaultCurrency") || "MAD"} className="input">{CURRENCY_OPTIONS.map((c) => <option key={c}>{c}</option>)}</select>
         </F>
         <F label="Default TVA (bps)" hint="2000 = 20%"><input name="defaultTaxBps" type="number" defaultValue={v("defaultTaxBps") || 2000} className="input" /></F>
         <F label="Invoice prefix"><input name="invoicePrefix" defaultValue={v("invoicePrefix") || "FAC"} className="input" /></F>

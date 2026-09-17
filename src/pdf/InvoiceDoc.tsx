@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { calcInvoice, formatMoney } from "@/domain/invoice";
+import { docTitle, formatIsoAsDdMmYyyy, normalizeAccent } from "@/domain/presentation";
 
 /**
  * Full-page A4 invoice stationery — PRESENTATION ONLY.
@@ -48,8 +49,7 @@ const HAIR = "#E5E7EB";
 const FAINT = "#F7F7F5";
 
 function accentOf(seller: PdfInvoice["seller"]): string {
-  const a = String(seller.accentColor ?? "#1D4ED8");
-  return /^#[0-9A-Fa-f]{6}$/.test(a) ? a : "#1D4ED8";
+  return normalizeAccent(seller.accentColor);
 }
 
 const s = StyleSheet.create({
@@ -137,11 +137,8 @@ export function InvoiceDoc({ inv }: { inv: PdfInvoice }) {
   const accent = accentOf(inv.seller);
   const locale = inv.locale.startsWith("en") ? "en-GB" : "fr-MA";
   const fmt = (m: number) => formatMoney(m, inv.currency, locale);
-  const title = inv.docType === "AVOIR" ? "AVOIR" : inv.docType === "RECTIFICATIVE" ? "FACTURE RECTIFICATIVE" : inv.docType === "DEVIS" ? "DEVIS" : "FACTURE";
-  const dateFmt = (iso: string) => {
-    const [y, m, d] = iso.split("-");
-    return y && m && d ? `${d}/${m}/${y}` : iso;
-  };
+  const title = docTitle(inv.docType ?? "FACTURE");
+  const dateFmt = (iso: string) => formatIsoAsDdMmYyyy(iso);
   const sellerIds = [
     inv.seller.ice && `ICE : ${inv.seller.ice}`,
     inv.seller.identifiantFiscal && `IF : ${inv.seller.identifiantFiscal}`,
