@@ -17,13 +17,6 @@ export async function listCompanies() {
   }));
 }
 
-export async function getCompany(id: string) {
-  const { ownerId } = await requireActor();
-  const c = await prisma.company.findFirst({ where: { id, ownerId } });
-  if (!c) throw new Error("not found");
-  return { ...c, logoPath: publicUploadUrl(c.logoPath), signaturePath: publicUploadUrl(c.signaturePath) };
-}
-
 export async function createCompany(raw: unknown) {
   const { ownerId } = await requireWrite();
   const d = companySchema.parse(raw);
@@ -36,14 +29,6 @@ export async function updateCompany(id: string, raw: unknown) {
   const c = await prisma.company.findFirst({ where: { id, ownerId } });
   if (!c) throw new Error("not found");
   return prisma.company.update({ where: { id }, data: d as never });
-}
-
-export async function archiveCompany(id: string) {
-  const { ownerId } = await requireWrite();
-  const c = await prisma.company.findFirst({ where: { id, ownerId } });
-  if (!c) throw new Error("not found");
-  // History-preserving: never hard-delete a company with invoices; archive instead.
-  return prisma.company.update({ where: { id }, data: { archived: true } });
 }
 
 const LOGO_MIME: Record<string, string> = {
@@ -157,13 +142,6 @@ export async function listClients(q?: string) {
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-}
-
-export async function getClient(id: string) {
-  const { ownerId } = await requireActor();
-  const c = await prisma.client.findFirst({ where: { id, ownerId } });
-  if (!c) throw new Error("not found");
-  return c;
 }
 
 export async function createClient(raw: unknown) {

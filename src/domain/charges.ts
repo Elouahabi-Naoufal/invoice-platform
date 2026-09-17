@@ -18,6 +18,13 @@ export interface ChargeLine {
   amountMinor: number;
 }
 
+/** Map a stored Rate row to the minimal shape the engine needs. */
+export function toRateLike(rate: {
+  id: string; name: string; kind: string; percentBps: number; fixedMinor: number; capMinor: number | null;
+}): RateLike {
+  return { id: rate.id, name: rate.name, kind: rate.kind, percentBps: rate.percentBps, fixedMinor: rate.fixedMinor, capMinor: rate.capMinor };
+}
+
 /** Value of a single rate applied to a base amount (minor units). */
 export function applyRate(rate: RateLike, baseMinor: number): number {
   const raw = rate.kind === "FIXED" ? rate.fixedMinor : divRoundHalfUp(baseMinor * rate.percentBps, 10000);

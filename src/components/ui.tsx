@@ -12,7 +12,6 @@ const STATUS_STYLE: Record<string, string> = {
   DRAFT: "bg-ink-100 text-ink-700 dark:bg-white/5 dark:text-white/80",
   ISSUED: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400",
   SENT: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400",
-  VIEWED: "bg-info-50 text-info-600 dark:bg-info-500/15 dark:text-info-500",
   PARTIALLY_PAID: "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-orange-400",
   PAID: "bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500",
   OVERDUE: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-500",
@@ -259,11 +258,4 @@ export function Toaster({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---------- Submit button with loading guard ---------- */
-export function SubmitButton({ children, className, pending }: { children: React.ReactNode; className?: string; pending?: boolean }) {
-  return (
-    <button type="submit" disabled={pending} className={className ?? "btn-primary"}>
-      {pending ? "Saving…" : children}
-    </button>
-  );
-}
+/* ---------- Toasts ---------- */

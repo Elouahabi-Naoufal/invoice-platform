@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 
 interface Account { id: string; name: string; kind: string; currency: string; balanceMinor: number }
-interface Entry { id: string; date: string; direction: string; amountMinor: number; currency: string; label: string; category: string | null; account: { name: string } }
+interface Entry { id: string; date: string | Date; direction: string; amountMinor: number; currency: string; label: string; category: string | null; account: { name: string } }
 
 export default function AccountsClient({ accounts, entries }: { accounts: Account[]; entries: Entry[] }) {
   const r = useRouter();

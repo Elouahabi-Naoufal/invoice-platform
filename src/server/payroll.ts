@@ -2,11 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
-import { computeCharges, type RateLike } from "@/domain/charges";
-
-function toRateLike(r: { id: string; name: string; kind: string; percentBps: number; fixedMinor: number; capMinor: number | null }): RateLike {
-  return { id: r.id, name: r.name, kind: r.kind, percentBps: r.percentBps, fixedMinor: r.fixedMinor, capMinor: r.capMinor };
-}
+import { computeCharges, toRateLike } from "@/domain/charges";
 
 export async function listEmployees() {
   const { ownerId } = await requireActor();

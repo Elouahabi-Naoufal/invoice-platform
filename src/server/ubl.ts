@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { calcInvoice, type CalcLine } from "@/domain/invoice";
+import { safeJsonParse, parseJsonArray } from "@/lib/safe";
 
 function xmlEsc(s: unknown): string {
   return String(s ?? "")
@@ -28,9 +29,9 @@ function typeCode(docType: string): string {
 export async function buildUblForInvoice(ownerId: string, invoiceId: string): Promise<string> {
   const inv = await prisma.invoice.findFirst({ where: { id: invoiceId, ownerId }, include: { lines: { orderBy: { position: "asc" } } } });
   if (!inv) throw new Error("not found");
-  const seller = inv.sellerSnapshot ? JSON.parse(inv.sellerSnapshot) : {};
-  const buyer = inv.buyerSnapshot ? JSON.parse(inv.buyerSnapshot) : {};
-  const lines = (inv.linesSnapshot ? JSON.parse(inv.linesSnapshot) : inv.lines) as (CalcLine & { description: string; unit: string })[];
+  const seller = safeJsonParse<Record<string, unknown>>(inv.sellerSnapshot, {});
+  const buyer = safeJsonParse<Record<string, unknown>>(inv.buyerSnapshot, {});
+  const lines = (inv.linesSnapshot ? parseJsonArray(inv.linesSnapshot) : inv.lines) as (CalcLine & { description: string; unit: string })[];
   const calc = calcInvoice({
     lines: lines.map((l) => ({ quantityMilli: l.quantityMilli, unitPriceMinor: l.unitPriceMinor, discountBps: l.discountBps, taxRateBps: l.taxRateBps, taxExempt: l.taxExempt })),
     invDiscountBps: inv.invDiscountBps,

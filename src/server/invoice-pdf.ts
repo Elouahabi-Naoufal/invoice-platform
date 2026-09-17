@@ -7,7 +7,8 @@ import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { logoDataUri } from "@/server/companies-clients";
-import { InvoiceDoc } from "@/pdf/InvoiceDoc";
+import { InvoiceDoc, type PdfLine } from "@/pdf/InvoiceDoc";
+import { safeJsonParse, parseJsonArray } from "@/lib/safe";
 
 /**
  * Shared PDF renderer for API sends.
@@ -25,10 +26,10 @@ export async function renderInvoicePdfBuffer(opts: { invoiceId: string; ownerId?
   });
   if (!inv) throw new Error("not found");
 
-  const seller = inv.sellerSnapshot ? JSON.parse(inv.sellerSnapshot) : {};
-  const buyer = inv.buyerSnapshot ? JSON.parse(inv.buyerSnapshot) : {};
+  const seller = safeJsonParse<Record<string, string | number | null | undefined>>(inv.sellerSnapshot, {});
+  const buyer = safeJsonParse<Record<string, string | null | undefined>>(inv.buyerSnapshot, {});
   const lines = inv.linesSnapshot
-    ? JSON.parse(inv.linesSnapshot)
+    ? parseJsonArray<PdfLine>(inv.linesSnapshot)
     : inv.lines.map((l) => ({
         description: l.description,
         quantityMilli: l.quantityMilli,
@@ -46,12 +47,12 @@ export async function renderInvoicePdfBuffer(opts: { invoiceId: string; ownerId?
   // Historical logo: frozen bytes in snapshot first; disk fallback only for pre-freeze invoices.
   const logoUri = seller.logoData && String(seller.logoData).startsWith("data:")
     ? String(seller.logoData)
-    : await logoDataUri(seller.logoPath);
+    : await logoDataUri(seller.logoPath as string | null | undefined);
   if (logoUri) seller.logoPath = logoUri;
   // Same for the signature.
   const sigUri = seller.signatureData && String(seller.signatureData).startsWith("data:")
     ? String(seller.signatureData)
-    : await logoDataUri(seller.signaturePath);
+    : await logoDataUri(seller.signaturePath as string | null | undefined);
   if (sigUri) seller.signatureData = sigUri;
 
   const buf = await renderToBuffer(

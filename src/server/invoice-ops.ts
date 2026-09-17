@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActor, requireWrite } from "@/server/auth";
 import { deriveDisplayStatus, calcInvoice } from "@/domain/invoice";
 import { publicUploadUrl } from "@/lib/uploads";
+import { safeJsonParse } from "@/lib/safe";
 import {
   createDraftInvoice as coreCreate,
   finalizeInvoice as coreFinalize,
@@ -66,28 +67,9 @@ export async function revokePublicLink(id: string) {
   return prisma.invoice.update({ where: { id }, data: { publicToken: null, publicTokenExpiresAt: null } });
 }
 
-/** Set (or clear) an expiry on the public share link. */
-export async function setPublicLinkExpiry(id: string, days: number | null) {
-  const { ownerId } = await requireWrite();
-  const inv = await prisma.invoice.findFirst({ where: { id, ownerId } });
-  if (!inv) throw new Error("not found");
-  if (!inv.publicToken) throw new Error("no public link to expire");
-  const expires = days && days > 0 ? new Date(Date.now() + days * 86400000) : null;
-  return prisma.invoice.update({ where: { id }, data: { publicTokenExpiresAt: expires } });
-}
-
 async function assertOwnsInvoice(ownerId: string, id: string) {
   const inv = await prisma.invoice.findFirst({ where: { id, ownerId }, select: { id: true } });
   if (!inv) throw new Error("not found"); // IDOR-safe: no existence leak across owners
-}
-
-function safeJsonParse<T>(raw: string | null | undefined, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
 }
 
 /** DRAFT-only edit (lines + details). ISSUED/CANCELLED rejected — immutability. */

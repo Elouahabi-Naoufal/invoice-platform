@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
 import { computeNextRun, generateFromTemplate } from "@/server/automation";
+import { parseJsonArray } from "@/lib/safe";
 
 const recSchema = z.object({
   name: z.string().min(2),
@@ -34,7 +35,7 @@ export async function listRecurringTemplates(_userId?: string) {
     include: { lastGeneratedInvoice: { select: { invoiceNumber: true } }, company: { select: { legalName: true } }, client: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
-  return templates.map((t) => ({ ...t, lines: t.lines ? JSON.parse(t.lines) : [] }));
+  return templates.map((t) => ({ ...t, lines: parseJsonArray(t.lines) }));
 }
 
 async function assertRelations(ownerId: string, companyId: string, clientId: string) {
@@ -61,25 +62,6 @@ export async function createRecurringTemplate(_userId: string, raw: unknown) {
       ownerId,
     } as never,
   });
-}
-
-export async function updateRecurringTemplate(id: string, raw: unknown) {
-  const { ownerId } = await requireWrite();
-  const d = recSchema.partial().parse(raw) as Record<string, unknown>;
-  const t = await prisma.recurringTemplate.findFirst({ where: { id, ownerId } });
-  if (!t) throw new Error("Template not found");
-  if (typeof d.companyId === "string" || typeof d.clientId === "string") {
-    await assertRelations(ownerId, (d.companyId as string) ?? t.companyId ?? "", (d.clientId as string) ?? t.clientId ?? "");
-  }
-  const data: Record<string, unknown> = { ...d };
-  if (Array.isArray(d.lines)) data.lines = JSON.stringify(d.lines);
-  if (typeof d.startDate === "string" || typeof d.periodDays === "number") {
-    const startDate = typeof d.startDate === "string" ? new Date(d.startDate) : t.startDate;
-    const periodDays = typeof d.periodDays === "number" ? d.periodDays : t.periodDays;
-    data.startDate = startDate;
-    data.nextRunAt = computeNextRun(startDate, periodDays, new Date());
-  }
-  return prisma.recurringTemplate.update({ where: { id }, data: data as never });
 }
 
 export async function toggleRecurringTemplate(id: string) {

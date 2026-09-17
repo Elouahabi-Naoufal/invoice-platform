@@ -1,16 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireActor, requireWrite } from "@/server/auth";
+import { requireWrite } from "@/server/auth";
 import { z } from "zod";
-
-export async function listReconciliations(_userId?: string) {
-  const { ownerId } = await requireActor();
-  return prisma.avoirInvoice.findMany({
-    where: { ownerId },
-    include: { avoir: true, invoice: { select: { invoiceNumber: true, totalTTC: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-}
 
 export async function reconcileAvoir(_userId: string, raw: unknown) {
   const { ownerId } = await requireWrite();

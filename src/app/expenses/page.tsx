@@ -1,7 +1,7 @@
 import { requireActor } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { safeFindMany } from "@/lib/safe";
+import { safeFindMany, parseJsonArray, toPlain } from "@/lib/safe";
 import { listRates } from "@/server/rates";
 import { ExpenseForm, ExpenseRowDelete, InvoiceFromBillable } from "@/components/ExpenseForm";
 import { EmptyState, PageHeader, StatCard } from "@/components/ui";
@@ -9,13 +9,7 @@ import { formatMoney } from "@/domain/invoice";
 import { Receipt } from "lucide-react";
 
 function parseCharges(raw: string | null): { name: string; amountMinor: number }[] {
-  if (!raw) return [];
-  try {
-    const v: unknown = JSON.parse(raw);
-    return Array.isArray(v) ? (v as { name: string; amountMinor: number }[]) : [];
-  } catch {
-    return [];
-  }
+  return parseJsonArray<{ name: string; amountMinor: number }>(raw);
 }
 
 export default async function ExpensesPage() {
@@ -53,7 +47,7 @@ export default async function ExpensesPage() {
 
       <div className="card mb-4 p-5">
         <h2 className="section-title mb-3">Record an expense</h2>
-        <ExpenseForm rates={JSON.parse(JSON.stringify(rates))} />
+        <ExpenseForm rates={toPlain(rates)} />
       </div>
 
       {expenses.length === 0 ? (

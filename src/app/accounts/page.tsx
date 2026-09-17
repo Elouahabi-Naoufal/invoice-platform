@@ -4,6 +4,7 @@ import { accountBalances, listEntries } from "@/server/ledger";
 import AccountsClient from "@/components/AccountsClient";
 import { PageHeader, StatCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
+import { toPlain } from "@/lib/safe";
 import { Wallet } from "lucide-react";
 
 export default async function AccountsPage() {
@@ -27,8 +28,8 @@ export default async function AccountsPage() {
       </div>
 
       <AccountsClient
-        accounts={JSON.parse(JSON.stringify(balances))}
-        entries={JSON.parse(JSON.stringify(entries))}
+        accounts={toPlain(balances)}
+        entries={toPlain(entries)}
       />
     </div>
   );

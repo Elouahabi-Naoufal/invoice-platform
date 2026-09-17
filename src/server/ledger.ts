@@ -3,11 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
 
-export async function listAccounts() {
-  const { ownerId } = await requireActor();
-  return prisma.account.findMany({ where: { ownerId, active: true }, orderBy: { createdAt: "asc" } });
-}
-
 export async function createAccount(raw: unknown) {
   const { ownerId } = await requireWrite();
   const d = z.object({

@@ -6,6 +6,8 @@
 import { prisma } from "@/lib/prisma";
 import { divRoundHalfUp } from "@/domain/invoice";
 import { expenseVat } from "@/domain/charges";
+import { parseJsonArray, safeJsonParse } from "@/lib/safe";
+import { minorToPlain, toCsv } from "@/lib/csv";
 
 export interface ReportFilters {
   companyId?: string;
@@ -26,16 +28,6 @@ interface InvoiceRow {
   client: { companyName: string | null; name: string } | null;
   buyerSnapshot: string | null;
   payments: { amountMinor: number }[];
-}
-
-function parseArray<T>(raw: string | null): T[] {
-  if (!raw) return [];
-  try {
-    const v: unknown = JSON.parse(raw);
-    return Array.isArray(v) ? (v as T[]) : [];
-  } catch {
-    return [];
-  }
 }
 
 function paidOf(inv: { payments: { amountMinor: number }[] }): number {
@@ -156,7 +148,7 @@ export async function buildReports(ownerId: string, filters: ReportFilters = {})
       ag.total += remaining;
     }
 
-    for (const b of parseArray<{ rateBps: number; taxable: number; tax: number }>(inv.taxBreakdown)) {
+    for (const b of parseJsonArray<{ rateBps: number; taxable: number; tax: number }>(inv.taxBreakdown)) {
       const key = `${inv.currency}:${b.rateBps}`;
       const row = taxMap.get(key) ?? { currency: inv.currency, rateBps: b.rateBps, taxable: 0, tax: 0 };
       row.taxable += b.taxable;
@@ -172,7 +164,7 @@ export async function buildReports(ownerId: string, filters: ReportFilters = {})
     crow.outstanding += Math.max(0, remaining);
     clientMap.set(ckey, crow);
 
-    for (const l of parseArray<{ description: string; quantityMilli: number; unitPriceMinor: number; discountBps: number }>(inv.linesSnapshot)) {
+    for (const l of parseJsonArray<{ description: string; quantityMilli: number; unitPriceMinor: number; discountBps: number }>(inv.linesSnapshot)) {
       const gross = divRoundHalfUp(l.quantityMilli * l.unitPriceMinor, 1000);
       const net = gross - divRoundHalfUp(gross * l.discountBps, 10000);
       const pkey = `${l.description}:${inv.currency}`;
@@ -196,13 +188,8 @@ export async function buildReports(ownerId: string, filters: ReportFilters = {})
 }
 
 function buyerName(snapshot: string | null): string {
-  if (!snapshot) return "";
-  try {
-    const b = JSON.parse(snapshot) as { companyName?: string; name?: string };
-    return b.companyName || b.name || "";
-  } catch {
-    return "";
-  }
+  const b = safeJsonParse<{ companyName?: string; name?: string }>(snapshot, {});
+  return b.companyName || b.name || "";
 }
 
 /** Flat CSV of the report (all sections), semicolon-separated for Excel/FR. */
@@ -252,7 +239,7 @@ export async function buildProfitAndLoss(
 
   for (const inv of invoices) {
     const row = ensure(inv.currency);
-    for (const b of parseArray<{ taxable: number; tax: number }>(inv.taxBreakdown)) {
+    for (const b of parseJsonArray<{ taxable: number; tax: number }>(inv.taxBreakdown)) {
       row.revenueHT += b.taxable;
       row.vatCollected += b.tax;
     }
@@ -285,16 +272,11 @@ export async function buildProfitAndLoss(
 }
 
 export function reportsToCsv(data: ReportData): string {
-  const esc = (v: unknown) => {
-    const s = String(v ?? "");
-    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const rows: string[] = [];
-  rows.push("section;currency;key;invoiced_or_taxable;collected_or_tax;outstanding");
-  for (const c of data.currency) rows.push(["summary", c.currency, c.count + " invoices", c.invoiced / 100, c.collected / 100, c.outstanding / 100].map(esc).join(";"));
-  for (const t of data.tax) rows.push(["tax", t.currency, `TVA ${t.rateBps / 100}%`, t.taxable / 100, t.tax / 100, ""].map(esc).join(";"));
-  for (const a of data.aging) rows.push(["aging", a.currency, "receivables", "", "", a.total / 100].map(esc).join(";"));
-  for (const cl of data.byClient) rows.push(["client", cl.currency, cl.name, cl.invoiced / 100, cl.collected / 100, cl.outstanding / 100].map(esc).join(";"));
-  for (const p of data.byProduct) rows.push(["product", p.currency, p.description, p.netHT / 100, "", ""].map(esc).join(";"));
-  return rows.join("\n");
+  const rows: unknown[][] = [];
+  for (const c of data.currency) rows.push(["summary", c.currency, c.count + " invoices", minorToPlain(c.invoiced), minorToPlain(c.collected), minorToPlain(c.outstanding)]);
+  for (const t of data.tax) rows.push(["tax", t.currency, `TVA ${t.rateBps / 100}%`, minorToPlain(t.taxable), minorToPlain(t.tax), ""]);
+  for (const a of data.aging) rows.push(["aging", a.currency, "receivables", "", "", minorToPlain(a.total)]);
+  for (const cl of data.byClient) rows.push(["client", cl.currency, cl.name, minorToPlain(cl.invoiced), minorToPlain(cl.collected), minorToPlain(cl.outstanding)]);
+  for (const p of data.byProduct) rows.push(["product", p.currency, p.description, minorToPlain(p.netHT), "", ""]);
+  return toCsv(rows, ["section", "currency", "key", "invoiced_or_taxable", "collected_or_tax", "outstanding"]);
 }

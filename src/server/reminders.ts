@@ -1,17 +1,8 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireActor, requireWrite } from "@/server/auth";
+import { requireWrite } from "@/server/auth";
 import { z } from "zod";
 import { dispatchReminder } from "@/server/automation";
-
-export async function listReminders(_userId?: string) {
-  const { ownerId } = await requireActor();
-  return prisma.reminder.findMany({
-    where: { ownerId },
-    include: { invoice: { select: { invoiceNumber: true, totalTTC: true, dueDate: true } } },
-    orderBy: { scheduledAt: "asc" },
-  });
-}
 
 export async function createReminder(_userId: string, raw: unknown) {
   const { ownerId } = await requireWrite();
@@ -41,14 +32,6 @@ export async function createReminder(_userId: string, raw: unknown) {
     }
   }
   return { ...reminder, sentNow: false };
-}
-
-export async function listOverdue(_userId?: string) {
-  const { ownerId } = await requireActor();
-  return prisma.invoice.findMany({
-    where: { ownerId, status: "ISSUED", dueDate: { lt: new Date() } },
-    orderBy: { dueDate: "asc" },
-  });
 }
 
 export async function deleteReminder(id: string) {

@@ -5,19 +5,19 @@ import { listRates } from "@/server/rates";
 import { EmployeeForm, PayslipForm, EmployeeDelete, PayslipDelete, PayslipPaid } from "@/components/PayrollForms";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
+import { parseJsonArray, toPlain } from "@/lib/safe";
 import { Users } from "lucide-react";
 
 function parseLines(raw: string | null): { name: string; amountMinor: number }[] {
-  if (!raw) return [];
-  try { const v: unknown = JSON.parse(raw); return Array.isArray(v) ? (v as { name: string; amountMinor: number }[]) : []; } catch { return []; }
+  return parseJsonArray<{ name: string; amountMinor: number }>(raw);
 }
 
 export default async function PayrollPage() {
   try { await requireActor(); } catch { redirect("/login"); }
   const [employees, payslips, rates] = await Promise.all([listEmployees(), listPayslips(), listRates()]);
-  const emp = JSON.parse(JSON.stringify(employees));
-  const rateList = JSON.parse(JSON.stringify(rates));
-  const slips = JSON.parse(JSON.stringify(payslips)) as {
+  const emp = toPlain(employees);
+  const rateList = toPlain(rates);
+  const slips = toPlain(payslips) as {
     id: string; period: string; grossMinor: number; currency: string; employerCostMinor: number; netMinor: number;
     status: string; employerCharges: string | null; employeeDeductions: string | null; employee: { fullName: string };
   }[];

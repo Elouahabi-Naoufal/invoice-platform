@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { renderInvoicePdfBuffer } from "@/server/invoice-pdf";
 import { whatsappGateway, type WhatsAppGateway } from "@/server/whatsapp";
+import { safeJsonParse } from "@/lib/safe";
 import {
   DEFAULT_WHATSAPP_TEMPLATE,
   WHATSAPP_SEND_LOCK_TTL_MS,
@@ -26,13 +27,8 @@ export interface WhatsAppSendResult {
 }
 
 function parseSnapshot(raw: string | null): Record<string, unknown> {
-  if (!raw) return {};
-  try {
-    const value: unknown = JSON.parse(raw);
-    return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
+  const value = safeJsonParse<unknown>(raw, {});
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
 function text(value: unknown): string {

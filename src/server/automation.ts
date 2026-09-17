@@ -6,10 +6,11 @@
 import { prisma } from "@/lib/prisma";
 import { sendInvoiceViaWhatsApp } from "@/server/whatsapp-send";
 import { createDraftInvoice, finalizeInvoice } from "@/server/invoices";
+import { parseJsonArray } from "@/lib/safe";
+import { toShortMessage } from "@/lib/errors";
 
 function errorMessage(e: unknown): string {
-  const raw = e instanceof Error ? e.message : String(e ?? "unknown error");
-  return raw.replace(/\s+/g, " ").trim().slice(0, 500);
+  return toShortMessage(e);
 }
 
 /** Next run date strictly after `now`, stepping by periodDays. */
@@ -38,7 +39,7 @@ interface TemplateRow {
 
 /** Create + finalize an invoice from a recurring template. */
 export async function generateFromTemplate(ownerId: string, t: TemplateRow) {
-  const lines = t.lines ? JSON.parse(t.lines) : [];
+  const lines = parseJsonArray(t.lines);
   if (!Array.isArray(lines) || lines.length === 0) throw new Error("template has no lines");
   const today = new Date();
   const dueDate = new Date(today.getTime() + Math.max(1, t.periodDays) * 86400000);

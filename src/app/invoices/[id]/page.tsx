@@ -5,8 +5,10 @@ import { requireUser } from "@/server/auth";
 import { getInvoiceDetail } from "@/server/invoice-ops";
 import InvoiceActions from "@/components/InvoiceActions";
 import InvoicePreview from "@/components/InvoicePreview";
+import type { PreviewLine } from "@/components/InvoicePreview";
 import { StatusBadge } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
+import { safeJsonParse, parseJsonArray } from "@/lib/safe";
 
 export default async function DetailPage({ params }: { params: { id: string } }) {
   try { await requireUser(); } catch { redirect("/login"); }
@@ -20,19 +22,13 @@ export default async function DetailPage({ params }: { params: { id: string } })
   if (sellerView.signatureData && String(sellerView.signatureData).startsWith("data:")) {
     sellerView.signaturePath = String(sellerView.signatureData);
   }
-  const buckets = (() => {
-    if (!inv.taxBreakdown) return [];
-    try { return JSON.parse(inv.taxBreakdown) as { rateBps: number; taxable: number; tax: number }[]; } catch { return []; }
-  })();
-  const lines = (() => {
-    if (inv.linesSnapshot) {
-      try { return JSON.parse(inv.linesSnapshot); } catch { /* fall through to live lines */ }
-    }
-    return inv.lines.map((l) => ({
-      description: l.description, quantityMilli: l.quantityMilli, unit: l.unit,
-      unitPriceMinor: l.unitPriceMinor, discountBps: l.discountBps, taxRateBps: l.taxRateBps, taxExempt: l.taxExempt,
-    }));
-  })();
+  const buckets = safeJsonParse<{ rateBps: number; taxable: number; tax: number }[]>(inv.taxBreakdown, []);
+  const lines = inv.linesSnapshot
+    ? parseJsonArray<PreviewLine>(inv.linesSnapshot)
+    : inv.lines.map((l) => ({
+        description: l.description, quantityMilli: l.quantityMilli, unit: l.unit,
+        unitPriceMinor: l.unitPriceMinor, discountBps: l.discountBps, taxRateBps: l.taxRateBps, taxExempt: l.taxExempt,
+      }));
 
   return (
     <div>

@@ -1,14 +1,9 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireActor, requireRole } from "@/server/auth";
+import { requireRole } from "@/server/auth";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
-
-export async function listMembers(_userId?: string) {
-  const { ownerId } = await requireActor();
-  return prisma.member.findMany({ where: { ownerId, revokedAt: null }, orderBy: { role: "desc" } });
-}
 
 export async function inviteMember(_userId: string, raw: unknown) {
   const actor = await requireRole(["OWNER", "ADMIN"]);

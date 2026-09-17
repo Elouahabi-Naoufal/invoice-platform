@@ -3,7 +3,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCompany, updateCompany, uploadLogo, uploadSignature } from "@/server/companies-clients";
 import { setActiveCompany } from "@/server/auth";
-import { useToast, Modal } from "@/components/ui";
+import { useToast } from "@/components/ui";
+import { formatZodError } from "@/lib/errors";
 
 const ACCENTS = ["#1D4ED8", "#0F766E", "#334155", "#7C2D12", "#581C87", "#0E7490"];
 
@@ -52,17 +53,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">{children}</div>
     </section>
   );
-}
-
-function prettyErr(e: unknown): string {
-  if (!(e instanceof Error)) return "Save failed";
-  try {
-    const issues = JSON.parse(e.message) as { path: (string | number)[]; message: string }[];
-    if (Array.isArray(issues)) {
-      return issues.map((i) => `${(i.path || []).join(".") || "form"}: ${i.message}`).join(" · ");
-    }
-  } catch { /* plain message */ }
-  return e.message;
 }
 
 export function CompanyFormFields({ initial }: { initial?: C }) {
@@ -220,7 +210,7 @@ export default function CompanyForm({ initial, onDone }: { initial?: C; onDone?:
       else { r.push("/companies"); r.refresh(); }
     } catch (e) {
       // Surface WHICH field failed (native validation is disabled below so nothing blocks silently)
-      const msg = prettyErr(e);
+      const msg = formatZodError(e);
       setErr(msg);
       toast({ kind: "err", title: "Unable to save company", body: msg.slice(0, 300) });
     } finally {
@@ -236,13 +226,5 @@ export default function CompanyForm({ initial, onDone }: { initial?: C; onDone?:
         <button type="submit" disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save company"}</button>
       </div>
     </form>
-  );
-}
-
-export function CompanyModal({ initial, onClose }: { initial?: C; onClose: () => void }) {
-  return (
-    <Modal title={initial ? "Edit company" : "New company"} onClose={onClose} size="lg">
-      <CompanyForm initial={initial} onDone={onClose} />
-    </Modal>
   );
 }

@@ -163,25 +163,6 @@ export function deriveDueDate(issueDate: Date, terms: string, customDue?: Date |
   }
 }
 
-/** Human label for payment-terms codes (presentation only — codes stay canonical). */export function paymentTermsLabel(terms: string | null | undefined, locale = "fr"): string | null {
-  if (!terms || terms === "CUSTOM") return null;
-  const fr: Record<string, string> = {
-    ON_RECEIPT: "À réception",
-    D7: "7 jours",
-    D15: "15 jours",
-    D30: "30 jours",
-    D60: "60 jours",
-  };
-  const en: Record<string, string> = {
-    ON_RECEIPT: "Due on receipt",
-    D7: "7 days",
-    D15: "15 days",
-    D30: "30 days",
-    D60: "60 days",
-  };
-  return (locale.startsWith("en") ? en : fr)[terms] ?? terms;
-}
-
 export const CURRENCY_PRECISION: Record<string, number> = {
   MAD: 2,
   EUR: 2,

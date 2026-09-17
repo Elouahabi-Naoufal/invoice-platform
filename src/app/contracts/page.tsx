@@ -5,6 +5,7 @@ import { listClients } from "@/server/companies-clients";
 import { ContractForm, ContractDelete } from "@/components/ContractForm";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
+import { toPlain } from "@/lib/safe";
 import { Handshake } from "lucide-react";
 
 export default async function ContractsPage() {
@@ -15,7 +16,7 @@ export default async function ContractsPage() {
       <PageHeader title="Contracts" description="Agreements with clients and how much of each has been invoiced." />
       <div className="card mb-4 p-5">
         <h2 className="section-title mb-3">New contract</h2>
-        <ContractForm clients={JSON.parse(JSON.stringify(clients))} />
+        <ContractForm clients={toPlain(clients)} />
       </div>
       {summaries.length === 0 ? (
         <EmptyState title="No contracts" body="Add a contract to track the agreed value against what you have invoiced." icon={<Handshake size={22} />} />

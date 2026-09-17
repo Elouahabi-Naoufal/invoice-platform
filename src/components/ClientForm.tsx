@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient, updateClient } from "@/server/companies-clients";
 import { useToast } from "@/components/ui";
+import { formatZodError } from "@/lib/errors";
 
 export default function ClientForm({ initial, onDone }: { initial?: Record<string, unknown>; onDone?: (id: string) => void }) {
   const r = useRouter();
@@ -24,11 +25,7 @@ export default function ClientForm({ initial, onDone }: { initial?: Record<strin
       if (onDone && id) onDone(id);
       else { r.push("/clients"); r.refresh(); }
     } catch (e) {
-      let msg = e instanceof Error ? e.message : "Save failed";
-      try {
-        const issues = JSON.parse(msg) as { path: (string | number)[]; message: string }[];
-        if (Array.isArray(issues)) msg = issues.map((i) => `${(i.path || []).join(".") || "form"}: ${i.message}`).join(" · ");
-      } catch { /* plain message */ }
+      const msg = formatZodError(e);
       setErr(msg);
       toast({ kind: "err", title: "Unable to save client", body: msg.slice(0, 300) });
     } finally {

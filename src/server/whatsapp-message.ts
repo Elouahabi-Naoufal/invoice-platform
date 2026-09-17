@@ -1,4 +1,5 @@
 import { formatMoney, waDigits } from "@/domain/invoice";
+import { toShortMessage } from "@/lib/errors";
 
 export const WHATSAPP_STATUSES = ["NOT_SENT", "SENDING", "SENT", "FAILED"] as const;
 export type WhatsAppStatus = (typeof WHATSAPP_STATUSES)[number];
@@ -94,7 +95,5 @@ export function isWhatsAppSendLocked(
 
 /** Keep provider/transport errors in DB/logs without stacks or secrets. */
 export function sanitizeWhatsAppError(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error ?? "unknown error");
-  const clean = raw.replace(/\s+/g, " ").trim().slice(0, 500);
-  return clean || "WhatsApp send failed";
+  return toShortMessage(error, "WhatsApp send failed");
 }

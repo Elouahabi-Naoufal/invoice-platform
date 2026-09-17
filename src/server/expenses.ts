@@ -1,8 +1,8 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireActor, requireWrite } from "@/server/auth";
+import { requireWrite } from "@/server/auth";
 import { z } from "zod";
-import { computeCharges, expenseVat, type RateLike } from "@/domain/charges";
+import { computeCharges, expenseVat, toRateLike } from "@/domain/charges";
 import { createDraftInvoice } from "@/server/invoices";
 
 const schema = z.object({
@@ -22,22 +22,6 @@ const schema = z.object({
   billable: z.boolean().default(false),
   notes: z.string().optional().nullable(),
 });
-
-function toRateLike(r: { id: string; name: string; kind: string; percentBps: number; fixedMinor: number; capMinor: number | null }): RateLike {
-  return { id: r.id, name: r.name, kind: r.kind, percentBps: r.percentBps, fixedMinor: r.fixedMinor, capMinor: r.capMinor };
-}
-
-export async function listExpenses(q?: string) {
-  const { ownerId } = await requireActor();
-  return prisma.expense.findMany({
-    where: {
-      ownerId,
-      ...(q ? { OR: [{ description: { contains: q } }, { supplier: { contains: q } }, { category: { contains: q } }] } : {}),
-    },
-    orderBy: { date: "desc" },
-    take: 200,
-  });
-}
 
 export async function createExpense(raw: unknown) {
   const { ownerId } = await requireWrite();
