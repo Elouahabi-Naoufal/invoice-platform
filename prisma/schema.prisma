@@ -318,6 +318,8 @@ model Member {
   acceptedAt  DateTime?
   revokedAt   DateTime?
 
+  employee Employee?
+
   @@unique([ownerId, email])
   @@index([ownerId])
 }
@@ -388,6 +390,7 @@ model Expense {
 model Employee {
   id               String   @id @default(cuid())
   ownerId          String
+  memberId         String?  @unique // optional link to a team member (login)
   fullName         String
   position         String?
   grossSalaryMinor Int      @default(0)
@@ -397,9 +400,11 @@ model Employee {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  member   Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull)
   payslips Payslip[]
 
   @@index([ownerId])
+  @@index([memberId])
 }
 
 model Payslip {

@@ -6,19 +6,29 @@ import { computeCharges, toRateLike } from "@/domain/charges";
 
 export async function listEmployees() {
   const { ownerId } = await requireActor();
-  return prisma.employee.findMany({ where: { ownerId, active: true }, orderBy: { fullName: "asc" } });
+  return prisma.employee.findMany({
+    where: { ownerId, active: true },
+    include: { member: { select: { email: true, role: true, displayName: true } } },
+    orderBy: { fullName: "asc" },
+  });
 }
 
 export async function createEmployee(raw: unknown) {
   const { ownerId } = await requireWrite();
   const d = z.object({
+    memberId: z.string().optional().nullable(),
     fullName: z.string().min(1),
     position: z.string().optional().nullable(),
     grossSalaryMinor: z.number().int().min(0),
     currency: z.string().default("MAD"),
     notes: z.string().optional().nullable(),
   }).parse(raw);
-  return prisma.employee.create({ data: { ...d, ownerId } as never });
+  // The linked team member (if any) must belong to this owner.
+  if (d.memberId) {
+    const member = await prisma.member.findFirst({ where: { id: d.memberId, ownerId }, select: { id: true } });
+    if (!member) throw new Error("team member not found");
+  }
+  return prisma.employee.create({ data: { ...d, memberId: d.memberId || null, ownerId } as never });
 }
 
 export async function deleteEmployee(id: string) {

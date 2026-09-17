@@ -7,7 +7,9 @@ import { useToast } from "@/components/ui";
 interface Rate { id: string; name: string; appliesTo: string; kind: string; percentBps: number }
 interface Employee { id: string; fullName: string; grossSalaryMinor: number; currency: string }
 
-export function EmployeeForm() {
+interface Member { id: string; email: string; displayName?: string | null }
+
+export function EmployeeForm({ members = [], defaultMemberId, defaultName }: { members?: Member[]; defaultMemberId?: string; defaultName?: string }) {
   const r = useRouter();
   const toast = useToast();
   const [err, setErr] = useState("");
@@ -15,17 +17,31 @@ export function EmployeeForm() {
     setErr("");
     const obj = Object.fromEntries([...fd.entries()].map(([k, v]) => [k, String(v)]));
     try {
-      await createEmployee({ fullName: obj.fullName.trim(), position: obj.position || null, grossSalaryMinor: Math.round(Number(obj.gross || 0) * 100), currency: obj.currency || "MAD", notes: obj.notes || null });
+      await createEmployee({
+        memberId: obj.memberId || null,
+        fullName: obj.fullName.trim(),
+        position: obj.position || null,
+        grossSalaryMinor: Math.round(Number(obj.gross || 0) * 100),
+        currency: obj.currency || "MAD",
+        notes: obj.notes || null,
+      });
       toast({ kind: "ok", title: "Employee added" });
       r.refresh();
     } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
   }
   return (
     <form action={submit} className="grid gap-3 md:grid-cols-4">
-      <div><label className="label">Full name *</label><input name="fullName" required className="input" /></div>
+      <div><label className="label">Full name *</label><input name="fullName" required defaultValue={defaultName ?? ""} className="input" /></div>
       <div><label className="label">Position</label><input name="position" className="input" /></div>
       <div><label className="label">Gross salary *</label><input name="gross" type="number" step="0.01" min={0} required className="input" /></div>
       <div><label className="label">Currency</label><input name="currency" defaultValue="MAD" className="input" /></div>
+      <div className="md:col-span-2">
+        <label className="label">Team member (optional)</label>
+        <select name="memberId" defaultValue={defaultMemberId ?? ""} className="input">
+          <option value="">— not linked to app access —</option>
+          {members.map((m) => <option key={m.id} value={m.id}>{m.displayName || m.email}</option>)}
+        </select>
+      </div>
       {err && <p className="field-err md:col-span-4">{err}</p>}
       <div className="md:col-span-4"><button className="btn-primary btn-sm">Add employee</button></div>
     </form>

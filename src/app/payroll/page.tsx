@@ -1,5 +1,6 @@
 import { requireActor } from "@/server/auth";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { listEmployees, listPayslips } from "@/server/payroll";
 import { listRates } from "@/server/rates";
 import { EmployeeForm, PayslipForm, EmployeeDelete, PayslipDelete, PayslipPaid } from "@/components/PayrollForms";
@@ -12,11 +13,19 @@ function parseLines(raw: string | null): { name: string; amountMinor: number }[]
   return parseJsonArray<{ name: string; amountMinor: number }>(raw);
 }
 
-export default async function PayrollPage() {
-  try { await requireActor(); } catch { redirect("/login"); }
-  const [employees, payslips, rates] = await Promise.all([listEmployees(), listPayslips(), listRates()]);
+export default async function PayrollPage({ searchParams }: { searchParams: { member?: string } }) {
+  let ownerId = "";
+  try { ownerId = (await requireActor()).ownerId; } catch { redirect("/login"); }
+  const [employees, payslips, rates, members] = await Promise.all([
+    listEmployees(),
+    listPayslips(),
+    listRates(),
+    prisma.member.findMany({ where: { ownerId, revokedAt: null }, select: { id: true, email: true, displayName: true }, orderBy: { email: "asc" } }),
+  ]);
   const emp = toPlain(employees);
   const rateList = toPlain(rates);
+  const memberList = toPlain(members);
+  const defaultMember = memberList.find((m) => m.id === searchParams.member);
   const slips = toPlain(payslips) as {
     id: string; period: string; grossMinor: number; currency: string; employerCostMinor: number; netMinor: number;
     status: string; employerCharges: string | null; employeeDeductions: string | null; employee: { fullName: string };
@@ -32,7 +41,7 @@ export default async function PayrollPage() {
 
       <div className="card mb-4 p-5">
         <h2 className="section-title mb-3">Employees</h2>
-        <EmployeeForm />
+        <EmployeeForm members={memberList} defaultMemberId={searchParams.member} defaultName={defaultMember ? (defaultMember.displayName || defaultMember.email) : undefined} />
       </div>
 
       {emp.length === 0 ? (
@@ -40,12 +49,13 @@ export default async function PayrollPage() {
       ) : (
         <div className="card mb-4 overflow-hidden">
           <table className="tbl">
-            <thead><tr><th>Name</th><th>Position</th><th className="num">Gross</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Position</th><th>Team</th><th className="num">Gross</th><th></th></tr></thead>
             <tbody>
-              {emp.map((e: { id: string; fullName: string; position: string | null; grossSalaryMinor: number; currency: string }) => (
+              {emp.map((e: { id: string; fullName: string; position: string | null; grossSalaryMinor: number; currency: string; member: { email: string } | null }) => (
                 <tr key={e.id}>
                   <td className="font-medium">{e.fullName}</td>
                   <td className="text-ink-500">{e.position ?? "—"}</td>
+                  <td className="text-ink-500">{e.member ? <span className="badge badge-emerald">{e.member.email}</span> : "—"}</td>
                   <td className="num tabular-nums">{formatMoney(e.grossSalaryMinor, e.currency)}</td>
                   <td className="text-right"><EmployeeDelete id={e.id} /></td>
                 </tr>
