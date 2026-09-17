@@ -46,6 +46,17 @@ export async function approveTenant(id: string, adminId: string) {
       data: { adminId, action: "APPROVE_TENANT", details: JSON.stringify({ tenantId: id, subdomain: tenant.subdomain, domain, deploymentId }) },
     }),
   ]);
+
+  // Send WhatsApp welcome notification if hub has WhatsApp connected and tenant has a phone
+  if (tenant.phone) {
+    try {
+      const { sendHubWhatsApp } = await import("@/server/whatsapp-send");
+      await sendHubWhatsApp(tenant.phone, `✅ Welcome to Invora! Your account is ready at https://${domain}\n\nSupport key: ${supportKey}\n\nSave this key — you'll need it to get help from support.`);
+    } catch (e) {
+      console.warn(`[hub] WhatsApp notification failed for ${tenant.subdomain}:`, e);
+    }
+  }
+
   return { ok: true, domain, supportKey };
 }
 

@@ -1,3 +1,5 @@
+import { execSync } from "child_process";
+
 interface DeployConfig {
   subdomain: string;
   domain: string;
@@ -5,31 +7,28 @@ interface DeployConfig {
 }
 
 export async function createTenantDeployment(config: DeployConfig): Promise<string> {
-  const url = process.env.DOKPLOY_URL;
-  const token = process.env.DOKPLOY_TOKEN;
-  if (!url || !token) throw new Error("DOKPLOY_URL and DOKPLOY_TOKEN must be set");
+  const templateId = process.env.DOKPLOY_TEMPLATE_APPLICATION_ID;
+  if (!templateId) throw new Error("DOKPLOY_TEMPLATE_APPLICATION_ID must be set");
 
-  // The Dokploy API for creating deployments from a template/project.
-  // We clone the existing project configuration with new env vars.
-  const projectId = process.env.DOKPLOY_TEMPLATE_PROJECT_ID;
-  if (!projectId) throw new Error("DOKPLOY_TEMPLATE_PROJECT_ID must be set");
+  const appName = `invora-${config.subdomain}`;
 
-  const res = await fetch(`${url}/trpc/deployment.create`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      projectId,
-      domain: config.domain,
-      env: [
-        { key: "APP_MODE", value: "tenant" },
-        { key: "DATABASE_URL", value: `file:./data/tenant.db` },
-        { key: "SUPPORT_KEY", value: config.supportKey },
-        { key: "NEXT_PUBLIC_APP_URL", value: `https://${config.domain}` },
-        { key: "TZ", value: "Africa/Casablanca" },
-      ],
-    }),
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(`Dokploy error: ${body?.error?.message || res.statusText}`);
-  return body?.result?.id || "deployed";
+  try {
+    // Create a new application from the template
+    const createCmd = `dokploy application create --name "${appName}" --appName "${appName}" --environmentId 5kWR0hvIaN2tF8RxqU_rI --serverId --sourceType github --json 2>&1`;
+    const createOut = execSync(createCmd, { timeout: 30000 }).toString().trim();
+    console.info(`[dokploy] create output: ${createOut}`);
+
+    // Set domain
+    execSync(`dokploy domain create --applicationId "${templateId}" --domain "${config.domain}"`, { timeout: 15000 });
+
+    // Trigger deployment
+    const deployCmd = `dokploy application deploy --applicationId "${templateId}" --title "Auto-deploy: ${config.subdomain}" --json 2>&1`;
+    const deployOut = execSync(deployCmd, { timeout: 300000 }).toString().trim();
+    console.info(`[dokploy] deploy output: ${deployOut}`);
+
+    return templateId;
+  } catch (e) {
+    console.error(`[dokploy] failed: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`Dokploy deployment failed for ${config.subdomain}`);
+  }
 }

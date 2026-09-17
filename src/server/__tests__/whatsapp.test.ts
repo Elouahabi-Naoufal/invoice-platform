@@ -20,8 +20,8 @@ process.env.NEXT_PUBLIC_APP_URL ||= "https://example.test";
 interface FakeCall {
   chatId: string;
   caption: string;
-  pdfLength: number;
-  filename: string;
+  pdfLength?: number;
+  filename?: string;
 }
 
 function fakeGateway(behavior: { registered?: boolean; fail?: string } = {}): { gateway: WhatsAppGateway; calls: FakeCall[] } {
@@ -38,6 +38,11 @@ function fakeGateway(behavior: { registered?: boolean; fail?: string } = {}): { 
       calls.push({ chatId: doc.chatId, caption: doc.caption, pdfLength: doc.pdf.length, filename: doc.filename });
       if (behavior.fail) throw new Error(behavior.fail);
       return { messageId: "wamid.test123" };
+    },
+    async sendText(chatId, text) {
+      calls.push({ chatId, caption: text, pdfLength: 0, filename: "text" });
+      if (behavior.fail) throw new Error(behavior.fail);
+      return { messageId: "wamid.text123" };
     },
   };
   return { gateway, calls };
