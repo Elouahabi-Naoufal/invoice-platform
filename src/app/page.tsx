@@ -4,7 +4,8 @@ import { ArrowRight, Plus, Wallet, ArrowDownLeft, AlertTriangle, FileText, Users
 import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
-import { buildProfitAndLoss } from "@/server/reports";
+import { buildProfitAndLoss, buildDashboardCharts } from "@/server/reports";
+import { BarChart, DonutChart, HBars, CHART_COLORS } from "@/components/charts";
 import { StatusBadge, EmptyState, PageHeader, StatCard, SectionCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 
@@ -61,6 +62,8 @@ export default async function Dashboard() {
   const profitRow = pnl.find((p) => p.currency === active.defaultCurrency) ?? pnl[0];
   const netProfit = profitRow?.netProfit ?? 0;
   const netCurrency = profitRow?.currency ?? active.defaultCurrency;
+
+  const charts = await buildDashboardCharts(ownerId, { companyId: active.id, currency: active.defaultCurrency });
 
   const quick = [
     { href: "/invoices/new", label: "New invoice", icon: Plus },
@@ -121,6 +124,45 @@ export default async function Dashboard() {
             </Link>
           );
         })}
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <SectionCard title="Money in vs out · last 6 months" padded>
+          <BarChart
+            data={charts.monthly.map((m) => ({ label: m.label, a: m.incomeMinor, b: m.expenseMinor }))}
+            currency={active.defaultCurrency}
+          />
+        </SectionCard>
+        <SectionCard title="Where the money went" padded>
+          {charts.expensesByCategory.length === 0 ? (
+            <p className="meta">No expenses recorded in this period.</p>
+          ) : (
+            <div className="flex items-center gap-5">
+              <DonutChart
+                slices={charts.expensesByCategory.map((c) => ({ label: c.label, value: c.valueMinor, display: formatMoney(c.valueMinor, active.defaultCurrency) }))}
+              />
+              <ul className="grid flex-1 gap-1.5">
+                {charts.expensesByCategory.map((c, i) => (
+                  <li key={c.label} className="flex items-center gap-2 text-[12px]">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span className="truncate">{c.label}</span>
+                    <span className="ml-auto tabular-nums text-ink-500">{formatMoney(c.valueMinor, active.defaultCurrency)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      <div className="mt-4">
+        <SectionCard title="Where the money came from · top clients" padded>
+          {charts.incomeByClient.length === 0 ? (
+            <p className="meta">No issued invoices yet.</p>
+          ) : (
+            <HBars items={charts.incomeByClient.map((c) => ({ label: c.label, value: c.valueMinor }))} currency={active.defaultCurrency} />
+          )}
+        </SectionCard>
       </div>
 
       <div className="mt-6">

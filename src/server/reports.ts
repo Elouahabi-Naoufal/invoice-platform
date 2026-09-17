@@ -271,6 +271,86 @@ export async function buildProfitAndLoss(
   return [...rows.values()].sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
+export interface DashboardCharts {
+  monthly: { label: string; incomeMinor: number; expenseMinor: number }[];
+  expensesByCategory: { label: string; valueMinor: number }[];
+  incomeByClient: { label: string; valueMinor: number }[];
+}
+
+/**
+ * Dashboard chart data for one company/currency:
+ * money in (payments received) vs money out (expenses + payroll) over 6 months,
+ * expenses by category, and revenue by client.
+ */
+export async function buildDashboardCharts(
+  ownerId: string,
+  opts: { companyId?: string; currency: string }
+): Promise<DashboardCharts> {
+  const { companyId, currency } = opts;
+  const now = new Date();
+  const months: { key: string; label: string; start: Date }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleString("en", { month: "short" }), start: d });
+  }
+  const since = months[0]!.start;
+
+  const [payments, expenses, payslips, invoices] = await Promise.all([
+    prisma.payment.findMany({
+      where: { invoice: { ownerId, currency, ...(companyId ? { companyId } : {}) }, paymentDate: { gte: since } },
+      select: { amountMinor: true, paymentDate: true },
+    }),
+    prisma.expense.findMany({
+      where: { ownerId, currency, date: { gte: since } },
+      select: { totalMinor: true, date: true, category: true },
+    }),
+    prisma.payslip.findMany({ where: { ownerId, currency }, select: { period: true, employerCostMinor: true } }),
+    prisma.invoice.findMany({
+      where: { ownerId, status: "ISSUED", currency, ...(companyId ? { companyId } : {}) },
+      select: { subtotalHT: true, client: { select: { name: true, companyName: true } } },
+    }),
+  ]);
+
+  const monthIndex = new Map(months.map((m, i) => [m.key, i]));
+  const monthly = months.map((m) => ({ label: m.label, incomeMinor: 0, expenseMinor: 0 }));
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+  for (const p of payments) {
+    const i = monthIndex.get(monthKey(p.paymentDate));
+    if (i != null) monthly[i]!.incomeMinor += p.amountMinor;
+  }
+  for (const e of expenses) {
+    const i = monthIndex.get(monthKey(e.date));
+    if (i != null) monthly[i]!.expenseMinor += e.totalMinor;
+  }
+  for (const p of payslips) {
+    const i = monthIndex.get(p.period);
+    if (i != null) monthly[i]!.expenseMinor += p.employerCostMinor;
+  }
+
+  const byCategory = new Map<string, number>();
+  for (const e of expenses) {
+    const key = e.category?.trim() || "Uncategorized";
+    byCategory.set(key, (byCategory.get(key) ?? 0) + e.totalMinor);
+  }
+  const expensesByCategory = [...byCategory.entries()]
+    .map(([label, valueMinor]) => ({ label, valueMinor }))
+    .sort((a, b) => b.valueMinor - a.valueMinor)
+    .slice(0, 6);
+
+  const byClient = new Map<string, number>();
+  for (const inv of invoices) {
+    const key = inv.client?.companyName || inv.client?.name || "—";
+    byClient.set(key, (byClient.get(key) ?? 0) + inv.subtotalHT);
+  }
+  const incomeByClient = [...byClient.entries()]
+    .map(([label, valueMinor]) => ({ label, valueMinor }))
+    .sort((a, b) => b.valueMinor - a.valueMinor)
+    .slice(0, 5);
+
+  return { monthly, expensesByCategory, incomeByClient };
+}
+
 export function reportsToCsv(data: ReportData): string {
   const rows: unknown[][] = [];
   for (const c of data.currency) rows.push(["summary", c.currency, c.count + " invoices", minorToPlain(c.invoiced), minorToPlain(c.collected), minorToPlain(c.outstanding)]);
