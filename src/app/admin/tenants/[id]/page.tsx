@@ -3,6 +3,7 @@ import { hubPrisma } from "@/lib/hub-prisma";
 import { notFound } from "next/navigation";
 import TenantActions from "@/components/TenantActions";
 import SupportAccessButton from "@/components/SupportAccessButton";
+import SendWelcomeButton from "@/components/SendWelcomeButton";
 
 export default async function TenantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -45,7 +46,10 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           <div className="card p-5">
             <h2 className="section-title mb-3">Support</h2>
             <SupportAccessButton tenantId={tenant.id} adminId={admin.id} />
-            {tenant.deploymentId && <p className="meta mt-2">Deployment ID: {tenant.deploymentId}</p>}
+            <div className="mt-3 border-t border-ink-100 pt-3 dark:border-white/10">
+              <h2 className="section-title mb-2">Welcome notification</h2>
+              <SendWelcomeButton id={tenant.id} />
+            </div>
           </div>
         ) : null}
       </div>

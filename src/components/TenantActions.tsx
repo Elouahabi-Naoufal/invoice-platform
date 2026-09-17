@@ -12,7 +12,7 @@ export default function TenantActions({ id }: { id: string }) {
     setBusy(true); setResult("");
     try {
       const res = await approveTenant(id, "admin");
-      setResult(`Approved! Domain: ${res.domain}. Support key saved.`);
+      setResult(`Approved! Support key: ${res.supportKey}`);
       r.refresh();
     } catch (e) {
       setResult(`Error: ${e instanceof Error ? e.message : "failed"}`);
@@ -32,7 +32,7 @@ export default function TenantActions({ id }: { id: string }) {
 
   return (
     <div className="flex flex-wrap gap-2 items-center">
-      <button onClick={approve} disabled={busy} className="btn-primary btn-sm">{busy ? "Processing…" : "Approve & deploy"}</button>
+      <button onClick={approve} disabled={busy} className="btn-primary btn-sm">{busy ? "Processing…" : "Approve"}</button>
       <button onClick={reject} disabled={busy} className="btn-ghost btn-sm hover:text-red-700">Reject</button>
       {result && <span className="text-sm text-ink-500">{result}</span>}
     </div>
