@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createEmployee, deleteEmployee, generatePayslip, deletePayslip } from "@/server/payroll";
+import { createEmployee, deleteEmployee, generatePayslip, deletePayslip, markPayslipPaid } from "@/server/payroll";
 import { useToast } from "@/components/ui";
 
 interface Rate { id: string; name: string; appliesTo: string; kind: string; percentBps: number }
@@ -101,4 +101,10 @@ export function EmployeeDelete({ id }: { id: string }) {
 export function PayslipDelete({ id }: { id: string }) {
   const r = useRouter(); const toast = useToast();
   return <button onClick={async () => { try { await deletePayslip(id); toast({ kind: "ok", title: "Payslip deleted" }); r.refresh(); } catch { toast({ kind: "err", title: "Failed" }); } }} className="btn-ghost btn-sm hover:text-red-700">Delete</button>;
+}
+
+export function PayslipPaid({ id, paid }: { id: string; paid: boolean }) {
+  const r = useRouter(); const toast = useToast();
+  if (paid) return <span className="badge badge-emerald">Paid</span>;
+  return <button onClick={async () => { try { await markPayslipPaid(id); toast({ kind: "ok", title: "Payslip marked paid" }); r.refresh(); } catch { toast({ kind: "err", title: "Failed" }); } }} className="btn-outline btn-sm">Mark paid</button>;
 }

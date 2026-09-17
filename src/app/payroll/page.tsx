@@ -2,7 +2,7 @@ import { requireActor } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { listEmployees, listPayslips } from "@/server/payroll";
 import { listRates } from "@/server/rates";
-import { EmployeeForm, PayslipForm, EmployeeDelete, PayslipDelete } from "@/components/PayrollForms";
+import { EmployeeForm, PayslipForm, EmployeeDelete, PayslipDelete, PayslipPaid } from "@/components/PayrollForms";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 import { Users } from "lucide-react";
@@ -19,12 +19,16 @@ export default async function PayrollPage() {
   const rateList = JSON.parse(JSON.stringify(rates));
   const slips = JSON.parse(JSON.stringify(payslips)) as {
     id: string; period: string; grossMinor: number; currency: string; employerCostMinor: number; netMinor: number;
-    employerCharges: string | null; employeeDeductions: string | null; employee: { fullName: string };
+    status: string; employerCharges: string | null; employeeDeductions: string | null; employee: { fullName: string };
   }[];
 
   return (
     <div>
-      <PageHeader title="Payroll" description="Employees and payslips. Contributions are whatever rates you defined — no country assumptions." />
+      <PageHeader
+        title="Payroll"
+        description="Employees and payslips. Contributions are whatever rates you defined — no country assumptions."
+        actions={<a href="/api/exports/payroll" className="btn-outline btn-sm">CSV</a>}
+      />
 
       <div className="card mb-4 p-5">
         <h2 className="section-title mb-3">Employees</h2>
@@ -75,7 +79,7 @@ export default async function PayrollPage() {
                   <td className="num tabular-nums">{formatMoney(s.grossMinor, s.currency)}</td>
                   <td className="num tabular-nums">{formatMoney(s.netMinor, s.currency)}</td>
                   <td className="num tabular-nums font-medium">{formatMoney(s.employerCostMinor, s.currency)}</td>
-                  <td className="text-right"><PayslipDelete id={s.id} /></td>
+                  <td className="text-right"><div className="flex items-center justify-end gap-2"><PayslipPaid id={s.id} paid={s.status === "PAID"} /><PayslipDelete id={s.id} /></div></td>
                 </tr>
               ))}
             </tbody>

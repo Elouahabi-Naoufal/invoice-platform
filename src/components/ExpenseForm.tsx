@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createExpense, deleteExpense } from "@/server/expenses";
+import { createExpense, deleteExpense, invoiceFromBillableExpenses } from "@/server/expenses";
 import { useToast } from "@/components/ui";
 
 interface Rate { id: string; name: string; percentBps: number; kind: string; fixedMinor: number }
@@ -90,6 +90,33 @@ export function ExpenseRowDelete({ id }: { id: string }) {
       className="btn-ghost btn-sm hover:text-red-700"
     >
       Delete
+    </button>
+  );
+}
+
+export function InvoiceFromBillable() {
+  const r = useRouter();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const res = await invoiceFromBillableExpenses() as { count: number; invoiceIds: string[] };
+          toast({ kind: "ok", title: "Draft invoice created", body: `${res.count} invoice(s) from billable expenses` });
+          if (res.invoiceIds[0]) r.push(`/invoices/${res.invoiceIds[0]}`);
+          else r.refresh();
+        } catch (e) {
+          toast({ kind: "err", title: "Failed", body: e instanceof Error ? e.message : undefined });
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className="btn-outline btn-sm"
+    >
+      {busy ? "Creating…" : "Invoice billable expenses"}
     </button>
   );
 }

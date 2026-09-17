@@ -414,6 +414,7 @@ model Payslip {
   netMinor            Int       @default(0)
   status              String    @default("DRAFT") // DRAFT | PAID
   paidAt              DateTime?
+  expenseId           String?
   notes               String?
   createdAt           DateTime  @default(now())
 
@@ -421,4 +422,65 @@ model Payslip {
 
   @@index([ownerId, period])
   @@index([employeeId])
+}
+
+// ── Money accounts (bank / cash) + ledger entries ──
+model Account {
+  id                  String   @id @default(cuid())
+  ownerId             String
+  companyId           String?
+  name                String
+  kind                String   @default("BANK") // BANK | CASH
+  currency            String   @default("MAD")
+  openingBalanceMinor Int      @default(0)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  entries LedgerEntry[]
+
+  @@index([ownerId])
+}
+
+model LedgerEntry {
+  id          String   @id @default(cuid())
+  ownerId     String
+  accountId   String
+  date        DateTime @default(now())
+  direction   String // IN | OUT
+  amountMinor Int
+  currency    String   @default("MAD")
+  label       String
+  category    String?
+  invoiceId   String?
+  expenseId   String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, date])
+  @@index([accountId])
+}
+
+// ── Client contracts / agreements ──
+model Contract {
+  id           String    @id @default(cuid())
+  ownerId      String
+  companyId    String?
+  clientId     String
+  title        String
+  valueMinor   Int       @default(0) // agreed amount (HT) over the period
+  currency     String    @default("MAD")
+  periodDays   Int       @default(30)
+  taxRateBps   Int       @default(2000)
+  paymentTerms String    @default("D30")
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  active       Boolean   @default(true)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([clientId])
 }

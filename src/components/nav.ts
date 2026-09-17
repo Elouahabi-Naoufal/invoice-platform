@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, Users, Building2, Settings, Package, Repeat, Bell,
-  Shield, Handshake, FileDown, BarChart3, Receipt, Wallet,
+  Shield, Handshake, FileDown, BarChart3, Receipt, Wallet, Banknote, ScrollText,
 } from "lucide-react";
 
 export interface NavItem {
@@ -39,6 +39,8 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/expenses", label: "Expenses", icon: Receipt },
       { href: "/payroll", label: "Payroll", icon: Wallet },
+      { href: "/accounts", label: "Accounts", icon: Banknote },
+      { href: "/contracts", label: "Contracts", icon: ScrollText },
     ],
   },
   {

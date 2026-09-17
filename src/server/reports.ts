@@ -5,6 +5,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { divRoundHalfUp } from "@/domain/invoice";
+import { expenseVat } from "@/domain/charges";
 
 export interface ReportFilters {
   companyId?: string;
@@ -205,6 +206,82 @@ function buyerName(snapshot: string | null): string {
 }
 
 /** Flat CSV of the report (all sections), semicolon-separated for Excel/FR. */
+export interface PnLRow {
+  currency: string;
+  revenueHT: number;
+  vatCollected: number;
+  expensesHT: number;
+  expenseCharges: number;
+  vatDeductible: number;
+  payrollCost: number;
+  netProfit: number;
+  vatDue: number;
+}
+
+/**
+ * Profit & Loss + VAT, per currency.
+ * Revenue (HT + TVA) comes from issued invoices; costs (expenses + payroll)
+ * are held in the company's base currency.
+ */
+export async function buildProfitAndLoss(
+  ownerId: string,
+  opts: { from?: Date; to?: Date; companyId?: string; baseCurrency?: string } = {}
+): Promise<PnLRow[]> {
+  const { from, to, companyId, baseCurrency = "MAD" } = opts;
+  const range = from || to ? { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } : undefined;
+
+  const invoices = await prisma.invoice.findMany({
+    where: { ownerId, status: "ISSUED", ...(companyId ? { companyId } : {}), ...(range ? { issueDate: range } : {}) },
+    select: { currency: true, taxBreakdown: true },
+  });
+  const expenses = await prisma.expense.findMany({
+    where: { ownerId, ...(range ? { date: range } : {}) },
+    select: { amountHTMinor: true, taxRateBps: true, taxExempt: true, totalMinor: true },
+  });
+  const payslips = await prisma.payslip.findMany({ where: { ownerId }, select: { period: true, employerCostMinor: true } });
+
+  const rows = new Map<string, PnLRow>();
+  const ensure = (c: string): PnLRow => {
+    let row = rows.get(c);
+    if (!row) {
+      row = { currency: c, revenueHT: 0, vatCollected: 0, expensesHT: 0, expenseCharges: 0, vatDeductible: 0, payrollCost: 0, netProfit: 0, vatDue: 0 };
+      rows.set(c, row);
+    }
+    return row;
+  };
+
+  for (const inv of invoices) {
+    const row = ensure(inv.currency);
+    for (const b of parseArray<{ taxable: number; tax: number }>(inv.taxBreakdown)) {
+      row.revenueHT += b.taxable;
+      row.vatCollected += b.tax;
+    }
+  }
+
+  const base = ensure(baseCurrency);
+  for (const e of expenses) {
+    const vat = expenseVat(e.amountHTMinor, e.taxRateBps, e.taxExempt);
+    const charges = Math.max(0, e.totalMinor - e.amountHTMinor - vat);
+    base.expensesHT += e.amountHTMinor;
+    base.expenseCharges += charges;
+    base.vatDeductible += vat;
+  }
+  const inRange = (period: string) => {
+    if (!from && !to) return true;
+    const p = `${period}-01`;
+    if (from && p < from.toISOString().slice(0, 10)) return false;
+    if (to && p > to.toISOString().slice(0, 10)) return false;
+    return true;
+  };
+  for (const p of payslips) if (inRange(p.period)) base.payrollCost += p.employerCostMinor;
+
+  for (const row of rows.values()) {
+    row.netProfit = row.revenueHT - row.expensesHT - row.expenseCharges - row.payrollCost;
+    row.vatDue = row.vatCollected - row.vatDeductible;
+  }
+  return [...rows.values()].sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
 export function reportsToCsv(data: ReportData): string {
   const esc = (v: unknown) => {
     const s = String(v ?? "");

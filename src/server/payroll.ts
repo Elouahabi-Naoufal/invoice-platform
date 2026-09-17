@@ -92,3 +92,10 @@ export async function deletePayslip(id: string) {
   await prisma.payslip.delete({ where: { id } });
   return { ok: true };
 }
+
+export async function markPayslipPaid(id: string) {
+  const { ownerId } = await requireWrite();
+  const p = await prisma.payslip.findFirst({ where: { id, ownerId } });
+  if (!p) throw new Error("not found");
+  return prisma.payslip.update({ where: { id }, data: { status: "PAID", paidAt: new Date() } });
+}

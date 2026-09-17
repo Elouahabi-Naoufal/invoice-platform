@@ -7,16 +7,18 @@ Living list of what's next. Done items move to the app overview.
 - [x] Reminders "do nothing": due reminders now send **immediately** on creation (not only on the 5-min worker), and the failure reason shows in the list.
 - [x] Reminder reliability: a reminder can only send if WhatsApp is **enabled for that invoice's company** and the session is connected — the list now shows the exact error.
 
-## Finance (next)
-- [ ] **P&L / income statement** — income (invoiced + collected) minus expenses minus payroll cost, per period and per company.
-- [ ] **VAT report** — TVA **collectée** (sales, from invoices) − TVA **déductible** (expenses + payroll where applicable) = TVA to pay, per period.
-- [ ] **Money accounts / bank ledger** — define accounts (bank, cash), record money in/out, show balances, and link entries to invoices/payments/expenses (real reconciliation, replacing the current metadata-only "lettrage").
-- [ ] **Contracts** — per client: agreed terms (rate, period, VAT, billing day), optionally generating recurring invoices; contract value vs invoiced to date.
-- [ ] Expenses: use the company currency (currently assumed MAD), and add expense CSV export.
-- [ ] Integrate expenses + payroll cost into the **Reports** page and dashboard (net, not just outstanding).
-- [ ] **Billable expenses → invoice**: create a draft invoice from selected billable expenses.
-- [ ] Payslips: mark as **PAID** (records an expense), and a payroll CSV export.
-- [ ] Rates: allow editing (currently add/remove), and per-company visibility.
+## Finance
+- [x] **P&L / income statement** — on the Reports page (revenue HT − expenses − charges − payroll = net profit).
+- [x] **VAT report** — on the Reports page (collectée − déductible = TVA due).
+- [x] **Money accounts / bank ledger** — `/accounts`: define bank/cash accounts, record money in/out, live balances.
+- [x] **Contracts** — `/contracts`: agreed value vs invoiced to date, with progress.
+- [x] Expenses CSV export (`/api/exports/expenses`).
+- [x] **Billable expenses → invoice**: one click creates draft invoice(s), grouped by company + client.
+- [x] Payslips: **Mark paid** + payroll CSV export (`/api/exports/payroll`).
+- [ ] Rates: allow **editing** (currently add/remove).
+- [ ] Expenses: use the **company currency** (currently assumed MAD) and link VAT to the VAT report precisely.
+- [ ] Put **net profit** on the Dashboard (currently only on Reports).
+- [ ] Auto-create ledger entries from invoices/payments/expenses (link by id) for true reconciliation.
 
 ## Product / UX
 - [ ] In-app reminders of what's due (notifications), separate from client reminders.

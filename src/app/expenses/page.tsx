@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { safeFindMany } from "@/lib/safe";
 import { listRates } from "@/server/rates";
-import { ExpenseForm, ExpenseRowDelete } from "@/components/ExpenseForm";
+import { ExpenseForm, ExpenseRowDelete, InvoiceFromBillable } from "@/components/ExpenseForm";
 import { EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 import { Receipt } from "lucide-react";
@@ -37,7 +37,16 @@ export default async function ExpensesPage() {
 
   return (
     <div>
-      <PageHeader title="Expenses" description="Track what the company spends. Add your own charges/rates and mark expenses as billable." />
+      <PageHeader
+        title="Expenses"
+        description="Track what the company spends. Add your own charges/rates and mark expenses as billable."
+        actions={
+          <div className="flex gap-2">
+            <InvoiceFromBillable />
+            <a href="/api/exports/expenses" className="btn-outline btn-sm">CSV</a>
+          </div>
+        }
+      />
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
         <StatCard tone="warning" icon={<Receipt size={20} />} label="Total expenses" value={total} sub={`${expenses.length} record${expenses.length === 1 ? "" : "s"}`} />
         <StatCard tone="neutral" label="Billable" value={String(billable)} sub="can be re-invoiced to a client" />

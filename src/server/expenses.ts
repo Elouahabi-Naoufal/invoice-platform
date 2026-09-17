@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireActor, requireWrite } from "@/server/auth";
 import { z } from "zod";
 import { computeCharges, expenseVat, type RateLike } from "@/domain/charges";
+import { createDraftInvoice } from "@/server/invoices";
 
 const schema = z.object({
   companyId: z.string().optional().nullable(),
@@ -74,4 +75,44 @@ export async function deleteExpense(id: string) {
   if (!e) throw new Error("not found");
   await prisma.expense.delete({ where: { id } });
   return { ok: true };
+}
+
+/** Create draft invoices from billable expenses (grouped by company + client). */
+export async function invoiceFromBillableExpenses(ids?: string[]) {
+  const { ownerId } = await requireWrite();
+  const expenses = await prisma.expense.findMany({
+    where: { ownerId, billable: true, clientId: { not: null }, invoiceId: null, ...(ids && ids.length ? { id: { in: ids } } : {}) },
+  });
+  if (expenses.length === 0) throw new Error("No billable expenses with a client selected");
+
+  const groups = new Map<string, typeof expenses>();
+  for (const e of expenses) {
+    const key = `${e.companyId ?? ""}:${e.clientId ?? ""}`;
+    groups.set(key, [...(groups.get(key) ?? []), e]);
+  }
+
+  const created: string[] = [];
+  for (const list of groups.values()) {
+    const first = list[0];
+    if (!first.companyId || !first.clientId) continue;
+    const inv = await createDraftInvoice(ownerId, {
+      companyId: first.companyId,
+      clientId: first.clientId,
+      currency: "MAD",
+      issueDate: new Date().toISOString().slice(0, 10),
+      paymentTerms: "D30",
+      lines: list.map((e) => ({
+        description: `${e.description}${e.supplier ? ` — ${e.supplier}` : ""}`,
+        quantityMilli: 1000,
+        unit: "service",
+        unitPriceMinor: e.amountHTMinor,
+        discountBps: 0,
+        taxRateBps: e.taxRateBps,
+        taxExempt: e.taxExempt,
+      })),
+    });
+    await prisma.expense.updateMany({ where: { id: { in: list.map((e) => e.id) } }, data: { invoiceId: inv.id } });
+    created.push(inv.id);
+  }
+  return { count: created.length, invoiceIds: created };
 }
