@@ -35,8 +35,3 @@ export function computeCharges(rates: RateLike[], baseMinor: number): { lines: C
   const lines = rates.map((r) => ({ rateId: r.id, name: r.name, amountMinor: applyRate(r, baseMinor) }));
   return { lines, total: lines.reduce((a, l) => a + l.amountMinor, 0) };
 }
-
-/** VAT for an expense (unless exempt). */
-export function expenseVat(amountHTMinor: number, taxRateBps: number, taxExempt: boolean): number {
-  return taxExempt ? 0 : divRoundHalfUp(amountHTMinor * taxRateBps, 10000);
-}

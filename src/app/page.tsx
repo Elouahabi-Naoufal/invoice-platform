@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Plus, Wallet, ArrowDownLeft, AlertTriangle, FileText, Users, BarChart3, MessageCircle, TrendingUp } from "lucide-react";
+import { ArrowRight, Plus, Wallet, ArrowDownLeft, AlertTriangle, Users, BarChart3, MessageCircle } from "lucide-react";
 import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
-import { buildProfitAndLoss, buildDashboardCharts } from "@/server/reports";
-import { BarChart, DonutChart, HBars, CHART_COLORS } from "@/components/charts";
 import { StatusBadge, EmptyState, PageHeader, StatCard, SectionCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
 
@@ -57,14 +55,6 @@ export default async function Dashboard() {
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  const yearStart = new Date(new Date().getFullYear(), 0, 1);
-  const pnl = await buildProfitAndLoss(ownerId, { companyId: active.id, from: yearStart, baseCurrency: active.defaultCurrency });
-  const profitRow = pnl.find((p) => p.currency === active.defaultCurrency) ?? pnl[0];
-  const netProfit = profitRow?.netProfit ?? 0;
-  const netCurrency = profitRow?.currency ?? active.defaultCurrency;
-
-  const charts = await buildDashboardCharts(ownerId, { companyId: active.id, currency: active.defaultCurrency });
-
   const quick = [
     { href: "/invoices/new", label: "New invoice", icon: Plus },
     { href: "/clients?new=1", label: "Add client", icon: Users },
@@ -80,15 +70,7 @@ export default async function Dashboard() {
         actions={<Link href="/invoices/new" className="btn-accent"><Plus size={15} /> New invoice</Link>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          tone={netProfit < 0 ? "error" : "success"}
-          icon={<TrendingUp size={20} />}
-          label="Net profit · this year"
-          value={moneyList(new Map([[netCurrency, netProfit]]))}
-          sub="revenue − expenses − payroll"
-          href="/reports"
-        />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           tone="brand"
           icon={<Wallet size={20} />}
@@ -124,45 +106,6 @@ export default async function Dashboard() {
             </Link>
           );
         })}
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <SectionCard title="Money in vs out · last 6 months" padded>
-          <BarChart
-            data={charts.monthly.map((m) => ({ label: m.label, a: m.incomeMinor, b: m.expenseMinor }))}
-            currency={active.defaultCurrency}
-          />
-        </SectionCard>
-        <SectionCard title="Where the money went" padded>
-          {charts.expensesByCategory.length === 0 ? (
-            <p className="meta">No expenses recorded in this period.</p>
-          ) : (
-            <div className="flex items-center gap-5">
-              <DonutChart
-                slices={charts.expensesByCategory.map((c) => ({ label: c.label, value: c.valueMinor, display: formatMoney(c.valueMinor, active.defaultCurrency) }))}
-              />
-              <ul className="grid flex-1 gap-1.5">
-                {charts.expensesByCategory.map((c, i) => (
-                  <li key={c.label} className="flex items-center gap-2 text-[12px]">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    <span className="truncate">{c.label}</span>
-                    <span className="ml-auto tabular-nums text-ink-500">{formatMoney(c.valueMinor, active.defaultCurrency)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      <div className="mt-4">
-        <SectionCard title="Where the money came from · top clients" padded>
-          {charts.incomeByClient.length === 0 ? (
-            <p className="meta">No issued invoices yet.</p>
-          ) : (
-            <HBars items={charts.incomeByClient.map((c) => ({ label: c.label, value: c.valueMinor }))} currency={active.defaultCurrency} />
-          )}
-        </SectionCard>
       </div>
 
       <div className="mt-6">

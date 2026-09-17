@@ -52,8 +52,11 @@ export async function sendInvoiceViaWhatsApp(
   });
   if (!inv) throw new Error("not found");
   if (inv.status !== "ISSUED") throw new Error("only ISSUED sendable");
-  if (!inv.company || !inv.company.whatsappEnabled) {
-    throw new Error("WhatsApp sending is disabled for this company");
+  if (!inv.company) {
+    throw new Error("Invoice has no company — assign a company before sending WhatsApp");
+  }
+  if (!inv.company.whatsappEnabled) {
+    throw new Error(`WhatsApp sending is disabled for "${inv.company.legalName}". Enable it in Company Settings > WhatsApp.`);
   }
   if (inv.whatsappStatus === "SENT") {
     return {
@@ -66,7 +69,11 @@ export async function sendInvoiceViaWhatsApp(
 
   const buyer = parseSnapshot(inv.buyerSnapshot);
   const seller = parseSnapshot(inv.sellerSnapshot);
-  const to = normalizeWhatsAppRecipient(options.to ?? inv.client?.phone ?? buyer.phone);
+  const rawPhone = options.to ?? inv.client?.phone ?? buyer.phone;
+  if (!rawPhone) {
+    throw new Error(`No phone number for client "${inv.client?.name ?? 'unknown'}". Add a phone number to the client record.`);
+  }
+  const to = normalizeWhatsAppRecipient(rawPhone);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (!inv.publicToken || !appUrl) throw new Error("public link unavailable");
 

@@ -1,7 +1,7 @@
 # Invora — Application Overview (context for ChatGPT)
 
 ## 1. What it is
-Invora is a self-hosted **invoicing and finance web app for Moroccan businesses**, built by **Orbit Labs**. One owner account manages one or more **companies** (legal entities). It handles invoices, quotes, credit notes, payments, recurring invoices, payment reminders, reports and exports. Documents are sent to clients over **WhatsApp only** (no email). It follows Moroccan rules: ICE, IF, RC, patente, TVA, and the mandatory mentions of article 145 CGI.
+Invora is a self-hosted **invoicing web app for Moroccan businesses**, built by **Orbit Labs**. One owner account manages one or more **companies** (legal entities). It handles invoices, quotes, credit notes, payments, recurring invoices, payment reminders, reports and exports. Documents are sent to clients over **WhatsApp only** (no email). It follows Moroccan rules: ICE, IF, RC, patente, TVA, and the mandatory mentions of article 145 CGI.
 
 ## 2. Tech stack
 - Next.js 14 (App Router) + React 18 + TypeScript

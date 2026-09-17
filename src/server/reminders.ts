@@ -47,6 +47,14 @@ export async function sendReminderNow(id: string) {
   const { ownerId } = await requireWrite();
   const r = await prisma.reminder.findFirst({ where: { id, ownerId } });
   if (!r) throw new Error("not found");
-  await dispatchReminder(r);
+  try {
+    await dispatchReminder(r);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "send failed";
+    await prisma.reminder
+      .update({ where: { id }, data: { attempts: { increment: 1 }, lastError: msg } })
+      .catch(() => undefined);
+    throw new Error(`Reminder send failed — ${msg}`);
+  }
   return { ok: true };
 }

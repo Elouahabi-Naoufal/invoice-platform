@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireActor, getActiveCompanyId } from "@/server/auth";
 import { listCompanies } from "@/server/companies-clients";
-import { buildReports, buildProfitAndLoss } from "@/server/reports";
+import { buildReports } from "@/server/reports";
 import { formatMoney } from "@/domain/invoice";
 import { buildQueryString } from "@/lib/query";
 import { EmptyState } from "@/components/ui";
@@ -31,8 +31,6 @@ export default async function ReportsPage({
   const to = parseDate(searchParams.to);
 
   const data = await buildReports(ownerId, { companyId, from, to });
-  const baseCurrency = companies.find((c) => c.id === companyId)?.defaultCurrency ?? "MAD";
-  const pnl = await buildProfitAndLoss(ownerId, { companyId, from, to, baseCurrency });
   const fmt = (m: number, c: string) => formatMoney(m, c);
   const qs = (patch: Record<string, string>) =>
     buildQueryString("/reports", { companyId, from: searchParams.from, to: searchParams.to }, patch);
@@ -65,43 +63,6 @@ export default async function ReportsPage({
         <EmptyState title="No issued invoices in range" body="Adjust the date range or issue invoices to see reports here." />
       ) : (
         <div className="grid gap-4">
-          <div className="card overflow-hidden">
-            <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Profit &amp; Loss</span></div>
-            <table className="tbl">
-              <thead><tr><th>Currency</th><th className="num">Revenue HT</th><th className="num">Expenses HT</th><th className="num">Charges</th><th className="num">Payroll</th><th className="num">Net profit</th></tr></thead>
-              <tbody>
-                {pnl.map((p) => (
-                  <tr key={p.currency}>
-                    <td className="font-medium">{p.currency}</td>
-                    <td className="num tabular-nums">{fmt(p.revenueHT, p.currency)}</td>
-                    <td className="num tabular-nums">{fmt(p.expensesHT, p.currency)}</td>
-                    <td className="num tabular-nums">{fmt(p.expenseCharges, p.currency)}</td>
-                    <td className="num tabular-nums">{fmt(p.payrollCost, p.currency)}</td>
-                    <td className={`num tabular-nums font-semibold ${p.netProfit < 0 ? "text-error-600" : "text-success-600"}`}>{fmt(p.netProfit, p.currency)}</td>
-                  </tr>
-                ))}
-                {pnl.length === 0 && <tr><td colSpan={6} className="text-ink-500">No data.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="card overflow-hidden">
-            <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">VAT (TVA)</span></div>
-            <table className="tbl">
-              <thead><tr><th>Currency</th><th className="num">Collected (sales)</th><th className="num">Deductible (purchases)</th><th className="num">TVA due</th></tr></thead>
-              <tbody>
-                {pnl.map((p) => (
-                  <tr key={p.currency}>
-                    <td className="font-medium">{p.currency}</td>
-                    <td className="num tabular-nums">{fmt(p.vatCollected, p.currency)}</td>
-                    <td className="num tabular-nums">{fmt(p.vatDeductible, p.currency)}</td>
-                    <td className={`num tabular-nums font-semibold ${p.vatDue < 0 ? "text-success-600" : "text-error-600"}`}>{fmt(p.vatDue, p.currency)}</td>
-                  </tr>
-                ))}
-                {pnl.length === 0 && <tr><td colSpan={4} className="text-ink-500">No data.</td></tr>}
-              </tbody>
-            </table>
-          </div>
           <div className="card overflow-hidden">
             <div className="border-b border-ink-200 dark:border-white/10 px-4 py-2.5"><span className="section-title">Revenue summary</span></div>
             <table className="tbl">

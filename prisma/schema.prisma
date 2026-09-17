@@ -318,8 +318,6 @@ model Member {
   acceptedAt  DateTime?
   revokedAt   DateTime?
 
-  employee Employee?
-
   @@unique([ownerId, email])
   @@index([ownerId])
 }
@@ -349,144 +347,10 @@ model Rate {
   percentBps Int      @default(0) // e.g. 2100 = 21%
   fixedMinor Int      @default(0)
   capMinor   Int? // optional ceiling
-  appliesTo  String   @default("ANY") // ANY | EMPLOYER | EMPLOYEE | EXPENSE
   notes      String?
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([ownerId])
-}
-
-// ── Expenses (outgoings, optional charges, billable to a client) ──
-model Expense {
-  id             String   @id @default(cuid())
-  ownerId        String
-  companyId      String?
-  clientId       String?
-  invoiceId      String?
-  supplier       String?
-  category       String?
-  description    String
-  date           DateTime @default(now())
-  amountHTMinor  Int      @default(0)
-  taxRateBps     Int      @default(2000)
-  taxExempt      Boolean  @default(false)
-  charges        String? // JSON [{rateId,name,amountMinor}]
-  totalMinor     Int      @default(0) // HT + TVA + charges
-  currency       String   @default("MAD")
-  paymentMethod  String   @default("BANK_TRANSFER")
-  reference      String?
-  billable       Boolean  @default(false)
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([ownerId, date])
-  @@index([companyId])
-}
-
-// ── Payroll: employees + payslips (user-defined employer/employee rates) ──
-model Employee {
-  id               String   @id @default(cuid())
-  ownerId          String
-  memberId         String?  @unique // optional link to a team member (login)
-  fullName         String
-  position         String?
-  grossSalaryMinor Int      @default(0)
-  currency         String   @default("MAD")
-  active           Boolean  @default(true)
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  member   Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull)
-  payslips Payslip[]
-
-  @@index([ownerId])
-  @@index([memberId])
-}
-
-model Payslip {
-  id                  String    @id @default(cuid())
-  ownerId             String
-  employeeId          String
-  period              String // YYYY-MM
-  grossMinor          Int
-  currency            String    @default("MAD")
-  employerCharges     String? // JSON [{rateId,name,amountMinor}]
-  employeeDeductions  String? // JSON [{rateId,name,amountMinor}]
-  employerCostMinor   Int       @default(0)
-  netMinor            Int       @default(0)
-  status              String    @default("DRAFT") // DRAFT | PAID
-  paidAt              DateTime?
-  expenseId           String?
-  notes               String?
-  createdAt           DateTime  @default(now())
-
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@index([ownerId, period])
-  @@index([employeeId])
-}
-
-// ── Money accounts (bank / cash) + ledger entries ──
-model Account {
-  id                  String   @id @default(cuid())
-  ownerId             String
-  companyId           String?
-  name                String
-  kind                String   @default("BANK") // BANK | CASH
-  currency            String   @default("MAD")
-  openingBalanceMinor Int      @default(0)
-  active              Boolean  @default(true)
-  createdAt           DateTime @default(now())
-
-  entries LedgerEntry[]
-
-  @@index([ownerId])
-}
-
-model LedgerEntry {
-  id          String   @id @default(cuid())
-  ownerId     String
-  accountId   String
-  date        DateTime @default(now())
-  direction   String // IN | OUT
-  amountMinor Int
-  currency    String   @default("MAD")
-  label       String
-  category    String?
-  invoiceId   String?
-  expenseId   String?
-  note        String?
-  createdAt   DateTime @default(now())
-
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  @@index([ownerId, date])
-  @@index([accountId])
-}
-
-// ── Client contracts / agreements ──
-model Contract {
-  id           String    @id @default(cuid())
-  ownerId      String
-  companyId    String?
-  clientId     String
-  title        String
-  valueMinor   Int       @default(0) // agreed amount (HT) over the period
-  currency     String    @default("MAD")
-  periodDays   Int       @default(30)
-  taxRateBps   Int       @default(2000)
-  paymentTerms String    @default("D30")
-  startDate    DateTime  @default(now())
-  endDate      DateTime?
-  active       Boolean   @default(true)
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([ownerId])
-  @@index([clientId])
 }

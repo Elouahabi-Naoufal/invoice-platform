@@ -19,7 +19,7 @@ export default async function SettingsGeneralPage() {
 
   const sections = [
     { href: "/settings/whatsapp", icon: MessageCircle, title: "WhatsApp", body: whatsapp?.connected ? "Connected — sending via WhatsApp Web." : "Pair a phone with a QR code." },
-    { href: "/settings/rates", icon: Percent, title: "Rates & charges", body: "Define your own rates for payroll, expenses and calculations." },
+    { href: "/settings/rates", icon: Percent, title: "Rates & charges", body: "Define your own rates and calculate charges." },
     { href: "/settings/security", icon: Lock, title: "Security", body: "Change your password." },
     { href: "/settings/automation", icon: Workflow, title: "Automation", body: "Recurring invoices and reminders." },
     { href: "/settings/data", icon: Database, title: "Data & backup", body: "Exports, archiving and numbering." },

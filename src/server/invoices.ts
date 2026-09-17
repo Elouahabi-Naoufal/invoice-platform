@@ -332,7 +332,7 @@ export async function convertDevisToInvoice(ownerId: string, devisId: string) {
 }
 
 /**
- * Correction workflow (v1-ready, ledger-light):
+ * Correction workflow (v1-ready):
  * - AVOIR: new DRAFT docType=AVOIR linked to original ISSUED/CANCELLED facture, own AV-series at finalize.
  *   Amounts stored POSITIVE (deduction). Application/lettrage against invoices = V2.
  * - RECTIFICATIVE ("annule et remplace"): duplicate original lines into new DRAFT linked to cancelled original.
@@ -385,23 +385,6 @@ export async function recordPayment(ownerId: string, invoiceId: string, raw: unk
       },
     });
     const newPaid = paid + data.amountMinor;
-    // Auto-post to the money ledger: first active account in the invoice currency.
-    const account = await tx.account.findFirst({ where: { ownerId, currency: inv.currency, active: true }, orderBy: { createdAt: "asc" } });
-    if (account) {
-      await tx.ledgerEntry.create({
-        data: {
-          ownerId,
-          accountId: account.id,
-          direction: "IN",
-          amountMinor: data.amountMinor,
-          currency: inv.currency,
-          label: `Payment ${inv.invoiceNumber ?? inv.id}`.trim(),
-          category: "Client payment",
-          invoiceId,
-          date: data.paymentDate,
-        },
-      });
-    }
     await tx.invoiceEvent.create({
       data: {
         invoiceId,

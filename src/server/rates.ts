@@ -9,7 +9,6 @@ const schema = z.object({
   percentBps: z.number().int().min(0).max(100000).default(0),
   fixedMinor: z.number().int().min(0).default(0),
   capMinor: z.number().int().min(0).optional().nullable(),
-  appliesTo: z.enum(["ANY", "EMPLOYER", "EMPLOYEE", "EXPENSE"]).default("ANY"),
   notes: z.string().optional().nullable(),
   active: z.boolean().default(true),
 });

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Plus, Trash2, Copy, GripVertical } from "lucide-react";
 import { calcInvoice } from "@/domain/invoice";
 import { normalizeAccent } from "@/domain/presentation";
-import { CURRENCY_OPTIONS, PAYMENT_TERM_OPTIONS } from "@/lib/options";
+import { CURRENCY_OPTIONS, PAYMENT_TERM_OPTIONS, UNIT_OPTIONS, TVA_OPTIONS } from "@/lib/options";
 import InvoicePreview, { PreviewLine } from "@/components/InvoicePreview";
 import ClientForm from "@/components/ClientForm";
 import { createDraft, updateDraft } from "@/server/invoice-ops";
@@ -20,12 +20,6 @@ export type DraftInit = {
   correctionReason: string | null; linkedInvoiceId: string | null;
   lines: PreviewLine[];
 };
-
-const TVA_CHOICES = [
-  { label: "20%", v: 2000 }, { label: "14%", v: 1400 }, { label: "10%", v: 1000 },
-  { label: "7%", v: 700 }, { label: "0%", v: 0 }, { label: "Exonéré", v: -1 },
-];
-const UNITS = ["piece", "heure", "jour", "kg", "service"];
 
 function StepDot({ n, active, done }: { n: number; active: boolean; done: boolean }) {
   return (
@@ -321,11 +315,11 @@ export default function InvoiceBuilder({ companies, initialClients, linked, link
                     {missingDesc(i) && <p className="field-err mb-1 px-1">Description is required.</p>}
                     <div className="grid grid-cols-[70px_90px_1fr_70px_90px_34px] items-end gap-2 max-md:grid-cols-3">
                       <div><label className="label">Qty</label><input type="number" step="0.001" min={0} value={l.quantityMilli / 1000} onChange={(e) => setLine(i, { quantityMilli: Math.max(1, Math.round(Number(e.target.value) * 1000)) })} className="input num" /></div>
-                      <div><label className="label">Unit</label><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className="input">{UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select></div>
+                      <div><label className="label">Unit</label><select value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value })} className="input">{UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}</select></div>
                       <div><label className="label">Unit price HT</label><input type="number" min={0} value={l.unitPriceMinor / 100} onChange={(e) => setLine(i, { unitPriceMinor: Math.round(Number(e.target.value) * 100) })} className="input num" /></div>
                       <div><label className="label">Disc %</label><input type="number" min={0} max={100} value={l.discountBps / 100} onChange={(e) => setLine(i, { discountBps: Math.round(Number(e.target.value) * 100) })} className="input num" /></div>
                       <div><label className="label">TVA</label><select value={l.taxExempt ? -1 : l.taxRateBps} onChange={(e) => { const v = Number(e.target.value); setLine(i, v === -1 ? { taxExempt: true, taxRateBps: 0 } : { taxExempt: false, taxRateBps: v }); }} className="input">
-                        {TVA_CHOICES.map((t) => <option key={t.label} value={t.v}>{t.label}</option>)}
+                        {TVA_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                       </select></div>
                       <div className="flex gap-0.5 pb-0.5">
                         <button onClick={() => move(i, -1)} className="btn-ghost btn-sm px-1.5" aria-label="Move up"><GripVertical size={13} /></button>

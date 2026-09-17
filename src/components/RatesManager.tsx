@@ -8,10 +8,8 @@ import { formatMoney } from "@/domain/invoice";
 
 interface Rate {
   id: string; name: string; kind: string; percentBps: number; fixedMinor: number;
-  capMinor: number | null; appliesTo: string; notes: string | null;
+  capMinor: number | null; notes: string | null;
 }
-
-const APPLIES: Record<string, string> = { ANY: "Any", EMPLOYER: "Payroll — employer", EMPLOYEE: "Payroll — employee", EXPENSE: "Expense add-on" };
 
 export default function RatesManager({ rates }: { rates: Rate[] }) {
   const r = useRouter();
@@ -34,7 +32,6 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
         percentBps: Math.round(Number(obj.percent || 0) * 100),
         fixedMinor: Math.round(Number(obj.fixed || 0) * 100),
         capMinor: obj.cap ? Math.round(Number(obj.cap) * 100) : null,
-        appliesTo: obj.appliesTo,
         notes: obj.notes || null,
       };
       if (editingId) await updateRate(editingId, payload);
@@ -61,17 +58,16 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
 
   return (
     <div className="grid gap-4">
-      <PageHeader title="Rates & charges" description="Define any rate yourself — no country assumptions. Use them in payroll, on expenses, or in the calculator." />
+      <PageHeader title="Rates & charges" description="Define any rate yourself — no country assumptions. Use it in the calculator." />
 
       <div className="card p-5">
         <h2 className="section-title mb-3">{editing ? `Edit “${editing.name}”` : "Add a rate"}</h2>
         <form key={editingId ?? "new"} action={submit} className="grid gap-3 md:grid-cols-2">
-          <div><label className="label">Name *</label><input name="name" required defaultValue={editing?.name ?? ""} placeholder="e.g. CNSS employer, Insurance…" className="input" /></div>
+          <div><label className="label">Name *</label><input name="name" required defaultValue={editing?.name ?? ""} placeholder="e.g. Service fee, Insurance…" className="input" /></div>
           <div><label className="label">Type</label><select name="kind" className="input" defaultValue={editing?.kind ?? "PERCENT"}><option value="PERCENT">Percentage</option><option value="FIXED">Fixed amount</option></select></div>
           <div><label className="label">Percent (%)</label><input name="percent" type="number" step="0.01" min={0} defaultValue={editing ? editing.percentBps / 100 : 0} className="input" /></div>
           <div><label className="label">Fixed amount</label><input name="fixed" type="number" step="0.01" min={0} defaultValue={editing ? editing.fixedMinor / 100 : 0} className="input" /></div>
           <div><label className="label">Cap (optional)</label><input name="cap" type="number" step="0.01" min={0} defaultValue={editing?.capMinor ? editing.capMinor / 100 : ""} className="input" /></div>
-          <div><label className="label">Applies to</label><select name="appliesTo" className="input" defaultValue={editing?.appliesTo ?? "ANY"}>{Object.entries(APPLIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <div className="md:col-span-2"><label className="label">Notes</label><input name="notes" defaultValue={editing?.notes ?? ""} className="input" /></div>
           {err && <p className="field-err md:col-span-2">{err}</p>}
           <div className="flex gap-2 md:col-span-2">
@@ -96,14 +92,13 @@ export default function RatesManager({ rates }: { rates: Rate[] }) {
       ) : (
         <div className="card overflow-hidden">
           <table className="tbl">
-            <thead><tr><th>Name</th><th>Value</th><th>Cap</th><th>Applies to</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Value</th><th>Cap</th><th></th></tr></thead>
             <tbody>
               {rates.map((x) => (
                 <tr key={x.id}>
                   <td className="font-medium">{x.name}{x.notes ? <span className="meta block">{x.notes}</span> : null}</td>
                   <td>{x.kind === "PERCENT" ? `${x.percentBps / 100}%` : formatMoney(x.fixedMinor, "MAD")}</td>
                   <td className="text-ink-500">{x.capMinor ? formatMoney(x.capMinor, "MAD") : "—"}</td>
-                  <td className="text-ink-500">{APPLIES[x.appliesTo] ?? x.appliesTo}</td>
                   <td className="text-right">
                     <button onClick={() => setEditingId(x.id)} className="btn-ghost btn-sm">Edit</button>
                     <button onClick={() => remove(x.id)} className="btn-ghost btn-sm hover:text-red-700">Remove</button>
