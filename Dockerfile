@@ -2,6 +2,8 @@
 # Layering is deliberate: deps/ are cached and reused when only app code changes.
 FROM node:22-bookworm-slim AS base
 WORKDIR /app
+# Container timezone — controls how dates render server-side. Override per deployment.
+ENV TZ=Africa/Casablanca
 RUN apt-get update && apt-get install -y --no-install-recommends openssl sqlite3 chromium \
   && rm -rf /var/lib/apt/lists/*
 ENV PUPPETEER_SKIP_DOWNLOAD=1

@@ -8,11 +8,15 @@ export function ReminderForm({ invoices, onDone }: { invoices: { id: string; inv
   const r = useRouter(); const toast = useToast(); const [err, setErr] = useState("");
   async function submit(fd: FormData) {
     const obj: Record<string, string> = {}; fd.forEach((v, k) => { obj[k] = String(v); });
+    setErr("");
     try {
-      await createReminder("", { invoiceId: obj.invoiceId, type: obj.type || "OVERDUE", channel: "WHATSAPP", scheduledAt: new Date(obj.scheduledAt).toISOString() } as never);
-      toast({ kind: "ok", title: "Reminder scheduled" }); onDone?.(); r.refresh();
-    } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: m }); }
+      const res = await createReminder("", { invoiceId: obj.invoiceId, type: obj.type || "OVERDUE", channel: "WHATSAPP", scheduledAt: new Date(obj.scheduledAt).toISOString() } as never) as { sentNow?: boolean };
+      toast({ kind: "ok", title: res?.sentNow ? "Reminder sent" : "Reminder scheduled" });
+      onDone?.(); r.refresh();
+    } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setErr(m); toast({ kind: "err", title: "Reminder failed", body: m }); }
   }
+  // Default to "now" (local time) so scheduling an overdue reminder sends immediately.
+  const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   return (
     <form action={submit as never} className="flex flex-wrap gap-2 items-end">
       <div><label className="label">Invoice *</label>
@@ -23,7 +27,7 @@ export function ReminderForm({ invoices, onDone }: { invoices: { id: string; inv
       </div>
       <div><label className="label">Type</label><select name="type" className="input" defaultValue="OVERDUE"><option value="OVERDUE">Overdue</option><option value="BEFORE_DUE">Before due</option></select></div>
       <div><label className="label">Channel</label><input value="WhatsApp" readOnly className="input bg-ink-50 dark:bg-white/5" /></div>
-      <div><label className="label">Scheduled at *</label><input name="scheduledAt" type="datetime-local" required className="input" /></div>
+      <div><label className="label">Scheduled at *</label><input name="scheduledAt" type="datetime-local" required defaultValue={nowLocal} className="input" /></div>
       <button type="submit" className="btn-primary btn-sm">Schedule</button>
       {err && <p className="field-err w-full">{err}</p>}
     </form>

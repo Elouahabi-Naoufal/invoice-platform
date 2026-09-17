@@ -25,7 +25,22 @@ export async function createReminder(_userId: string, raw: unknown) {
     .parse(raw);
   const inv = await prisma.invoice.findFirst({ where: { id: d.invoiceId, ownerId, status: "ISSUED" } });
   if (!inv) throw new Error("Invoice not found or not issued");
-  return prisma.reminder.create({ data: { ...d, ownerId } as never });
+  const reminder = await prisma.reminder.create({ data: { ...d, ownerId } as never });
+
+  // If it is already due, send it right away so scheduling feels immediate.
+  if (new Date(d.scheduledAt).getTime() <= Date.now()) {
+    try {
+      await dispatchReminder(reminder);
+      return { ...reminder, sentNow: true };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "send failed";
+      await prisma.reminder
+        .update({ where: { id: reminder.id }, data: { attempts: { increment: 1 }, lastError: msg } })
+        .catch(() => undefined);
+      throw new Error(`Reminder saved but not sent — ${msg}`);
+    }
+  }
+  return { ...reminder, sentNow: false };
 }
 
 export async function listOverdue(_userId?: string) {

@@ -45,10 +45,11 @@ export default async function RelancesPage() {
                       {r.sentAt ? (
                         <span className="badge badge-emerald">Sent</span>
                       ) : r.lastError ? (
-                        <span className="badge badge-amber" title={r.lastError}>Failed ({r.attempts})</span>
+                        <span className="badge badge-amber">Failed ({r.attempts})</span>
                       ) : (
                         <span className="badge">Pending</span>
                       )}
+                      {!r.sentAt && r.lastError ? <span className="meta mt-1 block max-w-[220px] text-error-600">{r.lastError}</span> : null}
                     </td>
                     <td className="text-right"><ReminderActions id={r.id} sent={!!r.sentAt} /></td>
                   </tr>
