@@ -11,11 +11,20 @@ import crypto from "crypto";
 import {
   createTenantApplication,
   deployApplication,
-  getApplicationStatus,
+  isDeploymentSettled,
 } from "@/server/dokploy";
 import { enqueueTenantNotification } from "@/server/notifications";
 
 const TENANT_PORT = Number(process.env.TENANT_PORT || 3007);
+
+async function healthCheck(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(10_000) });
+    return res.status < 500;
+  } catch {
+    return false;
+  }
+}
 
 function randomKey(bytes = 32): string {
   return crypto.randomBytes(bytes).toString("hex");
@@ -130,11 +139,15 @@ export async function advanceProvisioningJobs(): Promise<{ checked: number; acti
   let activated = 0;
   for (const job of jobs) {
     try {
-      const app = await getApplicationStatus(job.dokployApplicationId!);
-      const done = ["done", "running", "idle"].includes(app.status.toLowerCase());
-      if (!done) continue;
+      const settled = await isDeploymentSettled(job.dokployApplicationId!);
+      if (!settled) continue;
 
       const tenant = job.tenant;
+      if (tenant.deploymentUrl) {
+        const healthy = await healthCheck(tenant.deploymentUrl);
+        console.info(`[provisioning] tenant=${tenant.slug} settled, health=${healthy}`);
+      }
+
       await prisma.$transaction([
         prisma.provisioningJob.update({
           where: { id: job.id },

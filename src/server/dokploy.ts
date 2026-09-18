@@ -73,6 +73,7 @@ export async function createTenantApplication(input: CreateTenantAppInput): Prom
     branch: process.env.DOKPLOY_GITHUB_BRANCH || "main",
     buildPath: "/",
     githubId,
+    triggerType: "push",
     watchPaths: [],
     enableSubmodules: false,
   });
@@ -95,6 +96,7 @@ export async function createTenantApplication(input: CreateTenantAppInput): Prom
     port: input.port,
     https: true,
     certificateType: "letsencrypt",
+    domainType: "application",
   });
 
   return { applicationId, appName };
@@ -114,6 +116,12 @@ export async function getApplicationStatus(applicationId: string): Promise<AppSt
     applicationId,
   });
   return { status: app.applicationStatus ?? app.status ?? "unknown", appName: app.appName ?? "" };
+}
+
+/** True only when the last deployment has finished (not mid-build). */
+export async function isDeploymentSettled(applicationId: string): Promise<boolean> {
+  const { status } = await getApplicationStatus(applicationId);
+  return ["done", "idle"].includes(status.toLowerCase());
 }
 
 export async function deleteApplication(applicationId: string): Promise<void> {
