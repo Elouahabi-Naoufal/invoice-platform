@@ -45,3 +45,10 @@ export async function processNotifications() {
   await requireAdmin();
   return sendPendingNotifications();
 }
+
+export async function sendTenantNotification(tenantId: string, type: "APPROVED" | "WELCOME") {
+  await requireAdmin();
+  const { enqueueTenantNotification } = await import("@/server/notifications");
+  await enqueueTenantNotification(tenantId, type);
+  return { ok: true };
+}

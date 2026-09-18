@@ -13,7 +13,7 @@ import {
   deployApplication,
   getApplicationStatus,
 } from "@/server/dokploy";
-import { enqueueWelcomeNotifications } from "@/server/notifications";
+import { enqueueTenantNotification } from "@/server/notifications";
 
 const TENANT_PORT = Number(process.env.TENANT_PORT || 3007);
 
@@ -137,7 +137,7 @@ export async function advanceProvisioningJobs(): Promise<{ checked: number; acti
           data: { adminId: "system", action: "PROVISION_COMPLETED", tenantId: tenant.id, metadata: JSON.stringify({ applicationId: job.dokployApplicationId }) },
         }),
       ]);
-      await enqueueWelcomeNotifications(tenant.id);
+      await enqueueTenantNotification(tenant.id, "WELCOME");
       activated++;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);

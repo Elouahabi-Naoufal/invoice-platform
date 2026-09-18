@@ -82,6 +82,12 @@ export async function approveRegistration(id: string, adminId: string) {
       data: { adminId, action: "APPROVE_REGISTRATION", registrationId: id, metadata: JSON.stringify({ slug: reg.requestedSlug }) },
     }),
   ]);
+
+  const tenant = await prisma.tenant.findUnique({ where: { registrationId: id } });
+  if (tenant) {
+    const { enqueueTenantNotification } = await import("@/server/notifications");
+    await enqueueTenantNotification(tenant.id, "APPROVED").catch(() => undefined);
+  }
   return { ok: true };
 }
 

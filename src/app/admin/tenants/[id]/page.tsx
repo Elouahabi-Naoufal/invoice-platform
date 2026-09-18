@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import TenantProvisionActions from "@/components/TenantProvisionActions";
 import TenantSupportPanel from "@/components/TenantSupportPanel";
+import TenantNotifyButtons from "@/components/TenantNotifyButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,10 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         <div className="card p-5">
           <h2 className="section-title mb-3">Provisioning</h2>
           <TenantProvisionActions id={tenant.id} status={tenant.status} />
+          <div className="mt-4 border-t border-ink-100 pt-3 dark:border-white/10">
+            <h2 className="section-title mb-2">Notifications</h2>
+            <TenantNotifyButtons id={tenant.id} />
+          </div>
           <div className="mt-4 border-t border-ink-100 pt-3 dark:border-white/10">
             <h2 className="section-title mb-2">Support access</h2>
             <TenantSupportPanel id={tenant.id} supportKey={tenant.supportKey} />
