@@ -25,15 +25,18 @@ function tenantUrl(tenant: { slug: string; deploymentUrl: string | null }): stri
 
 function messageFor(type: NotificationType, tenant: { companyName: string; slug: string; deploymentUrl: string | null; email: string }): { subject: string; text: string } {
   switch (type) {
-    case "APPROVED":
+    case "APPROVED": {
+      const url = tenantUrl(tenant);
+      const eta = process.env.TENANT_ACTIVATION_ETA || "30 minutes";
       return {
-        subject: "Your Invora registration was approved",
-        text: `Good news!\n\nYour registration for ${tenant.companyName} has been approved. We are setting up your Invora workspace now and will send your access link as soon as it is ready.\n\n— Invora`,
+        subject: "Your Invora account was approved",
+        text: `Good news, ${tenant.companyName}!\n\nYour registration has been approved.\n\nYour platform: ${url}\n\nWe are preparing your workspace now. It will be fully activated in about ${eta}. You will receive another message as soon as it is ready to use.\n\n— Invora`,
       };
+    }
     case "WELCOME":
       return {
         subject: "Your Invora workspace is ready",
-        text: `Welcome to Invora!\n\nYour workspace for ${tenant.companyName} is ready.\n\nSign in: ${tenantUrl(tenant)}\nEmail: ${tenant.email}\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
+        text: `Welcome to Invora!\n\nYour workspace for ${tenant.companyName} is ready to use.\n\nSign in: ${tenantUrl(tenant)}\nEmail: ${tenant.email}\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
       };
     case "SUSPENDED":
       return {
