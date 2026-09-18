@@ -14,7 +14,7 @@ export default function AdminLoginPage() {
           </div>
           <h1 className="page-title mb-1">Admin</h1>
           <p className="meta mb-6">Sign in to manage registrations.</p>
-          <Suspense><AdminLoginForm /></Suspense>
+          <Suspense fallback={<div className="h-20" />}><AdminLoginForm /></Suspense>
         </div>
         <p className="mt-4 text-center text-[12px] text-ink-400">
           <a href="/login" className="hover:text-ink-700">User sign in</a>
