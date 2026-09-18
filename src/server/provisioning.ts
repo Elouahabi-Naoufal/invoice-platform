@@ -158,7 +158,7 @@ export async function advanceProvisioningJobs(): Promise<{ checked: number; acti
           data: { status: "ACTIVE", activatedAt: new Date() },
         }),
         prisma.auditLog.create({
-          data: { adminId: "system", action: "PROVISION_COMPLETED", tenantId: tenant.id, metadata: JSON.stringify({ applicationId: job.dokployApplicationId }) },
+          data: { adminId: null, action: "PROVISION_COMPLETED", tenantId: tenant.id, metadata: JSON.stringify({ applicationId: job.dokployApplicationId }) },
         }),
       ]);
       await enqueueTenantNotification(tenant.id, "WELCOME");

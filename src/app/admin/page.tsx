@@ -142,7 +142,7 @@ export default async function AdminPage() {
             <tbody>{recentAudit.map((l) => (
               <tr key={l.id}>
                 <td className="tabular-nums text-ink-500">{l.createdAt.toLocaleString()}</td>
-                <td className="text-ink-500">{l.admin.email}</td>
+                <td className="text-ink-500">{l.admin?.email ?? "system"}</td>
                 <td><span className="badge">{l.action}</span></td>
               </tr>
             ))}</tbody>

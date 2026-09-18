@@ -388,8 +388,8 @@ model Registration {
 
 model AuditLog {
   id             String      @id @default(cuid())
-  adminId        String
-  admin          SuperAdmin  @relation(fields: [adminId], references: [id])
+  adminId        String?
+  admin          SuperAdmin? @relation(fields: [adminId], references: [id])
   action         String      // APPROVE_REGISTRATION | REJECT_REGISTRATION | PROVISION_* | SUPPORT_*
   registrationId String?
   tenantId       String?

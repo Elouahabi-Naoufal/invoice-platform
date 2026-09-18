@@ -22,7 +22,7 @@ export default async function AuditPage() {
               <tbody>{logs.map((l) => (
                 <tr key={l.id}>
                   <td className="tabular-nums whitespace-nowrap text-ink-500">{l.createdAt.toLocaleString()}</td>
-                  <td className="text-ink-500">{l.admin.email}</td>
+                  <td className="text-ink-500">{l.admin?.email ?? "system"}</td>
                   <td><span className="badge">{l.action}</span></td>
                   <td><code className="text-[11px] text-ink-500">{l.metadata || "—"}</code></td>
                 </tr>
