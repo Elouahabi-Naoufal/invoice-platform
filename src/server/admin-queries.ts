@@ -42,7 +42,11 @@ export async function listProvisioningJobs() {
 }
 
 export async function listNotifications() {
-  return prisma.notification.findMany({ orderBy: { createdAt: "desc" }, take: 50, include: { tenant: true } });
+  return prisma.notification.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    include: { tenant: true, registration: true },
+  });
 }
 
 export async function listAuditLogs() {

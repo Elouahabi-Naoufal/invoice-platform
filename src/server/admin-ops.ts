@@ -1,9 +1,11 @@
 "use server";
 import { requireAdmin } from "@/server/admin-session";
+import { prisma } from "@/lib/prisma";
 import { startProvisioning, retryProvisioning } from "@/server/provisioning";
 import { generateSupportAccess, revokeSupportAccess } from "@/server/support";
 import { retryNotification, sendPendingNotifications } from "@/server/notifications";
 import { setTenantStatus } from "@/server/admin-actions";
+import { stopApplication, startApplication, deleteApplication } from "@/server/dokploy";
 
 export async function provisionTenant(tenantId: string) {
   const admin = await requireAdmin();
@@ -15,12 +17,51 @@ export async function retryTenantProvisioning(tenantId: string) {
   return retryProvisioning(tenantId, admin.id);
 }
 
+/** Suspend: stop the container, then mark the tenant suspended. */
 export async function suspendTenant(tenantId: string) {
-  return setTenantStatus(tenantId, "SUSPENDED");
+  const admin = await requireAdmin();
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) throw new Error("not found");
+  if (tenant.dokployApplicationId) {
+    await stopApplication(tenant.dokployApplicationId).catch((e) => {
+      console.error("[suspend] dokploy stop failed:", e instanceof Error ? e.message : e);
+    });
+  }
+  await setTenantStatus(tenantId, "SUSPENDED");
+  await prisma.auditLog.create({ data: { adminId: admin.id, action: "TENANT_SUSPENDED", tenantId } });
+  return { ok: true };
 }
 
+/** Resume: start the container, then mark the tenant active. */
 export async function resumeTenant(tenantId: string) {
-  return setTenantStatus(tenantId, "ACTIVE");
+  const admin = await requireAdmin();
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) throw new Error("not found");
+  if (tenant.dokployApplicationId) {
+    await startApplication(tenant.dokployApplicationId).catch((e) => {
+      console.error("[resume] dokploy start failed:", e instanceof Error ? e.message : e);
+    });
+  }
+  await setTenantStatus(tenantId, "ACTIVE");
+  await prisma.auditLog.create({ data: { adminId: admin.id, action: "TENANT_RESUMED", tenantId } });
+  return { ok: true };
+}
+
+/** Permanently delete a tenant and its Dokploy application. */
+export async function deleteTenant(tenantId: string) {
+  const admin = await requireAdmin();
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) throw new Error("not found");
+  if (tenant.dokployApplicationId) {
+    await deleteApplication(tenant.dokployApplicationId).catch((e) => {
+      console.error("[delete] dokploy delete failed:", e instanceof Error ? e.message : e);
+    });
+  }
+  await prisma.auditLog.create({
+    data: { adminId: admin.id, action: "TENANT_DELETED", tenantId, metadata: JSON.stringify({ slug: tenant.slug, companyName: tenant.companyName }) },
+  });
+  await prisma.tenant.delete({ where: { id: tenantId } });
+  return { ok: true };
 }
 
 export async function requestSupportAccess(tenantId: string, providedKey: string) {

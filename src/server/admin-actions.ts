@@ -31,11 +31,20 @@ export async function registerTenant(raw: unknown): Promise<{ ok?: true; error?:
   const rl = rateLimit(`register:${ip}`, 5, 60 * 60_000);
   if (!rl.ok) return { error: "Too many registration attempts. Please try again later." };
 
-  const slugExists = await prisma.registration.findUnique({ where: { requestedSlug: d.requestedSlug } });
-  if (slugExists) return { error: "That slug is already taken. Please choose another." };
+  const existing = await prisma.registration.findUnique({ where: { requestedSlug: d.requestedSlug } });
+  if (existing) {
+    if (existing.status === "REJECTED") {
+      // A rejected slug may be claimed again: replace the old record.
+      await prisma.registration.delete({ where: { id: existing.id } }).catch(() => undefined);
+    } else {
+      return { error: "That slug is already taken. Please choose another." };
+    }
+  }
 
   try {
-    await prisma.registration.create({ data: { ...d, status: "PENDING" } });
+    const reg = await prisma.registration.create({ data: { ...d, status: "PENDING" } });
+    const { enqueueRegistrationNotification } = await import("@/server/notifications");
+    await enqueueRegistrationNotification(reg.id, "REGISTRATION_RECEIVED").catch(() => undefined);
     return { ok: true };
   } catch {
     return { error: "Could not save your registration. Please try again." };

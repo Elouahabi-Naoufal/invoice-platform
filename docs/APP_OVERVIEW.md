@@ -109,7 +109,31 @@ Enabled when `CRON_SECRET` is set.
 - Retention: 10 years (art. 211 CGI).
 
 ## 11. Environment variables
-`DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `PORT`, `NODE_ENV`, `CRON_SECRET`, `SCHEDULER_ENABLED`, `SCHEDULER_INTERVAL_MS`, `WHATSAPP_SESSION_DIR`, `WHATSAPP_CLIENT_ID`, `WHATSAPP_CHROME_PATH`, `WHATSAPP_HEADLESS`, `WHATSAPP_READY_TIMEOUT_MS`.
+**Core:** `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `PORT`, `NODE_ENV`, `TZ`.
+**Automation:** `CRON_SECRET`, `SCHEDULER_ENABLED`, `SCHEDULER_INTERVAL_MS`.
+**WhatsApp:** `WHATSAPP_SESSION_DIR`, `WHATSAPP_CLIENT_ID`, `WHATSAPP_CHROME_PATH`, `WHATSAPP_HEADLESS`, `WHATSAPP_READY_TIMEOUT_MS`.
+**Platform admin:** `HUB_ADMIN_EMAIL`, `HUB_ADMIN_PASSWORD`, `DEBUG_KEY`.
+**Provisioning:** `DOKPLOY_URL`, `DOKPLOY_TOKEN`, `DOKPLOY_ENVIRONMENT_ID`, `DOKPLOY_SERVER_ID`, `DOKPLOY_GITHUB_OWNER`, `DOKPLOY_GITHUB_REPOSITORY`, `DOKPLOY_GITHUB_BRANCH`, `DOKPLOY_GITHUB_ID`, `TENANT_DOMAIN_SUFFIX`, `TENANT_PORT`, `TENANT_ACTIVATION_ETA`.
+**Tenant bootstrap:** `OWNER_EMAIL`, `OWNER_PASSWORD`, `SUPPORT_KEY`.
+**Notifications:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`.
 
 ## 12. Deployment model
-One deployment per business (own container, domain, database, secrets and WhatsApp session). Team members are invited inside a single business; separate businesses get separate deployments.
+One deployment per business (own container, domain, database, secrets and WhatsApp session). Team members are invited inside a single business.
+
+## 13. Platform admin (hub)
+The main instance can act as a **platform hub**. A separate `SuperAdmin` login (`/admin-login`) manages registrations and tenants; it is completely separate from tenant user auth.
+
+- **Registration:** a business registers at `/register` (rate-limited) → status `PENDING`. A confirmation notification is queued (email + WhatsApp).
+- **Approval:** admin approves at `/admin/registrations` → a `Tenant` is created transactionally, audited, and an `APPROVED` notification (with platform URL + activation ETA) is sent from the admin's WhatsApp/email.
+- **Provisioning:** admin provisions the tenant from `/admin/tenants/[id]`. `src/server/provisioning.ts` drives a `ProvisioningJob` through `CREATING_APPLICATION → CONFIGURING_SOURCE → CONFIGURING_ENV → CREATING_DOMAIN → DEPLOYING → VERIFYING`. It creates a Dokploy application from the same repo, configures GitHub source + env + domain, and deploys. The cron worker polls Dokploy and, when the build settles, marks the tenant `ACTIVE` and sends the `WELCOME` notification with login credentials.
+- **Owner bootstrap:** the tenant container creates the owner `User` from `OWNER_EMAIL`/`OWNER_PASSWORD` on first boot.
+- **Lifecycle:** `APPROVED → PROVISIONING → ACTIVE → SUSPENDED` (+ `FAILED`). Suspend/resume call Dokploy stop/start; delete removes the Dokploy app and the tenant.
+- **Support access:** admin enters the tenant's support key → an HMAC-signed, 30-minute token opens a **read-only** session in the tenant app (`VIEW_ONLY`), shown with a banner. Every grant is audited.
+- **Notifications:** each channel is an independent record (`PENDING/SENT/FAILED`, attempts, lastError) so a WhatsApp failure never blocks provisioning. Retry from `/admin/notifications` or the cron sweep.
+- **Audit:** all admin actions are recorded in `AuditLog` and viewable at `/admin/audit`.
+
+### Security model
+- Tenant auth and admin auth are independent cookies (`ip_session` vs `hub_session`).
+- Admin read queries live in `src/server/admin-queries.ts` (NOT a `"use server"` module) so they are never exposed as HTTP endpoints; every admin mutation calls `requireAdmin()` and derives the admin id server-side.
+- Support tokens are HMAC-signed with the tenant's `SUPPORT_KEY` and verified locally by the tenant; the hub stores only a hash of issued tokens.
+- Registration is rate-limited per IP; slugs are validated and lowercased.

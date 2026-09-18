@@ -19,10 +19,18 @@ export default async function NotificationsPage() {
       <div className="card overflow-hidden">
         {notifications.length === 0 ? <p className="p-4 text-sm text-ink-500">No notifications yet.</p> : (
           <table className="tbl">
-            <thead><tr><th>Tenant</th><th>Type</th><th>Channel</th><th>Recipient</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead>
+            <thead><tr><th>Target</th><th>Type</th><th>Channel</th><th>Recipient</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead>
             <tbody>{notifications.map((n) => (
               <tr key={n.id}>
-                <td><Link href={`/admin/tenants/${n.tenantId}`} className="text-brand-600 hover:underline">{n.tenant.companyName}</Link></td>
+                <td>
+                  {n.tenant ? (
+                    <Link href={`/admin/tenants/${n.tenantId}`} className="text-brand-600 hover:underline">{n.tenant.companyName}</Link>
+                  ) : n.registration ? (
+                    <Link href="/admin/registrations" className="text-brand-600 hover:underline">{n.registration.companyName}</Link>
+                  ) : (
+                    <span className="text-ink-500">{n.recipient}</span>
+                  )}
+                </td>
                 <td>{n.type}</td>
                 <td>{n.channel}</td>
                 <td className="text-ink-500">{n.recipient}</td>

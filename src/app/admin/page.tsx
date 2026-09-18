@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/server/admin-session";
 import { getPlatformStats, listRegistrations, listTenants, listProvisioningJobs, listNotifications, listAuditLogs } from "@/server/admin-queries";
+import AdminSystemStatus from "@/components/AdminSystemStatus";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,8 @@ export default async function AdminPage() {
         {stat("Provisioning", stats.provisioning, "", "/admin/provisioning")}
         {stat("Failed", stats.failed, stats.failed > 0 ? "text-red-600" : "", "/admin/tenants")}
       </div>
+
+      <AdminSystemStatus />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card overflow-hidden">
@@ -103,7 +106,7 @@ export default async function AdminPage() {
             <table className="tbl">
               <thead><tr><th>Tenant</th><th>Channel</th><th>Error</th></tr></thead>
               <tbody>{failedNotifs.map((n) => (
-                <tr key={n.id}><td className="font-medium">{n.tenant.companyName}</td><td>{n.channel}</td><td className="text-red-600 text-[12px]">{n.lastError}</td></tr>
+                <tr key={n.id}><td className="font-medium">{n.tenant?.companyName ?? n.registration?.companyName ?? n.recipient}</td><td>{n.channel}</td><td className="text-red-600 text-[12px]">{n.lastError}</td></tr>
               ))}</tbody>
             </table>
           )}

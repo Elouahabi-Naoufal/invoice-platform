@@ -380,6 +380,7 @@ model Registration {
   reviewedById   String?
   reviewedBy     SuperAdmin? @relation(fields: [reviewedById], references: [id])
   tenant         Tenant?
+  notifications  Notification[]
 
   @@index([email])
   @@index([status])
@@ -448,19 +449,22 @@ model ProvisioningJob {
 }
 
 model Notification {
-  id         String    @id @default(cuid())
-  tenantId   String
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  type       String    // WELCOME
-  channel    String    // EMAIL | WHATSAPP
-  recipient  String
-  status     String    @default("PENDING") // PENDING | SENT | FAILED
-  attempts   Int       @default(0)
-  lastError  String?
-  sentAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id             String        @id @default(cuid())
+  tenantId       String?
+  tenant         Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  registrationId String?
+  registration   Registration? @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  type           String        // REGISTRATION_RECEIVED | APPROVED | WELCOME | SUSPENDED
+  channel        String        // EMAIL | WHATSAPP
+  recipient      String
+  status         String        @default("PENDING") // PENDING | SENT | FAILED
+  attempts       Int           @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime      @default(now())
 
   @@index([tenantId])
+  @@index([registrationId])
   @@index([status])
 }
 

@@ -15,6 +15,10 @@ function config(): DokployEnv {
   return { url, token };
 }
 
+export function dokployConfigured(): boolean {
+  return !!(process.env.DOKPLOY_URL && process.env.DOKPLOY_TOKEN && process.env.DOKPLOY_ENVIRONMENT_ID);
+}
+
 async function dokployPost<T = unknown>(endpoint: string, data: Record<string, unknown>): Promise<T> {
   const { url, token } = config();
   const res = await fetch(`${url}/api/trpc/${endpoint}`, {
@@ -126,4 +130,12 @@ export async function isDeploymentSettled(applicationId: string): Promise<boolea
 
 export async function deleteApplication(applicationId: string): Promise<void> {
   await dokployPost("application.delete", { applicationId });
+}
+
+export async function stopApplication(applicationId: string): Promise<void> {
+  await dokployPost("application.stop", { applicationId });
+}
+
+export async function startApplication(applicationId: string): Promise<void> {
+  await dokployPost("application.start", { applicationId });
 }
