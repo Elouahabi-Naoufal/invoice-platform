@@ -379,6 +379,7 @@ model Registration {
   reviewedAt     DateTime?
   reviewedById   String?
   reviewedBy     SuperAdmin? @relation(fields: [reviewedById], references: [id])
+  tenant         Tenant?
 
   @@index([email])
   @@index([status])
@@ -388,11 +389,91 @@ model AuditLog {
   id             String      @id @default(cuid())
   adminId        String
   admin          SuperAdmin  @relation(fields: [adminId], references: [id])
-  action         String      // APPROVE_REGISTRATION | REJECT_REGISTRATION
+  action         String      // APPROVE_REGISTRATION | REJECT_REGISTRATION | PROVISION_* | SUPPORT_*
   registrationId String?
+  tenantId       String?
   metadata       String?     // JSON
   createdAt      DateTime    @default(now())
 
   @@index([adminId])
   @@index([createdAt])
+}
+
+// ── Tenants (provisioned instances) ──
+
+model Tenant {
+  id                    String              @id @default(cuid())
+  registrationId        String?             @unique
+  registration          Registration?       @relation(fields: [registrationId], references: [id])
+  companyName           String
+  ownerName             String
+  email                 String
+  phone                 String?
+  slug                  String              @unique
+  status                String              @default("APPROVED") // APPROVED | PROVISIONING | ACTIVE | FAILED | SUSPENDED
+  deploymentUrl         String?
+  supportKey            String?
+  dokployProjectId      String?
+  dokployApplicationId  String?
+  createdAt             DateTime            @default(now())
+  approvedAt            DateTime?
+  activatedAt           DateTime?
+  suspendedAt           DateTime?
+  provisioningJobs      ProvisioningJob[]
+  notifications         Notification[]
+  supportAccesses       SupportAccess[]
+
+  @@index([status])
+  @@index([email])
+}
+
+model ProvisioningJob {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status                String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  currentStep           String    @default("QUEUED") // QUEUED | CREATING_APPLICATION | CONFIGURING_SOURCE | CONFIGURING_ENV | CREATING_DOMAIN | DEPLOYING | VERIFYING | COMPLETED | FAILED
+  dokployProjectId      String?
+  dokployApplicationId  String?
+  errorMessage          String?
+  retryCount            Int       @default(0)
+  startedAt             DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type       String    // WELCOME
+  channel    String    // EMAIL | WHATSAPP
+  recipient  String
+  status     String    @default("PENDING") // PENDING | SENT | FAILED
+  attempts   Int       @default(0)
+  lastError  String?
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model SupportAccess {
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  adminId    String
+  tokenHash  String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([adminId])
 }

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { verifySupportToken } from "@/server/support-token";
 
 const COOKIE = "ip_session";
 const ACTIVE_COMPANY = "ip_company";
@@ -147,6 +148,29 @@ export interface Actor {
  * user owns their own data as OWNER.
  */
 export async function requireActor(): Promise<Actor> {
+  // Support session: read-only access granted to the platform admin.
+  const supportKey = process.env.SUPPORT_KEY;
+  if (supportKey) {
+    const supportToken = (await cookies()).get("support_token")?.value;
+    if (supportToken) {
+      try {
+        const { adminId } = verifySupportToken(supportKey, supportToken);
+        const owner = await prisma.user.findFirst({ orderBy: { id: "asc" } });
+        if (owner) {
+          return {
+            userId: "support",
+            ownerId: owner.id,
+            role: "VIEWER",
+            email: adminId,
+            displayName: "Support (read-only)",
+          };
+        }
+      } catch {
+        // fall through to normal auth
+      }
+    }
+  }
+
   const user = await requireUser();
   const member = await prisma.member.findFirst({ where: { userId: user.id, revokedAt: null } });
   if (member) {

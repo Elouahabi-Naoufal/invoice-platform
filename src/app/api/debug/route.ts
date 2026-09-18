@@ -4,9 +4,12 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const debugKey = process.env.DEBUG_KEY;
+  if (!debugKey) return NextResponse.json({ error: "debug disabled" }, { status: 404 });
+
   const url = new URL(req.url);
   const key = url.searchParams.get("key");
-  if (!key || key !== process.env.HUB_ADMIN_PASSWORD) {
+  if (!key || key !== debugKey) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -15,6 +18,9 @@ export async function GET(req: Request) {
     hasAdminEmail: !!process.env.HUB_ADMIN_EMAIL,
     hasAdminPassword: !!process.env.HUB_ADMIN_PASSWORD,
     adminEmail: process.env.HUB_ADMIN_EMAIL ?? null,
+    dokployConfigured: !!(process.env.DOKPLOY_URL && process.env.DOKPLOY_TOKEN),
+    emailConfigured: !!process.env.SMTP_HOST,
+    supportEnabled: !!process.env.SUPPORT_KEY,
     cwd: process.cwd(),
   };
 
@@ -27,10 +33,10 @@ export async function GET(req: Request) {
   }
 
   try {
-    const regs = await prisma.registration.count();
-    out.registrationCount = regs;
+    out.registrationCount = await prisma.registration.count();
+    out.tenantCount = await prisma.tenant.count();
   } catch (e) {
-    out.registrationError = e instanceof Error ? e.message : String(e);
+    out.countError = e instanceof Error ? e.message : String(e);
   }
 
   return NextResponse.json(out);

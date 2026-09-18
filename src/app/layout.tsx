@@ -6,6 +6,8 @@ import Sidebar from "@/components/Sidebar";
 import AppHeader from "@/components/AppHeader";
 import { Toaster } from "@/components/ui";
 import { publicUploadUrl } from "@/lib/uploads";
+import { verifySupportToken } from "@/server/support-token";
+import SupportBanner from "@/components/SupportBanner";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -29,10 +31,25 @@ async function sessionUser() {
   }
 }
 
+async function supportSession(): Promise<boolean> {
+  const supportKey = process.env.SUPPORT_KEY;
+  if (!supportKey) return false;
+  const token = (await cookies()).get("support_token")?.value;
+  if (!token) return false;
+  try {
+    verifySupportToken(supportKey, token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await sessionUser();
+  const support = user ? false : await supportSession();
+  const effectiveUser = user ?? (support ? await prisma.user.findFirst({ orderBy: { id: "asc" } }) : null);
   // Members act on the owner's data; resolve the effective tenancy boundary.
-  let ownerId: string | null = user?.id ?? null;
+  let ownerId: string | null = effectiveUser?.id ?? null;
   if (user) {
     const member = await prisma.member.findFirst({ where: { userId: user.id, revokedAt: null }, select: { ownerId: true } });
     if (member) ownerId = member.ownerId;
@@ -56,16 +73,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} dir={dir} className={inter.variable}>
       <body className="font-sans">
         <Toaster>
-          {user ? (
+          {effectiveUser ? (
             <div className="flex min-h-screen">
               <Sidebar />
               <div className="min-w-0 flex-1">
                 <AppHeader
-                  user={{ name: user.displayName, email: user.email }}
+                  user={{ name: support ? "Support (read-only)" : effectiveUser.displayName, email: support ? "support@invora.app" : effectiveUser.email }}
                   companies={companyOptions}
                   activeId={activeId}
                   locale={locale}
                 />
+                {support && <SupportBanner />}
                 <main className="mx-auto max-w-[1200px] px-6 py-7 max-md:px-4">{children}</main>
               </div>
             </div>

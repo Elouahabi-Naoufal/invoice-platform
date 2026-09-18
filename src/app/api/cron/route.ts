@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { runDueJobs } from "@/server/automation";
+import { advanceProvisioningJobs } from "@/server/provisioning";
+import { sendPendingNotifications } from "@/server/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +23,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const result = await runDueJobs();
-  return NextResponse.json(result);
+  const provisioning = await advanceProvisioningJobs().catch((e) => ({ error: String(e) }));
+  const notifications = await sendPendingNotifications().catch((e) => ({ error: String(e) }));
+  return NextResponse.json({ ...result, provisioning, notifications });
 }
 
 export const POST = GET;
