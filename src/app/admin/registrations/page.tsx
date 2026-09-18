@@ -42,7 +42,7 @@ export default async function RegistrationsPage() {
                     <td><code className="rounded bg-ink-100 px-1 text-[12px] dark:bg-white/10">{r.requestedSlug}</code></td>
                     <td>{badge(r.status)}</td>
                     <td className="tabular-nums text-ink-500">{r.createdAt.toLocaleDateString()}</td>
-                    <td className="text-right">{r.status === "PENDING" && <RegistrationActions id={r.id} />}</td>
+                    <td className="text-right"><RegistrationActions id={r.id} status={r.status} /></td>
                   </tr>
                 ))}
               </tbody>

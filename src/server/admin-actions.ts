@@ -124,3 +124,22 @@ export async function setTenantStatus(id: string, status: string) {
   ]);
   return { ok: true };
 }
+
+/** Admin: permanently remove a registration and any tenant it created. */
+export async function deleteRegistration(id: string) {
+  const admin = await requireAdmin();
+  const reg = await prisma.registration.findUnique({ where: { id }, include: { tenant: true } });
+  if (!reg) throw new Error("not found");
+  if (reg.tenant?.dokployApplicationId) {
+    const { deleteApplication } = await import("@/server/dokploy");
+    await deleteApplication(reg.tenant.dokployApplicationId).catch((e) => {
+      console.error("[deleteRegistration] dokploy delete failed:", e instanceof Error ? e.message : e);
+    });
+  }
+  await prisma.auditLog.create({
+    data: { adminId: admin.id, action: "DELETE_REGISTRATION", registrationId: id, metadata: JSON.stringify({ slug: reg.requestedSlug }) },
+  });
+  await prisma.tenant.deleteMany({ where: { registrationId: id } });
+  await prisma.registration.delete({ where: { id } });
+  return { ok: true };
+}
