@@ -38,12 +38,16 @@ if [ -n "${HUB_ADMIN_EMAIL}" ] && [ -n "${HUB_ADMIN_PASSWORD}" ]; then
     const bcrypt = require('bcryptjs');
     const p = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
     (async () => {
-      const existing = await p.superAdmin.findUnique({ where: { email: process.env.HUB_ADMIN_EMAIL } });
+      const email = process.env.HUB_ADMIN_EMAIL;
+      const existing = await p.superAdmin.findUnique({ where: { email } });
+      const hash = await bcrypt.hash(process.env.HUB_ADMIN_PASSWORD, 12);
       if (!existing) {
-        const hash = await bcrypt.hash(process.env.HUB_ADMIN_PASSWORD, 12);
-        await p.superAdmin.create({ data: { email: process.env.HUB_ADMIN_EMAIL, passwordHash: hash } });
-        console.log('Super admin created:', process.env.HUB_ADMIN_EMAIL);
-      } else { console.log('Super admin exists, skipping.'); }
+        await p.superAdmin.create({ data: { email, passwordHash: hash } });
+        console.log('Super admin created:', email);
+      } else {
+        await p.superAdmin.update({ where: { email }, data: { passwordHash: hash } });
+        console.log('Super admin password updated:', email);
+      }
       await p.\$disconnect();
     })();
   " || echo ">> WARNING: admin bootstrap failed."
