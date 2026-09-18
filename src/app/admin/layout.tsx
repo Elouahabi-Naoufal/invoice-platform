@@ -5,7 +5,23 @@ import { adminLogout } from "@/server/hub-auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   let admin: { id: string; email: string; displayName: string };
-  try { admin = await requireAdmin(); } catch { redirect("/admin/login"); }
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    const msg = String(e instanceof Error ? e.message : e);
+    if (msg.includes("not authenticated") || msg.includes("session expired")) {
+      redirect("/admin/login");
+    }
+    return (
+      <div className="grid min-h-screen place-items-center bg-ink-50 px-4 dark:bg-[#101828]">
+        <div className="card max-w-md p-8 text-center">
+          <h1 className="page-title mb-2">Hub not ready</h1>
+          <p className="meta mb-4">The hub database is not initialized. Ensure HUB_DATABASE_URL is set and migrations have run.</p>
+          <Link href="/admin/login" className="btn-accent">Try again</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
