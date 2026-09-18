@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/server/admin-auth";
+import { requireAdmin } from "@/server/admin-session";
 import { connectWhatsApp } from "@/server/whatsapp";
 
 export const runtime = "nodejs";

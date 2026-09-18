@@ -1,5 +1,5 @@
-import { requireAdmin } from "@/server/admin-auth";
-import { listAuditLogs } from "@/server/admin-actions";
+import { requireAdmin } from "@/server/admin-session";
+import { listAuditLogs } from "@/server/admin-queries";
 
 export const dynamic = "force-dynamic";
 

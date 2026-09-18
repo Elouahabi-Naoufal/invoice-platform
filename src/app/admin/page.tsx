@@ -1,5 +1,5 @@
-import { requireAdmin } from "@/server/admin-auth";
-import { getPlatformStats, listRegistrations, listTenants, listProvisioningJobs, listNotifications, listAuditLogs } from "@/server/admin-actions";
+import { requireAdmin } from "@/server/admin-session";
+import { getPlatformStats, listRegistrations, listTenants, listProvisioningJobs, listNotifications, listAuditLogs } from "@/server/admin-queries";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";

@@ -1,5 +1,5 @@
-import { requireAdmin } from "@/server/admin-auth";
-import { listTenants } from "@/server/admin-actions";
+import { requireAdmin } from "@/server/admin-session";
+import { listTenants } from "@/server/admin-queries";
 import Link from "next/link";
 
 export default async function TenantsPage() {

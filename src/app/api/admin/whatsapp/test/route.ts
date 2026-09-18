@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/server/admin-auth";
+import { requireAdmin } from "@/server/admin-session";
 import { whatsappGateway } from "@/server/whatsapp";
 import { normalizeWhatsAppRecipient } from "@/server/whatsapp-message";
 

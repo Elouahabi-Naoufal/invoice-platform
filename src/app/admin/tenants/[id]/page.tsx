@@ -1,5 +1,5 @@
-import { requireAdmin } from "@/server/admin-auth";
-import { getTenant } from "@/server/admin-actions";
+import { requireAdmin } from "@/server/admin-session";
+import { getTenant } from "@/server/admin-queries";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import TenantProvisionActions from "@/components/TenantProvisionActions";

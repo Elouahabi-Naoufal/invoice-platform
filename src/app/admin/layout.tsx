@@ -1,9 +1,15 @@
-import { requireAdmin } from "@/server/admin-auth";
+import { requireAdmin } from "@/server/admin-session";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { adminLogout } from "@/server/admin-auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await requireAdmin();
+  let admin: { id: string; email: string };
+  try {
+    admin = await requireAdmin();
+  } catch {
+    redirect("/admin-login");
+  }
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-56 flex-col border-r border-ink-200 bg-ink-50 p-4 dark:border-white/10 dark:bg-[#0c111d]">

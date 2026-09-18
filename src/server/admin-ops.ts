@@ -1,5 +1,5 @@
 "use server";
-import { requireAdmin } from "@/server/admin-auth";
+import { requireAdmin } from "@/server/admin-session";
 import { startProvisioning, retryProvisioning } from "@/server/provisioning";
 import { generateSupportAccess, revokeSupportAccess } from "@/server/support";
 import { retryNotification, sendPendingNotifications } from "@/server/notifications";
@@ -16,13 +16,11 @@ export async function retryTenantProvisioning(tenantId: string) {
 }
 
 export async function suspendTenant(tenantId: string) {
-  const admin = await requireAdmin();
-  return setTenantStatus(tenantId, admin.id, "SUSPENDED");
+  return setTenantStatus(tenantId, "SUSPENDED");
 }
 
 export async function resumeTenant(tenantId: string) {
-  const admin = await requireAdmin();
-  return setTenantStatus(tenantId, admin.id, "ACTIVE");
+  return setTenantStatus(tenantId, "ACTIVE");
 }
 
 export async function requestSupportAccess(tenantId: string, providedKey: string) {

@@ -1,9 +1,9 @@
-import { requireAdmin } from "@/server/admin-auth";
-import { listRegistrations } from "@/server/admin-actions";
+import { requireAdmin } from "@/server/admin-session";
+import { listRegistrations } from "@/server/admin-queries";
 import RegistrationActions from "@/components/RegistrationActions";
 
 export default async function RegistrationsPage() {
-  const admin = await requireAdmin();
+  await requireAdmin();
   const registrations = await listRegistrations();
 
   const statusBadge = (s: string) => {
@@ -32,7 +32,7 @@ export default async function RegistrationsPage() {
                   <td><code className="rounded bg-ink-100 px-1 text-[12px] dark:bg-white/10">{r.requestedSlug}</code></td>
                   <td>{statusBadge(r.status)}</td>
                   <td className="tabular-nums text-ink-500">{r.createdAt.toLocaleDateString()}</td>
-                  <td>{r.status === "PENDING" && <RegistrationActions id={r.id} adminId={admin.id} />}</td>
+                  <td>{r.status === "PENDING" && <RegistrationActions id={r.id} />}</td>
                 </tr>
               ))}
             </tbody>

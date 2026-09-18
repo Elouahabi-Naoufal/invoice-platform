@@ -1,6 +1,7 @@
-import { requireAdmin } from "@/server/admin-auth";
-import { listNotifications } from "@/server/admin-actions";
+import { requireAdmin } from "@/server/admin-session";
+import { listNotifications } from "@/server/admin-queries";
 import NotificationRetryButton from "@/components/NotificationRetryButton";
+import ProcessNotificationsButton from "@/components/ProcessNotificationsButton";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,10 @@ export default async function NotificationsPage() {
 
   return (
     <div>
-      <h1 className="page-title mb-6">Notifications</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="page-title">Notifications</h1>
+        <ProcessNotificationsButton />
+      </div>
       <div className="card overflow-hidden">
         {notifications.length === 0 ? <p className="p-4 text-sm text-ink-500">No notifications yet.</p> : (
           <table className="tbl">

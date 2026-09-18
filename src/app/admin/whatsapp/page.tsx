@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/server/admin-auth";
+import { requireAdmin } from "@/server/admin-session";
 import AdminWhatsAppSettings from "@/components/AdminWhatsAppSettings";
 
 export const dynamic = "force-dynamic";
