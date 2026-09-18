@@ -26,7 +26,15 @@ export function tenantDomain(slug: string): string {
   return `${slug}.${suffix}`;
 }
 
-function buildTenantEnv(slug: string, supportKey: string): Record<string, string> {
+function generatePassword(): string {
+  // Readable but strong: 4 groups of 4 base32-ish chars.
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < 16; i++) out += alphabet[crypto.randomInt(alphabet.length)];
+  return out.match(/.{1,4}/g)!.join("-");
+}
+
+function buildTenantEnv(slug: string, supportKey: string, ownerEmail: string, ownerPassword: string): Record<string, string> {
   const domain = tenantDomain(slug);
   return {
     DATABASE_URL: "file:/app/data/app.db",
@@ -38,6 +46,8 @@ function buildTenantEnv(slug: string, supportKey: string): Record<string, string
     JWT_SECRET: randomKey(32),
     CRON_SECRET: randomKey(16),
     SUPPORT_KEY: supportKey,
+    OWNER_EMAIL: ownerEmail,
+    OWNER_PASSWORD: ownerPassword,
   };
 }
 
@@ -48,6 +58,7 @@ export async function startProvisioning(tenantId: string, adminId: string) {
   if (tenant.status === "PROVISIONING") throw new Error("already provisioning");
 
   const supportKey = tenant.supportKey || randomKey(12);
+  const ownerPassword = tenant.ownerPassword || generatePassword();
   const job = await prisma.provisioningJob.create({
     data: {
       tenantId,
@@ -58,7 +69,7 @@ export async function startProvisioning(tenantId: string, adminId: string) {
     },
   });
 
-  await prisma.tenant.update({ where: { id: tenantId }, data: { status: "PROVISIONING", supportKey } });
+  await prisma.tenant.update({ where: { id: tenantId }, data: { status: "PROVISIONING", supportKey, ownerPassword } });
 
   try {
     let applicationId = tenant.dokployApplicationId;
@@ -69,7 +80,7 @@ export async function startProvisioning(tenantId: string, adminId: string) {
         companyName: tenant.companyName,
         domain: tenantDomain(tenant.slug),
         port: TENANT_PORT,
-        env: buildTenantEnv(tenant.slug, supportKey),
+        env: buildTenantEnv(tenant.slug, supportKey, tenant.email, ownerPassword),
       });
       applicationId = created.applicationId;
       await prisma.tenant.update({

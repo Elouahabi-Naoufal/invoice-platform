@@ -66,6 +66,28 @@ else
   echo ">> Admin bootstrap skipped (HUB_ADMIN_EMAIL/PASSWORD not set)."
 fi
 
+# Bootstrap tenant owner account (provisioned tenants receive OWNER_EMAIL/PASSWORD)
+if [ -n "${OWNER_EMAIL}" ] && [ -n "${OWNER_PASSWORD}" ]; then
+  echo ">> Bootstrapping owner account: ${OWNER_EMAIL}"
+  run_as_nextjs node -e "
+    const { PrismaClient } = require('@prisma/client');
+    const bcrypt = require('bcryptjs');
+    const p = new PrismaClient();
+    (async () => {
+      const email = String(process.env.OWNER_EMAIL).toLowerCase().trim();
+      const existing = await p.user.findUnique({ where: { email } });
+      if (!existing) {
+        const hash = await bcrypt.hash(process.env.OWNER_PASSWORD, 12);
+        await p.user.create({ data: { email, passwordHash: hash, displayName: 'Owner' } });
+        console.log('Owner created:', email);
+      } else {
+        console.log('Owner already exists, skipping.');
+      }
+      await p.\$disconnect();
+    })().catch(e => { console.error('owner bootstrap error:', e.message); process.exit(1); });
+  " || echo ">> WARNING: owner bootstrap failed."
+fi
+
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
 
 echo ">> Starting automation worker (recurring invoices + reminders)..."

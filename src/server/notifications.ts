@@ -23,21 +23,26 @@ function tenantUrl(tenant: { slug: string; deploymentUrl: string | null }): stri
   return tenant.deploymentUrl || `https://${tenant.slug}.${process.env.TENANT_DOMAIN_SUFFIX || "invoice.naoufalelouahabi.com"}`;
 }
 
-function messageFor(type: NotificationType, tenant: { companyName: string; slug: string; deploymentUrl: string | null; email: string }): { subject: string; text: string } {
+function messageFor(type: NotificationType, tenant: { companyName: string; slug: string; deploymentUrl: string | null; email: string; ownerPassword: string | null }): { subject: string; text: string } {
   switch (type) {
     case "APPROVED": {
       const url = tenantUrl(tenant);
       const eta = process.env.TENANT_ACTIVATION_ETA || "30 minutes";
       return {
         subject: "Your Invora account was approved",
-        text: `Good news, ${tenant.companyName}!\n\nYour registration has been approved.\n\nYour platform: ${url}\n\nWe are preparing your workspace now. It will be fully activated in about ${eta}. You will receive another message as soon as it is ready to use.\n\n— Invora`,
+        text: `Good news, ${tenant.companyName}!\n\nYour registration has been approved.\n\nYour platform: ${url}\n\nWe are preparing your workspace now. It will be fully activated in about ${eta}. You will receive another message with your login details as soon as it is ready.\n\n— Invora`,
       };
     }
-    case "WELCOME":
+    case "WELCOME": {
+      const url = tenantUrl(tenant);
+      const creds = tenant.ownerPassword
+        ? `\nEmail: ${tenant.email}\nPassword: ${tenant.ownerPassword}\n`
+        : `\nEmail: ${tenant.email}\n`;
       return {
         subject: "Your Invora workspace is ready",
-        text: `Welcome to Invora!\n\nYour workspace for ${tenant.companyName} is ready to use.\n\nSign in: ${tenantUrl(tenant)}\nEmail: ${tenant.email}\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
+        text: `Welcome to Invora!\n\nYour workspace for ${tenant.companyName} is ready to use.\n\nSign in: ${url}\n${creds}\nPlease change your password after your first sign-in (Settings → Security).\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
       };
+    }
     case "SUSPENDED":
       return {
         subject: "Your Invora account has been suspended",

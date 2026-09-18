@@ -413,6 +413,7 @@ model Tenant {
   status                String              @default("APPROVED") // APPROVED | PROVISIONING | ACTIVE | FAILED | SUSPENDED
   deploymentUrl         String?
   supportKey            String?
+  ownerPassword         String?
   dokployProjectId      String?
   dokployApplicationId  String?
   createdAt             DateTime            @default(now())
