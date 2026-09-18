@@ -5,3 +5,5 @@ dev.db*
 *.db-journal
 tsconfig.tsbuildinfo
 public/uploads/
+
+e2e-*.mjs
