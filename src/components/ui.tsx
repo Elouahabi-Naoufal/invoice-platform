@@ -138,9 +138,9 @@ export function SectionCard({
 }
 
 /* ---------- Empty state ---------- */
-export function EmptyState({ title, body, action, icon }: { title: string; body: string; action?: React.ReactNode; icon?: React.ReactNode }) {
+export function EmptyState({ title, body, action, icon, bare }: { title: string; body: string; action?: React.ReactNode; icon?: React.ReactNode; bare?: boolean }) {
   return (
-    <div className="card flex flex-col items-center px-6 py-14 text-center">
+    <div className={cn("flex flex-col items-center px-6 py-14 text-center", !bare && "card")}>
       <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-ink-100 text-ink-400 dark:bg-white/5 dark:text-gray-400">
         {icon ?? <Inbox size={22} />}
       </span>

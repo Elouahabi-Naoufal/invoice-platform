@@ -72,7 +72,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
       <SectionCard title="Provisioning jobs">
         {tenant.provisioningJobs.length === 0 ? (
-          <EmptyState icon={<Rocket size={20} />} title="No jobs yet" body="Provision this tenant to see job progress here." />
+          <EmptyState bare icon={<Rocket size={20} />} title="No jobs yet" body="Provision this tenant to see job progress here." />
         ) : (
           <div className="overflow-x-auto">
             <table className="tbl">
@@ -93,7 +93,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
       <SectionCard title="Notifications">
         {tenant.notifications.length === 0 ? (
-          <EmptyState icon={<Bell size={20} />} title="No notifications yet" body="Approval and welcome messages will appear here." />
+          <EmptyState bare icon={<Bell size={20} />} title="No notifications yet" body="Approval and welcome messages will appear here." />
         ) : (
           <div className="overflow-x-auto">
             <table className="tbl">
@@ -115,7 +115,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
       <SectionCard title="Support access history">
         {tenant.supportAccesses.length === 0 ? (
-          <EmptyState icon={<KeyRound size={20} />} title="No support sessions" body="Support sessions you grant will be listed here." />
+          <EmptyState bare icon={<KeyRound size={20} />} title="No support sessions" body="Support sessions you grant will be listed here." />
         ) : (
           <div className="overflow-x-auto">
             <table className="tbl">

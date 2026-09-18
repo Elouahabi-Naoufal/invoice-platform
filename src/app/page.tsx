@@ -56,10 +56,10 @@ export default async function Dashboard() {
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   const quick = [
-    { href: "/invoices/new", label: "New invoice", icon: Plus },
-    { href: "/clients?new=1", label: "Add client", icon: Users },
-    { href: "/reports", label: "Reports", icon: BarChart3 },
-    { href: "/settings/whatsapp", label: "WhatsApp", icon: MessageCircle },
+    { href: "/invoices/new", label: "New invoice", sub: "Create and send", icon: Plus, tone: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400" },
+    { href: "/clients?new=1", label: "Add client", sub: "Grow your list", icon: Users, tone: "bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-500" },
+    { href: "/reports", label: "Reports", sub: "Revenue & tax", icon: BarChart3, tone: "bg-info-50 text-info-600 dark:bg-info-500/15 dark:text-info-500" },
+    { href: "/settings/whatsapp", label: "WhatsApp", sub: "Sending channel", icon: MessageCircle, tone: "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-500" },
   ];
 
   return (
@@ -96,13 +96,16 @@ export default async function Dashboard() {
         />
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {quick.map((q) => {
           const Icon = q.icon;
           return (
-            <Link key={q.href} href={q.href} className="card flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium transition-colors hover:border-ink-400 dark:hover:border-white/20">
-              <span className="grid h-8 w-8 place-items-center rounded bg-ink-100 text-ink-500 dark:bg-white/10 dark:text-gray-300"><Icon size={16} /></span>
-              {q.label}
+            <Link key={q.href} href={q.href} className="card group flex items-center gap-3 p-4 transition-all hover:-translate-y-0.5 hover:border-ink-400 hover:shadow-card dark:hover:border-white/20">
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded transition-transform group-hover:scale-105 ${q.tone}`}><Icon size={18} /></span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-ink-950 dark:text-white">{q.label}</span>
+                <span className="meta block truncate">{q.sub}</span>
+              </span>
             </Link>
           );
         })}
@@ -114,10 +117,13 @@ export default async function Dashboard() {
           action={<Link href="/invoices" className="flex items-center gap-1 text-[13px] font-medium text-brand-600 hover:text-brand-700">View all <ArrowRight size={14} /></Link>}
         >
           {rows.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="meta mb-4">Create your first invoice and start tracking payments.</p>
-              <Link href="/invoices/new" className="btn-accent"><Plus size={16} /> Create invoice</Link>
-            </div>
+            <EmptyState
+              icon={<Plus size={20} />}
+              bare
+              title="No invoices yet"
+              body="Create your first invoice and start tracking payments and reminders."
+              action={<Link href="/invoices/new" className="btn-accent"><Plus size={16} /> Create invoice</Link>}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="tbl">

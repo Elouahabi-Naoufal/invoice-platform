@@ -56,7 +56,7 @@ export default async function AdminPage() {
           action={<Link href="/admin/registrations" className="text-[12px] font-medium text-brand-600 hover:underline">View all</Link>}
         >
           {pendingRegs.length === 0 ? (
-            <EmptyState icon={<Inbox size={20} />} title="Nothing pending" body="New business registrations will appear here for review." />
+            <EmptyState bare icon={<Inbox size={20} />} title="Nothing pending" body="New business registrations will appear here for review." />
           ) : (
             <table className="tbl">
               <thead><tr><th>Company</th><th>Owner</th><th>Slug</th><th>Date</th></tr></thead>
@@ -77,7 +77,7 @@ export default async function AdminPage() {
           action={<Link href="/admin/tenants" className="text-[12px] font-medium text-brand-600 hover:underline">View all</Link>}
         >
           {recentTenants.length === 0 ? (
-            <EmptyState icon={<Building2 size={20} />} title="No tenants yet" body="Approve a registration to create your first tenant." />
+            <EmptyState bare icon={<Building2 size={20} />} title="No tenants yet" body="Approve a registration to create your first tenant." />
           ) : (
             <table className="tbl">
               <thead><tr><th>Company</th><th>Slug</th><th>Status</th><th></th></tr></thead>
@@ -98,7 +98,7 @@ export default async function AdminPage() {
           action={<Link href="/admin/provisioning" className="text-[12px] font-medium text-brand-600 hover:underline">All jobs</Link>}
         >
           {recentJobs.length === 0 ? (
-            <EmptyState icon={<Rocket size={20} />} title="No jobs yet" body="Provisioning activity will show here once you deploy a tenant." />
+            <EmptyState bare icon={<Rocket size={20} />} title="No jobs yet" body="Provisioning activity will show here once you deploy a tenant." />
           ) : (
             <table className="tbl">
               <thead><tr><th>Tenant</th><th>Step</th><th>Status</th></tr></thead>
@@ -114,7 +114,7 @@ export default async function AdminPage() {
           action={<Link href="/admin/notifications" className="text-[12px] font-medium text-brand-600 hover:underline">Notifications</Link>}
         >
           {failedNotifs.length === 0 ? (
-            <EmptyState icon={<CheckCircle2 size={20} />} title="All clear" body="No failed deliveries. Notifications are flowing." />
+            <EmptyState bare icon={<CheckCircle2 size={20} />} title="All clear" body="No failed deliveries. Notifications are flowing." />
           ) : (
             <table className="tbl">
               <thead><tr><th>Target</th><th>Channel</th><th>Error</th></tr></thead>
@@ -135,7 +135,7 @@ export default async function AdminPage() {
         action={<Link href="/admin/audit" className="text-[12px] font-medium text-brand-600 hover:underline">Full audit log</Link>}
       >
         {recentAudit.length === 0 ? (
-          <EmptyState icon={<Activity size={20} />} title="No activity yet" body="Admin actions are recorded here." />
+          <EmptyState bare icon={<Activity size={20} />} title="No activity yet" body="Admin actions are recorded here." />
         ) : (
           <table className="tbl">
             <thead><tr><th>When</th><th>Admin</th><th>Action</th></tr></thead>
