@@ -32,13 +32,22 @@ if [ "${SEED_ON_BOOT}" = "1" ]; then
     || echo ">> WARNING: seed failed, continuing startup."
 fi
 
+# Load env vars from Dokploy-created .env file if present (not auto-loaded by Node)
+if [ -f /app/.env ]; then
+  set -a
+  . /app/.env
+  set +a
+  echo ">> Loaded /app/.env"
+fi
+
 # Bootstrap super admin from env vars
+echo ">> Admin bootstrap: HUB_ADMIN_EMAIL=${HUB_ADMIN_EMAIL:-<unset>} HUB_ADMIN_PASSWORD=${HUB_ADMIN_PASSWORD:+<set>}"
 if [ -n "${HUB_ADMIN_EMAIL}" ] && [ -n "${HUB_ADMIN_PASSWORD}" ]; then
   echo ">> Bootstrapping super admin..."
   run_as_nextjs node -e "
     const { PrismaClient } = require('@prisma/client');
     const bcrypt = require('bcryptjs');
-    const p = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+    const p = new PrismaClient();
     (async () => {
       const email = process.env.HUB_ADMIN_EMAIL;
       const existing = await p.superAdmin.findUnique({ where: { email } });
@@ -51,8 +60,10 @@ if [ -n "${HUB_ADMIN_EMAIL}" ] && [ -n "${HUB_ADMIN_PASSWORD}" ]; then
         console.log('Super admin password updated:', email);
       }
       await p.\$disconnect();
-    })();
+    })().catch(e => { console.error('bootstrap error:', e.message); process.exit(1); });
   " || echo ">> WARNING: admin bootstrap failed."
+else
+  echo ">> Admin bootstrap skipped (HUB_ADMIN_EMAIL/PASSWORD not set)."
 fi
 
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true
