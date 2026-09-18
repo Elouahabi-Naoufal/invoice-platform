@@ -19,10 +19,3 @@ export function rateLimit(key: string, limit: number, windowMs: number): { ok: b
   entry.count++;
   return { ok: true, retryAfterMs: 0 };
 }
-
-/** Best-effort client IP from proxy headers. */
-export function clientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
-}

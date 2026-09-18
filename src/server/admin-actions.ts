@@ -2,27 +2,44 @@
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
 
-export async function registerTenant(raw: unknown) {
-  const schema = z.object({
-    name: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().optional(),
-    companyName: z.string().min(1),
-    requestedSlug: z.string().min(2).max(40).regex(/^[a-z0-9-]+$/),
-  });
-  const d = schema.parse(raw);
+const registerSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("A valid email is required"),
+  phone: z.string().optional(),
+  companyName: z.string().min(1, "Company name is required"),
+  requestedSlug: z
+    .string()
+    .min(2, "Slug must be at least 2 characters")
+    .max(40, "Slug must be at most 40 characters")
+    .regex(/^[a-z0-9-]+$/, "Slug may only contain lowercase letters, numbers and hyphens"),
+});
 
-  const ip = clientIp(new Request("http://local", { headers: await headers() }));
+export async function registerTenant(raw: unknown): Promise<{ ok?: true; error?: string }> {
+  const obj = (typeof raw === "object" && raw ? { ...(raw as Record<string, unknown>) } : {}) as Record<string, unknown>;
+  if (typeof obj.requestedSlug === "string") obj.requestedSlug = obj.requestedSlug.toLowerCase().trim();
+
+  const parsed = registerSchema.safeParse(obj);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const d = parsed.data;
+
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
   const rl = rateLimit(`register:${ip}`, 5, 60 * 60_000);
-  if (!rl.ok) throw new Error("Too many registration attempts. Please try again later.");
+  if (!rl.ok) return { error: "Too many registration attempts. Please try again later." };
 
   const slugExists = await prisma.registration.findUnique({ where: { requestedSlug: d.requestedSlug } });
-  if (slugExists) throw new Error("Slug already taken.");
+  if (slugExists) return { error: "That slug is already taken. Please choose another." };
 
-  await prisma.registration.create({ data: { ...d, status: "PENDING" } });
-  return { ok: true };
+  try {
+    await prisma.registration.create({ data: { ...d, status: "PENDING" } });
+    return { ok: true };
+  } catch {
+    return { error: "Could not save your registration. Please try again." };
+  }
 }
 
 export async function listRegistrations() {
