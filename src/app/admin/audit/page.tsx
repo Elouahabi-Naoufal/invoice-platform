@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/server/admin-session";
 import { listAuditLogs } from "@/server/admin-queries";
+import { PageHeader, EmptyState } from "@/components/ui";
+import { ScrollText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -8,23 +10,27 @@ export default async function AuditPage() {
   const logs = await listAuditLogs();
 
   return (
-    <div>
-      <h1 className="page-title mb-6">Audit log</h1>
-      <div className="card overflow-hidden">
-        {logs.length === 0 ? <p className="p-4 text-sm text-ink-500">No audit entries yet.</p> : (
-          <table className="tbl">
-            <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Metadata</th></tr></thead>
-            <tbody>{logs.map((l) => (
-              <tr key={l.id}>
-                <td className="tabular-nums text-ink-500">{l.createdAt.toLocaleString()}</td>
-                <td className="text-ink-500">{l.admin.email}</td>
-                <td className="font-medium">{l.action}</td>
-                <td><code className="text-[11px] text-ink-500">{l.metadata || "—"}</code></td>
-              </tr>
-            ))}</tbody>
-          </table>
-        )}
-      </div>
+    <div className="grid gap-5">
+      <PageHeader title="Audit log" description="Every administrative action, newest first." />
+      {logs.length === 0 ? (
+        <EmptyState icon={<ScrollText size={20} />} title="No audit entries" body="Administrative actions will be recorded here." />
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="tbl">
+              <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Metadata</th></tr></thead>
+              <tbody>{logs.map((l) => (
+                <tr key={l.id}>
+                  <td className="tabular-nums whitespace-nowrap text-ink-500">{l.createdAt.toLocaleString()}</td>
+                  <td className="text-ink-500">{l.admin.email}</td>
+                  <td><span className="badge">{l.action}</span></td>
+                  <td><code className="text-[11px] text-ink-500">{l.metadata || "—"}</code></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
