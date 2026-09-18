@@ -15,7 +15,7 @@ export default async function LoginPage() {
           </div>
           <p className="meta mb-6">This is the Invora management hub. If you already have an account, access your invoicing app at your subdomain (e.g. yourbusiness.invora.app).</p>
           <Link href="/register" className="btn-accent">Register a new account</Link>
-          <Link href="/admin/login" className="btn-outline ml-2">Admin sign in</Link>
+          <Link href="/admin-login" className="btn-outline ml-2">Admin sign in</Link>
         </div>
       </div>
     );

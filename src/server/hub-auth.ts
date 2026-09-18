@@ -14,7 +14,7 @@ export async function adminLogin(formData: FormData) {
   if (!password) throw new Error("password required");
   const admin = await hubPrisma.superAdmin.findUnique({ where: { email } });
   if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
-    return redirect("/admin/login?error=invalid+credentials");
+    return redirect("/admin-login?error=invalid+credentials");
   }
   const expiresAt = new Date(Date.now() + SESSION_MS);
   const session = await hubPrisma.hubSession.create({

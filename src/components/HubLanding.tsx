@@ -13,7 +13,7 @@ export default function HubLanding() {
           <p className="meta mb-6">Fully self-hosted. Each business gets its own isolated deployment with dedicated database.</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link href="/register" className="btn-accent">Get started</Link>
-            <Link href="/admin/login" className="btn-outline">Admin</Link>
+            <Link href="/admin-login" className="btn-outline">Admin</Link>
           </div>
           <p className="meta mt-6 text-[12px] text-ink-400">
             <Link href="/home" className="hover:text-ink-700">Home</Link> · <Link href="/privacy" className="hover:text-ink-700">Privacy</Link> · <Link href="/terms" className="hover:text-ink-700">Terms</Link>
