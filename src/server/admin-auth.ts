@@ -30,13 +30,14 @@ export async function adminLogin(formData: FormData) {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
-    path: "/admin",
+    path: "/",
   });
   redirect("/admin");
 }
 
 export async function adminLogout() {
   const cookie = await cookies();
+  cookie.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   cookie.delete(SESSION_COOKIE);
   redirect("/admin-login");
 }
