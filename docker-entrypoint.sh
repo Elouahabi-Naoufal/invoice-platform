@@ -20,20 +20,6 @@ run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
   || run_as_nextjs ./node_modules/.bin/prisma db push \
   || echo ">> WARNING: migration failed, continuing startup."
 
-# Hub database (admin panel, multi-tenant management)
-if [ -n "${HUB_DATABASE_URL}" ]; then
-  echo ">> Running hub prisma migrate deploy..."
-  run_as_nextjs ./node_modules/.bin/prisma migrate deploy --schema prisma/hub.prisma \
-    || run_as_nextjs ./node_modules/.bin/prisma db push --schema prisma/hub.prisma \
-    || echo ">> WARNING: hub migration failed."
-
-  if [ -n "${HUB_ADMIN_PASSWORD}" ]; then
-    echo ">> Seeding super admin..."
-    run_as_nextjs node ./scripts/seed-hub.mjs \
-      || echo ">> WARNING: hub seed failed (might already exist)."
-  fi
-fi
-
 # Writable XDG dirs for Chromium's crashpad handler (see Dockerfile ENV).
 run_as_nextjs mkdir -p "${XDG_CONFIG_HOME:-/tmp/.chromium-config}" "${XDG_CACHE_HOME:-/tmp/.chromium-cache}" \
   || echo ">> WARNING: could not create Chromium XDG dirs."
@@ -42,6 +28,25 @@ if [ "${SEED_ON_BOOT}" = "1" ]; then
   echo ">> SEED_ON_BOOT=1: topping up companies/clients (never deletes)..."
   run_as_nextjs node ./scripts/seed-data.mjs \
     || echo ">> WARNING: seed failed, continuing startup."
+fi
+
+# Bootstrap super admin from env vars
+if [ -n "${HUB_ADMIN_EMAIL}" ] && [ -n "${HUB_ADMIN_PASSWORD}" ]; then
+  echo ">> Bootstrapping super admin..."
+  run_as_nextjs node -e "
+    const { PrismaClient } = require('@prisma/client');
+    const bcrypt = require('bcryptjs');
+    const p = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+    (async () => {
+      const existing = await p.superAdmin.findUnique({ where: { email: process.env.HUB_ADMIN_EMAIL } });
+      if (!existing) {
+        const hash = await bcrypt.hash(process.env.HUB_ADMIN_PASSWORD, 12);
+        await p.superAdmin.create({ data: { email: process.env.HUB_ADMIN_EMAIL, passwordHash: hash } });
+        console.log('Super admin created:', process.env.HUB_ADMIN_EMAIL);
+      } else { console.log('Super admin exists, skipping.'); }
+      await p.\$disconnect();
+    })();
+  " || echo ">> WARNING: admin bootstrap failed."
 fi
 
 chown -R nextjs:nodejs /app/data /app/public/uploads 2>/dev/null || true

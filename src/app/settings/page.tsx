@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/server/auth";
 import { getWhatsAppStatus } from "@/server/whatsapp";
 import ProfileForm from "@/components/ProfileForm";
-import { MessageCircle, Lock, Workflow, Database, Percent, LifeBuoy, CheckCircle2, XCircle } from "lucide-react";
+import { MessageCircle, Lock, Workflow, Database, Percent, CheckCircle2, XCircle } from "lucide-react";
 
 function StatusLine({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -23,7 +23,6 @@ export default async function SettingsGeneralPage() {
     { href: "/settings/security", icon: Lock, title: "Security", body: "Change your password." },
     { href: "/settings/automation", icon: Workflow, title: "Automation", body: "Recurring invoices and reminders." },
     { href: "/settings/data", icon: Database, title: "Data & backup", body: "Exports, archiving and numbering." },
-    { href: "/settings/support", icon: LifeBuoy, title: "Support", body: process.env.SUPPORT_KEY ? "Support key available — share it with the admin." : "No support key configured." },
   ];
 
   return (

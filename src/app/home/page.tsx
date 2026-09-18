@@ -48,7 +48,7 @@ export default async function HomePage() {
 
       <div className="mt-8 flex flex-wrap gap-2">
         <Link href="/login" className="btn-primary">Sign in</Link>
-        <Link href="/login/register" className="btn-outline">Create an account</Link>
+        <Link href="/login/register" className="btn-outline">Create the owner account</Link>
       </div>
 
       <div className="mt-12 grid gap-3 sm:grid-cols-2">

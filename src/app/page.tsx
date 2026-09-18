@@ -6,18 +6,8 @@ import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
 import { StatusBadge, EmptyState, PageHeader, StatCard, SectionCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
-import HubLanding from "@/components/HubLanding";
 
 export default async function Dashboard() {
-  if (process.env.APP_MODE === "hub") {
-    try {
-      const { requireAdmin } = await import("@/server/hub-auth");
-      await requireAdmin();
-      redirect("/admin");
-    } catch {
-      return <HubLanding />;
-    }
-  }
   let ownerId = "";
   try { ownerId = (await requireActor()).ownerId; } catch { redirect("/login"); }
   const companies = await listCompanies();

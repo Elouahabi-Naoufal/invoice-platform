@@ -28,7 +28,6 @@ export interface WhatsAppGateway {
   ensureReady(): Promise<{ account: string | null }>;
   resolveChatId(digits: string): Promise<string | null>;
   sendDocument(doc: WhatsAppDocument): Promise<{ messageId: string }>;
-  sendText(chatId: string, text: string): Promise<{ messageId: string }>;
 }
 
 interface Runtime {
@@ -456,14 +455,6 @@ class WwebjsGateway implements WhatsAppGateway {
     });
     const id = message?.id as unknown as { _serialized?: string } | string | undefined;
     const messageId = typeof id === "string" ? id : (id?._serialized ?? `${doc.chatId}:${Date.now()}`);
-    return { messageId };
-  }
-
-  async sendText(chatId: string, text: string): Promise<{ messageId: string }> {
-    const client = await ensureReadyClient();
-    const message = await client.sendMessage(chatId, text);
-    const id = message?.id as unknown as { _serialized?: string } | string | undefined;
-    const messageId = typeof id === "string" ? id : (id?._serialized ?? `${chatId}:${Date.now()}`);
     return { messageId };
   }
 }

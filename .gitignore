@@ -5,5 +5,3 @@ dev.db*
 *.db-journal
 tsconfig.tsbuildinfo
 public/uploads/
-src/lib/hub-client/
-hub.db*

@@ -160,14 +160,3 @@ export async function sendInvoiceViaWhatsApp(
     throw new Error(message);
   }
 }
-
-/** Simple text message sent by the hub to notify a tenant on approval. */
-export async function sendHubWhatsApp(to: string, text: string): Promise<void> {
-  const gateway = whatsappGateway;
-  const normalized = normalizeWhatsAppRecipient(to);
-  await gateway.ensureReady();
-  const chatId = await gateway.resolveChatId(normalized);
-  if (!chatId) throw new Error("number is not registered on WhatsApp");
-  await gateway.sendText(chatId, text);
-  console.info(`[hub-whatsapp] welcome sent to ${normalized}`);
-}

@@ -24,7 +24,6 @@ ENV DATABASE_URL="file:./prisma/dev.db"
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN node scripts/patch-whatsapp-web.cjs
 RUN npx prisma generate
-RUN npx prisma generate --schema prisma/hub.prisma
 RUN npm run build
 RUN npm prune --omit=dev --no-audit --no-fund
 
@@ -45,7 +44,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/hub-client ./src/lib/hub-client
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
