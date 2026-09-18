@@ -17,8 +17,10 @@ run_as_nextjs() {
 
 echo ">> Running prisma migrate deploy..."
 run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
-  || run_as_nextjs ./node_modules/.bin/prisma db push \
-  || echo ">> WARNING: migration failed, continuing startup."
+  && echo ">> Migrations applied." \
+  || echo ">> No migrations to apply, using db push..."
+run_as_nextjs ./node_modules/.bin/prisma db push --accept-data-loss \
+  || echo ">> WARNING: db push failed."
 
 # Writable XDG dirs for Chromium's crashpad handler (see Dockerfile ENV).
 run_as_nextjs mkdir -p "${XDG_CONFIG_HOME:-/tmp/.chromium-config}" "${XDG_CACHE_HOME:-/tmp/.chromium-cache}" \

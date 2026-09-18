@@ -11,21 +11,26 @@ export async function adminLogin(formData: FormData) {
   const email = String(formData.get("email") ?? "").toLowerCase().trim();
   const password = String(formData.get("password") ?? "");
 
-  const admin = await prisma.superAdmin.findUnique({ where: { email } });
-  if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
-    redirect("/admin-login?error=invalid+credentials");
-  }
+  try {
+    const admin = await prisma.superAdmin.findUnique({ where: { email } });
+    if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
+      redirect("/admin-login?error=invalid+credentials");
+    }
 
-  const expiresAt = new Date(Date.now() + SESSION_MS);
-  const cookie = await cookies();
-  cookie.set(SESSION_COOKIE, admin.id, {
-    expires: expiresAt,
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/admin",
-  });
-  redirect("/admin");
+    const expiresAt = new Date(Date.now() + SESSION_MS);
+    const cookie = await cookies();
+    cookie.set(SESSION_COOKIE, admin.id, {
+      expires: expiresAt,
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/admin",
+    });
+    redirect("/admin");
+  } catch (e) {
+    console.error("[adminLogin]", e instanceof Error ? e.message : e);
+    redirect(`/admin-login?error=${encodeURIComponent("Database error: " + (e instanceof Error ? e.message : String(e)))}`);
+  }
 }
 
 export async function adminLogout() {
