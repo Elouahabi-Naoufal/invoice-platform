@@ -51,6 +51,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
             {row("Email", tenant.email)}
             {row("Phone", tenant.phone || "—")}
             {row("Slug", <code className="rounded bg-ink-100 px-1 text-[12px] dark:bg-white/10">{tenant.slug}</code>)}
+            {row("Owner password", tenant.ownerPassword ? <code className="rounded bg-ink-100 px-1 text-[12px] dark:bg-white/10">{tenant.ownerPassword}</code> : "—")}
             {row("Dokploy app", <code className="rounded bg-ink-100 px-1 text-[11px] dark:bg-white/10">{tenant.dokployApplicationId || "—"}</code>)}
             {row("Approved", fmt(tenant.approvedAt))}
             {row("Activated", fmt(tenant.activatedAt))}
