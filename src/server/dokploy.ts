@@ -34,6 +34,22 @@ async function dokployPost<T = unknown>(endpoint: string, data: Record<string, u
   return (body?.result?.data?.json ?? body?.result?.data) as T;
 }
 
+/** tRPC query procedures must be called with GET + ?input=. */
+async function dokployGet<T = unknown>(endpoint: string, data: Record<string, unknown>): Promise<T> {
+  const { url, token } = config();
+  const input = encodeURIComponent(JSON.stringify({ json: data }));
+  const res = await fetch(`${url}/api/trpc/${endpoint}?input=${input}`, {
+    method: "GET",
+    headers: { "x-api-key": token },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body?.error) {
+    const msg = body?.error?.json?.message || body?.error?.message || res.statusText;
+    throw new Error(`Dokploy ${endpoint}: ${msg}`);
+  }
+  return (body?.result?.data?.json ?? body?.result?.data) as T;
+}
+
 export interface CreateTenantAppInput {
   slug: string;
   companyName: string;
@@ -116,7 +132,7 @@ export interface AppStatus {
 }
 
 export async function getApplicationStatus(applicationId: string): Promise<AppStatus> {
-  const app = await dokployPost<{ applicationStatus?: string; status?: string; appName?: string }>("application.one", {
+  const app = await dokployGet<{ applicationStatus?: string; status?: string; appName?: string }>("application.one", {
     applicationId,
   });
   return { status: app.applicationStatus ?? app.status ?? "unknown", appName: app.appName ?? "" };
