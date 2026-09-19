@@ -13,8 +13,10 @@ export default function LoginForm({ mode, singleUserClosed }: { mode: "login" | 
   async function submit(f: FormData) {
     setErr(""); setBusy(true);
     try {
-      if (mode === "login") await login(String(f.get("email")), String(f.get("password")));
-      else await register({ email: String(f.get("email")), password: String(f.get("password")), displayName: String(f.get("displayName") || "Admin") });
+      const res = mode === "login"
+        ? await login(String(f.get("email")), String(f.get("password")))
+        : await register({ email: String(f.get("email")), password: String(f.get("password")), displayName: String(f.get("displayName") || "Admin") });
+      if (res?.error) { setErr(res.error); return; }
       r.push("/");
       r.refresh();
     } catch (e) {

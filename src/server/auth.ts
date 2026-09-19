@@ -52,35 +52,44 @@ function clearFailures(key: string) {
   loginAttempts.delete(key);
 }
 
-export async function register(owner: { email: string; password: string; displayName: string }) {
+export async function register(owner: { email: string; password: string; displayName: string }): Promise<{ ok?: true; error?: string }> {
   const email = String(owner?.email ?? "").toLowerCase().trim();
-  if (!email || !email.includes("@")) throw new Error("valid email required");
-  const password = assertPasswordPolicy(owner?.password);
+  if (!email || !email.includes("@")) return { error: "A valid email is required." };
+  let password: string;
+  try {
+    password = assertPasswordPolicy(owner?.password);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Invalid password" };
+  }
   const displayName = String(owner?.displayName ?? "").trim() || "Admin";
   const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) throw new Error("email taken");
+  if (exists) return { error: "That email is already registered." };
   // Single-user mode: refuse second registration unless ALLOW_MULTIUSER=1
   if (process.env.ALLOW_MULTIUSER !== "1") {
     const count = await prisma.user.count();
-    if (count > 0) throw new Error("single-user mode: registration closed");
+    if (count > 0) return { error: "Registration is closed on this workspace." };
   }
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({ data: { email, passwordHash, displayName } });
   await setSession(user.id);
-  return { id: user.id, email: user.email };
+  return { ok: true };
 }
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string): Promise<{ ok?: true; error?: string }> {
   const key = String(email ?? "").toLowerCase().trim();
-  assertNotLocked(key);
+  try {
+    assertNotLocked(key);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Too many attempts." };
+  }
   const user = await prisma.user.findUnique({ where: { email: key } });
   if (!user || !(await bcrypt.compare(String(password ?? ""), user.passwordHash))) {
     recordFailure(key);
-    throw new Error("invalid credentials");
+    return { error: "Invalid email or password." };
   }
   clearFailures(key);
   await setSession(user.id);
-  return { id: user.id, email: user.email };
+  return { ok: true };
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
