@@ -22,9 +22,9 @@ run_as_nextjs ./node_modules/.bin/prisma migrate deploy \
 run_as_nextjs ./node_modules/.bin/prisma db push --accept-data-loss \
   || echo ">> WARNING: db push failed."
 
-# Writable XDG dirs for Chromium's crashpad handler (see Dockerfile ENV).
-run_as_nextjs mkdir -p "${XDG_CONFIG_HOME:-/tmp/.chromium-config}" "${XDG_CACHE_HOME:-/tmp/.chromium-cache}" \
-  || echo ">> WARNING: could not create Chromium XDG dirs."
+# Writable tmp dir for Baileys' ephemeral state.
+run_as_nextjs mkdir -p /tmp/invora \
+  || echo ">> WARNING: could not create tmp dir."
 
 if [ "${SEED_ON_BOOT}" = "1" ]; then
   echo ">> SEED_ON_BOOT=1: topping up companies/clients (never deletes)..."

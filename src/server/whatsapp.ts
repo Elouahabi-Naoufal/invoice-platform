@@ -1,6 +1,14 @@
-import { existsSync, promises as fs } from "fs";
+import { promises as fs } from "fs";
 import path from "path";
-import type { Client } from "whatsapp-web.js";
+import makeWASocket, {
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  jidNormalizedUser,
+  type WASocket,
+} from "@whiskeysockets/baileys";
+import pino from "pino";
+import { toDataURL } from "qrcode";
 import { sanitizeWhatsAppError } from "@/server/whatsapp-message";
 
 export type WhatsAppPhase = "idle" | "starting" | "qr" | "ready" | "failed" | "stopped";
@@ -33,7 +41,7 @@ export interface WhatsAppGateway {
 
 interface Runtime {
   phase: WhatsAppPhase;
-  client: Client | null;
+  sock: WASocket | null;
   startPromise: Promise<void> | null;
   qr: string | null;
   qrImage: string | null;
@@ -41,11 +49,13 @@ interface Runtime {
   account: string | null;
   lastError: string | null;
   lastChangeAt: number;
+  /** Last send/connect activity — used to shut the session down when idle. */
+  lastActivityAt: number;
 }
 
 const runtime: Runtime = {
   phase: "idle",
-  client: null,
+  sock: null,
   startPromise: null,
   qr: null,
   qrImage: null,
@@ -53,39 +63,23 @@ const runtime: Runtime = {
   account: null,
   lastError: null,
   lastChangeAt: Date.now(),
+  lastActivityAt: Date.now(),
 };
 
 /** QR codes rotate quickly; keep the UI honest about stale codes. */
 const QR_FRESHNESS_MS = 90 * 1000;
 
-/** Cool-down after a failed start so we never launch several Chromium instances. */
+/** Cool-down after a failed start so we never pile up sessions. */
 const START_BACKOFF_MS = Number(process.env.WHATSAPP_START_BACKOFF_MS || 90_000);
 let lastFailureAt = 0;
+
+/** Silent logger for Baileys (it is very chatty otherwise). */
+const logger = pino({ level: "silent" });
 
 function log(level: "info" | "error", message: string, extra: string = "") {
   const line = `[whatsapp] ${message}${extra ? ` ${extra}` : ""}`;
   if (level === "error") console.error(line);
   else console.info(line);
-}
-
-/**
- * whatsapp-web.js is imported dynamically so the browser automation stack is
- * only loaded on the server when a WhatsApp route actually needs it.
- * Its optional S3 peer (@aws-sdk/client-s3, used solely by RemoteAuth's S3
- * backend — we use LocalAuth) is aliased to a local stub in next.config.cjs.
- */
-async function loadWwebjs(): Promise<typeof import("whatsapp-web.js")> {
-  return import("whatsapp-web.js");
-}
-
-/** Confirms the framenavigated re-injection patch is present at runtime. */
-async function isWwebjsPatched(): Promise<boolean> {
-  try {
-    const file = path.join(process.cwd(), "node_modules", "whatsapp-web.js", "src", "Client.js");
-    return (await fs.readFile(file, "utf8")).includes("wwjs-patched-framenavigated");
-  } catch {
-    return false;
-  }
 }
 
 export function whatsappClientId(): string {
@@ -101,55 +95,14 @@ function sessionPath(): string {
   return path.join(whatsappSessionDir(), `session-${whatsappClientId()}`);
 }
 
-/**
- * Chromium writes a Singleton* lock inside its user-data-dir. Because the
- * session lives on a persistent volume, a lock left by a previous container
- * (different hostname) blocks every later launch with "profile appears to be
- * in use ... on another computer". These locks are meaningless across container
- * restarts, so clear them before starting.
- */
-async function clearStaleChromiumLock(): Promise<void> {
-  const dir = sessionPath();
-  for (const name of ["SingletonLock", "SingletonSocket", "SingletonCookie"]) {
-    try {
-      await fs.rm(path.join(dir, name), { force: true });
-    } catch {
-      // absent — nothing to clear
-    }
-  }
-}
-
+/** Baileys multi-file auth persists `creds.json` once a session is linked. */
 export async function whatsappSessionExists(): Promise<boolean> {
   try {
-    const stats = await fs.stat(sessionPath());
-    if (!stats.isDirectory()) return false;
-    return (await fs.readdir(sessionPath())).length > 0;
+    const stat = await fs.stat(path.join(sessionPath(), "creds.json"));
+    return stat.isFile();
   } catch {
     return false;
   }
-}
-
-function setPhase(phase: WhatsAppPhase, patch: Partial<Runtime> = {}): void {
-  Object.assign(runtime, patch, { phase, lastChangeAt: Date.now() });
-}
-
-function resolveChromePath(): string | undefined {
-  const candidates = [
-    process.env.WHATSAPP_CHROME_PATH,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/google-chrome",
-    "/usr/bin/google-chrome-stable",
-  ].filter((candidate): candidate is string => !!candidate && candidate.trim().length > 0);
-  for (const candidate of candidates) {
-    try {
-      if (existsSync(candidate)) return candidate;
-    } catch {
-      // Fall through to the next candidate.
-    }
-  }
-  return undefined;
 }
 
 function readyTimeoutMs(): number {
@@ -160,7 +113,6 @@ function readyTimeoutMs(): number {
 
 async function qrImageFor(qr: string): Promise<string | null> {
   try {
-    const { toDataURL } = await import("qrcode");
     return await toDataURL(qr, { margin: 1, width: 320 });
   } catch (error) {
     log("error", `qr render failed: ${sanitizeWhatsAppError(error)}`);
@@ -168,190 +120,144 @@ async function qrImageFor(qr: string): Promise<string | null> {
   }
 }
 
-function waitForReady(client: Client, timeoutMs: number): Promise<void> {
+function setPhase(phase: WhatsAppPhase, patch: Partial<Runtime> = {}): void {
+  Object.assign(runtime, patch, { phase, lastChangeAt: Date.now() });
+}
+
+function disconnectCode(error: unknown): number | undefined {
+  const output = (error as { output?: { statusCode?: number } } | undefined)?.output;
+  return output?.statusCode;
+}
+
+function attachHandlers(sock: WASocket, saveCreds: () => Promise<void>): void {
+  sock.ev.on("creds.update", () => {
+    void saveCreds().catch(() => undefined);
+  });
+  sock.ev.on("connection.update", (update) => {
+    const { connection, lastDisconnect, qr } = update;
+    if (qr) {
+      void (async () => {
+        runtime.qr = qr;
+        runtime.qrImage = await qrImageFor(qr);
+        runtime.qrIssuedAt = Date.now();
+        setPhase("qr", { lastError: null });
+        log("info", "qr issued");
+      })();
+    }
+    if (connection === "open") {
+      const account = sock.user?.id ? jidNormalizedUser(sock.user.id) : null;
+      setPhase("ready", { account, qr: null, qrImage: null, qrIssuedAt: null, lastError: null });
+      log("info", `ready account=${account ?? "unknown"}`);
+    }
+    if (connection === "close") {
+      const code = disconnectCode(lastDisconnect?.error);
+      const loggedOut = code === DisconnectReason.loggedOut;
+      if (runtime.sock === sock) runtime.sock = null;
+      if (loggedOut) {
+        setPhase("failed", { qr: null, qrImage: null, qrIssuedAt: null, lastError: "logged out — connect again to scan the QR" });
+        log("error", "logged out");
+      } else {
+        setPhase("stopped", { qr: null, qrImage: null, qrIssuedAt: null, lastError: `disconnected (${code ?? "?"})` });
+        log("error", `disconnected code=${code ?? "?"} — will reconnect`);
+        scheduleReconnect();
+      }
+    }
+  });
+}
+
+let reconnectTimer: NodeJS.Timeout | null = null;
+function scheduleReconnect(): void {
+  if (reconnectTimer) return;
+  const delay = Number(process.env.WHATSAPP_RECONNECT_MS || 15000);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (runtime.sock || runtime.startPromise) return;
+    void startClient().catch((error: unknown) => {
+      log("error", `reconnect failed: ${sanitizeWhatsAppError(error)}`);
+    });
+  }, delay);
+  reconnectTimer.unref?.();
+}
+
+function waitForReady(sock: WASocket, timeoutMs: number): Promise<void> {
   if (runtime.phase === "ready") return Promise.resolve();
   return new Promise((resolve, reject) => {
     let settled = false;
+    const onUpdate = (update: { connection?: string; lastDisconnect?: { error?: unknown } }) => {
+      if (update.connection === "open") finish(resolve);
+      if (update.connection === "close" && disconnectCode(update.lastDisconnect?.error) === DisconnectReason.loggedOut) {
+        finish(() => reject(new Error("WhatsApp session was logged out")));
+      }
+    };
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      clearInterval(poller);
-      client.off("ready", onReady);
-      client.off("auth_failure", onFailure);
+      sock.ev.off("connection.update", onUpdate);
       fn();
     };
     const timer = setTimeout(() => {
-      finish(() => reject(new Error(`WhatsApp client not ready after ${Math.round(timeoutMs / 1000)}s`)));
+      finish(() => reject(new Error(`WhatsApp not ready after ${Math.round(timeoutMs / 1000)}s`)));
     }, timeoutMs);
-    const onReady = () => finish(resolve);
-    const onFailure = (message: string) =>
-      finish(() => reject(new Error(message || "WhatsApp authentication failed")));
-    // Fallback: the `ready` event can be missed on SPA re-injection (known
-    // whatsapp-web.js bug). Poll the WhatsApp Web socket state instead.
-    const poller = setInterval(() => {
-      if (runtime.phase === "ready") {
-        finish(resolve);
-        return;
-      }
-      void (async () => {
-        try {
-          const state = (await client.getState()) as unknown as string | null;
-          if (state === "CONNECTED") {
-            const info = client.info as Client["info"] | undefined;
-            const account = info?.wid?._serialized ?? info?.pushname ?? runtime.account;
-            setPhase("ready", { account, qr: null, qrImage: null, qrIssuedAt: null, lastError: null });
-            log("info", `ready (state poll) account=${account ?? "unknown"}`);
-            finish(resolve);
-          }
-        } catch {
-          // socket not ready yet — keep polling until the timeout
-        }
-      })();
-    }, 3000);
-    client.on("ready", onReady);
-    client.on("auth_failure", onFailure);
-  });
-}
-
-function attachHandlers(client: Client): void {
-  client.on("qr", (qr: string) => {
-    void (async () => {
-      runtime.qr = qr;
-      runtime.qrImage = await qrImageFor(qr);
-      runtime.qrIssuedAt = Date.now();
-      setPhase("qr", { lastError: null });
-      log("info", "qr issued");
-    })();
-  });
-  client.on("authenticated", () => {
-    // Only advance qr → starting. Never regress from ready (a late
-    // `authenticated` event after `ready` used to cause a duplicate launch).
-    if (runtime.phase === "qr") setPhase("starting", {});
-    log("info", "authenticated");
-  });
-  client.on("ready", () => {
-    const info = client.info as Client["info"] | undefined;
-    const account = info?.wid?._serialized ?? info?.pushname ?? null;
-    setPhase("ready", {
-      account,
-      qr: null,
-      qrImage: null,
-      qrIssuedAt: null,
-      lastError: null,
-    });
-    log("info", `ready account=${account ?? "unknown"}`);
-  });
-  client.on("auth_failure", (message: string) => {
-    const failure = sanitizeWhatsAppError(message || "WhatsApp authentication failed");
-    setPhase("failed", { lastError: failure });
-    log("error", `auth failure: ${failure}`);
-  });
-  client.on("disconnected", (reason: unknown) => {
-    const detail = typeof reason === "string" && reason ? reason : "disconnected";
-    runtime.client = null;
-    // Do NOT clear startPromise here: an in-flight start owns it and clears it
-    // in its finally. Clearing it allowed a second Chromium to be launched.
-    setPhase("stopped", {
-      qr: null,
-      qrImage: null,
-      qrIssuedAt: null,
-      lastError: `disconnected: ${detail}`,
-    });
-    log("error", `disconnected: ${detail}`);
-  });
-  client.on("change_state", (state: unknown) => {
-    log("info", `state ${String(state)}`);
+    sock.ev.on("connection.update", onUpdate);
   });
 }
 
 async function startClient(): Promise<void> {
-  // A client that is already up or coming up is reused. whatsapp-web.js
-  // initialize() is NOT idempotent, so we must never initialize it twice —
-  // doing so closes the browser ("Target closed" / protocol timeouts).
-  if (runtime.client && ["ready", "starting", "qr"].includes(runtime.phase)) {
+  // A session that is already up or coming up is reused.
+  if (runtime.sock && ["ready", "starting", "qr"].includes(runtime.phase)) {
     if (runtime.startPromise) return runtime.startPromise;
     return;
   }
   if (runtime.startPromise) return runtime.startPromise;
-
-  // Cool-down after a failure: rapid retries launch several Chromium instances,
-  // exhaust the container and wedge every browser. One start at a time.
   if (Date.now() - lastFailureAt < START_BACKOFF_MS) {
     throw new Error("WhatsApp is cooling down after a failed start");
   }
 
-  // A failed/stopped client must be destroyed before a fresh start.
-  if (runtime.client) {
+  // A failed/stopped socket must be closed before a fresh start.
+  if (runtime.sock) {
     try {
-      await runtime.client.destroy();
+      runtime.sock.end(undefined);
     } catch {
       // best effort
     }
-    runtime.client = null;
+    runtime.sock = null;
   }
 
   setPhase("starting", { lastError: null });
   runtime.startPromise = (async () => {
     try {
-      await fs.mkdir(whatsappSessionDir(), { recursive: true });
-      await clearStaleChromiumLock();
-      log(
-        "info",
-        `starting chrome=${resolveChromePath() ?? "(puppeteer default)"} ` +
-          `patched=${await isWwebjsPatched()} ` +
-          `xdg_config=${process.env.XDG_CONFIG_HOME ?? "(unset)"} ` +
-          `xdg_cache=${process.env.XDG_CACHE_HOME ?? "(unset)"}`
-      );
-      if (!runtime.client) {
-        const { Client: WhatsAppClient, LocalAuth } = await loadWwebjs();
-        const client = new WhatsAppClient({
-          authStrategy: new LocalAuth({ clientId: whatsappClientId(), dataPath: whatsappSessionDir() }),
-          authTimeoutMs: readyTimeoutMs(),
-          // Always load the current WhatsApp Web build; a stale local cache is a
-          // known cause of "authenticated but never ready".
-          webVersionCache: { type: "none" },
-          puppeteer: {
-            headless: process.env.WHATSAPP_HEADLESS !== "false",
-            executablePath: resolveChromePath(),
-            // WhatsApp Web is heavy; the default protocol timeout is too low and
-            // surfaces as "Runtime.callFunctionOn timed out".
-            protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 180000),
-            args: [
-              "--no-sandbox",
-              "--disable-setuid-sandbox",
-              "--disable-dev-shm-usage",
-              "--disable-gpu",
-              "--disable-software-rasterizer",
-              "--no-first-run",
-              "--disable-extensions",
-              "--disable-default-apps",
-              "--disable-background-timer-throttling",
-              "--disable-backgrounding-occluded-windows",
-              "--disable-renderer-backgrounding",
-            ],
-          },
-        });
-        attachHandlers(client);
-        runtime.client = client;
-      }
-      await runtime.client.initialize();
-      await waitForReady(runtime.client, readyTimeoutMs());
+      await fs.mkdir(sessionPath(), { recursive: true });
+      const { state, saveCreds } = await useMultiFileAuthState(sessionPath());
+      const version = await fetchLatestBaileysVersion()
+        .then((v) => v.version)
+        .catch(() => undefined);
+      log("info", `starting baileys session=${sessionPath()} version=${version ? version.join(".") : "default"}`);
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        printQRInTerminal: false,
+        logger,
+        browser: ["Invora", "Chrome", "1.0.0"],
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+      });
+      runtime.sock = sock;
+      attachHandlers(sock, saveCreds);
+      await waitForReady(sock, readyTimeoutMs());
       lastFailureAt = 0;
     } catch (error) {
       const message = sanitizeWhatsAppError(error);
       lastFailureAt = Date.now();
-      // A timeout while a QR is displayed is not fatal: the user may still scan it.
       if (runtime.phase !== "qr" && runtime.phase !== "ready") {
         setPhase("failed", { lastError: message });
-        // Discard the stuck browser so the next attempt starts a fresh client.
-        if (runtime.client) {
+        if (runtime.sock) {
           try {
-            await runtime.client.destroy();
+            runtime.sock.end(undefined);
           } catch {
             // best effort
           }
-          runtime.client = null;
+          runtime.sock = null;
         }
       }
       log("error", `start failed: ${message}`);
@@ -364,51 +270,34 @@ async function startClient(): Promise<void> {
   return runtime.startPromise;
 }
 
-/**
- * Self-healing reconciler (called by the cron worker). Ensures the client is
- * connected when a saved session exists, without hammering Chromium.
- */
-export async function reconcileWhatsApp(): Promise<{ phase: WhatsAppPhase; action: string }> {
-  if (runtime.phase === "ready") return { phase: runtime.phase, action: "none" };
-  if (runtime.startPromise) return { phase: runtime.phase, action: "starting" };
-  if (Date.now() - lastFailureAt < START_BACKOFF_MS) return { phase: runtime.phase, action: "cooldown" };
-  if (!(await whatsappSessionExists())) return { phase: runtime.phase, action: "no-session" };
-  void startClient().catch((error: unknown) => {
-    log("error", `reconcile start failed: ${sanitizeWhatsAppError(error)}`);
-  });
-  return { phase: runtime.phase, action: "start" };
-}
-
-async function ensureReadyClient(): Promise<Client> {
+async function ensureReadyClient(): Promise<WASocket> {
   await startClient();
-  const client = runtime.client;
-  if (!client) throw new Error("WhatsApp client unavailable");
-  if (runtime.phase !== "ready") await waitForReady(client, readyTimeoutMs());
-  return client;
+  const sock = runtime.sock;
+  if (!sock) throw new Error("WhatsApp session unavailable");
+  if (runtime.phase !== "ready") await waitForReady(sock, readyTimeoutMs());
+  return sock;
 }
 
 /**
- * Run an operation against the ready client, retrying once with a fresh client
- * if the browser is wedged ("Target closed" / protocol timeout).
+ * Run an operation against the ready socket, retrying once with a fresh
+ * connection if it drops mid-operation.
  */
-async function withReadyClient<T>(op: (client: Client) => Promise<T>): Promise<T> {
-  const client = await ensureReadyClient();
+async function withReadyClient<T>(op: (sock: WASocket) => Promise<T>): Promise<T> {
+  const sock = await ensureReadyClient();
   try {
-    return await op(client);
+    return await op(sock);
   } catch (error) {
     const message = sanitizeWhatsAppError(error).toLowerCase();
-    if (!/target closed|protocol|timed out|detached|session closed|browser is not connected/.test(message)) {
-      throw error;
-    }
-    log("error", `browser wedged (${message}); reconnecting`);
+    if (!/closed|connection|timed out|not ready|unavailable|stream errored/.test(message)) throw error;
+    log("error", `session dropped (${message}); reconnecting`);
     try {
-      await runtime.client?.destroy();
+      runtime.sock?.end(undefined);
     } catch {
       // best effort
     }
-    runtime.client = null;
+    runtime.sock = null;
     runtime.startPromise = null;
-    setPhase("stopped", { lastError: "reconnecting after a browser error" });
+    setPhase("stopped", { lastError: "reconnecting after a dropped session" });
     const fresh = await ensureReadyClient();
     return await op(fresh);
   }
@@ -430,7 +319,7 @@ export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
   };
 }
 
-/** Start (or resume) the persistent client without blocking the settings UI. */
+/** Start (or resume) the persistent session without blocking the settings UI. */
 export async function connectWhatsApp(): Promise<WhatsAppStatus> {
   if (runtime.phase === "ready") return getWhatsAppStatus();
   void startClient().catch((error: unknown) => {
@@ -439,14 +328,14 @@ export async function connectWhatsApp(): Promise<WhatsAppStatus> {
   return getWhatsAppStatus();
 }
 
-/** Close the browser but keep the persisted LocalAuth session for fast reconnects. */
+/** Close the socket but keep the persisted session for fast reconnects. */
 export async function disconnectWhatsApp(): Promise<WhatsAppStatus> {
-  const client = runtime.client;
-  runtime.client = null;
+  const sock = runtime.sock;
+  runtime.sock = null;
   runtime.startPromise = null;
-  if (client) {
+  if (sock) {
     try {
-      await client.destroy();
+      sock.end(undefined);
     } catch (error) {
       log("error", `disconnect failed: ${sanitizeWhatsAppError(error)}`);
     }
@@ -456,85 +345,94 @@ export async function disconnectWhatsApp(): Promise<WhatsAppStatus> {
   return getWhatsAppStatus();
 }
 
-/** Destroy the client and delete persisted session files, forcing a fresh QR. */
+/** Log out and delete persisted session files, forcing a fresh QR. */
 export async function resetWhatsAppSession(): Promise<WhatsAppStatus> {
-  const client = runtime.client;
-  runtime.client = null;
+  const sock = runtime.sock;
+  runtime.sock = null;
   runtime.startPromise = null;
-  if (client) {
+  if (sock) {
     try {
-      await client.logout();
+      await sock.logout();
     } catch {
-      try {
-        await client.destroy();
-      } catch (error) {
-        log("error", `reset destroy failed: ${sanitizeWhatsAppError(error)}`);
-      }
+      // best effort
+    }
+    try {
+      sock.end(undefined);
+    } catch {
+      // best effort
     }
   }
-  try {
-    await fs.rm(sessionPath(), { recursive: true, force: true });
-  } catch (error) {
-    log("error", `reset cleanup failed: ${sanitizeWhatsAppError(error)}`);
-  }
-  setPhase("idle", {
-    qr: null,
-    qrImage: null,
-    qrIssuedAt: null,
-    account: null,
-    lastError: null,
-  });
+  await fs.rm(sessionPath(), { recursive: true, force: true }).catch(() => undefined);
+  setPhase("stopped", { qr: null, qrImage: null, qrIssuedAt: null });
   log("info", "session reset");
   return getWhatsAppStatus();
 }
 
-class WwebjsGateway implements WhatsAppGateway {
+/**
+ * Self-healing reconciler (called by the cron worker). Ensures the session is
+ * connected when a saved session exists, without hammering the socket.
+ */
+export async function reconcileWhatsApp(): Promise<{ phase: WhatsAppPhase; action: string }> {
+  const idleMs = Number(process.env.WHATSAPP_IDLE_SHUTDOWN_MS || 0);
+  if (idleMs > 0) {
+    if (runtime.phase === "ready" && !runtime.startPromise && Date.now() - runtime.lastActivityAt > idleMs) {
+      await disconnectWhatsApp();
+      return { phase: runtime.phase, action: "idle-shutdown" };
+    }
+    return { phase: runtime.phase, action: "lazy" };
+  }
+  if (runtime.phase === "ready") return { phase: runtime.phase, action: "none" };
+  if (runtime.startPromise) return { phase: runtime.phase, action: "starting" };
+  if (Date.now() - lastFailureAt < START_BACKOFF_MS) return { phase: runtime.phase, action: "cooldown" };
+  if (!(await whatsappSessionExists())) return { phase: runtime.phase, action: "no-session" };
+  void startClient().catch((error: unknown) => {
+    log("error", `reconcile start failed: ${sanitizeWhatsAppError(error)}`);
+  });
+  return { phase: runtime.phase, action: "start" };
+}
+
+class BaileysGateway implements WhatsAppGateway {
   async ensureReady(): Promise<{ account: string | null }> {
     await ensureReadyClient();
+    runtime.lastActivityAt = Date.now();
     return { account: runtime.account };
   }
 
   async resolveChatId(digits: string): Promise<string | null> {
-    const client = await ensureReadyClient();
-    const chatId = `${digits}@c.us`;
+    const sock = await ensureReadyClient();
+    const fallback = `${digits}@s.whatsapp.net`;
     try {
-      const registered = await client.isRegisteredUser(chatId);
-      if (!registered) return null;
-    } catch (error) {
-      log("error", `registration check failed: ${sanitizeWhatsAppError(error)}`);
-      return chatId;
-    }
-    try {
-      const contact = (await client.getNumberId(digits)) as unknown as { _serialized?: string } | null;
-      return contact?._serialized ?? chatId;
+      const results = await sock.onWhatsApp(digits);
+      const hit = results?.find((r) => r.exists);
+      return hit?.jid ?? null;
     } catch (error) {
       log("error", `number lookup failed: ${sanitizeWhatsAppError(error)}`);
-      return chatId;
+      return fallback;
     }
   }
 
   async sendDocument(doc: WhatsAppDocument): Promise<{ messageId: string }> {
-    const { MessageMedia } = await loadWwebjs();
-    const media = new MessageMedia("application/pdf", doc.pdf.toString("base64"), doc.filename, doc.pdf.length);
-    return withReadyClient(async (client) => {
-      const message = await client.sendMessage(doc.chatId, media, {
-        sendMediaAsDocument: true,
+    return withReadyClient(async (sock) => {
+      const message = await sock.sendMessage(doc.chatId, {
+        document: doc.pdf,
+        mimetype: "application/pdf",
+        fileName: doc.filename,
         caption: doc.caption,
       });
-      const id = message?.id as unknown as { _serialized?: string } | string | undefined;
-      const messageId = typeof id === "string" ? id : (id?._serialized ?? `${doc.chatId}:${Date.now()}`);
+      runtime.lastActivityAt = Date.now();
+      const messageId = message?.key?.id ?? `${doc.chatId}:${Date.now()}`;
       return { messageId };
     });
   }
 
   async sendText(chatId: string, text: string): Promise<{ messageId: string }> {
-    return withReadyClient(async (client) => {
-      const message = await client.sendMessage(chatId, text);
-      const id = message?.id as unknown as { _serialized?: string } | string | undefined;
-      const messageId = typeof id === "string" ? id : (id?._serialized ?? `${chatId}:${Date.now()}`);
+    return withReadyClient(async (sock) => {
+      const message = await sock.sendMessage(chatId, { text });
+      runtime.lastActivityAt = Date.now();
+      const messageId = message?.key?.id ?? `${chatId}:${Date.now()}`;
       return { messageId };
     });
   }
 }
 
-export const whatsappGateway: WhatsAppGateway = new WwebjsGateway();
+export const whatsappGateway: WhatsAppGateway = new BaileysGateway();
