@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, emailConfigured } from "@/server/email";
 import { whatsappGateway } from "@/server/whatsapp";
 import { normalizeWhatsAppRecipient, sanitizeWhatsAppError } from "@/server/whatsapp-message";
+import { tenantUrl } from "@/server/tenant-domain";
 
 const MAX_ATTEMPTS = 5;
 const DELIVER_TIMEOUT_MS = 20_000;
@@ -34,10 +35,6 @@ interface RegistrationLike {
   email: string;
 }
 
-function tenantUrl(tenant: { slug: string; deploymentUrl: string | null }): string {
-  return tenant.deploymentUrl || `https://${tenant.slug}.${process.env.TENANT_DOMAIN_SUFFIX || "invoice.naoufalelouahabi.com"}`;
-}
-
 function messageFor(n: { type: string; tenant: TenantLike | null; registration: RegistrationLike | null }): { subject: string; text: string } {
   switch (n.type) {
     case "REGISTRATION_RECEIVED": {
@@ -54,7 +51,7 @@ function messageFor(n: { type: string; tenant: TenantLike | null; registration: 
       const eta = process.env.TENANT_ACTIVATION_ETA || "30 minutes";
       return {
         subject: "Your Invora account was approved",
-        text: `Good news, ${t.companyName}!\n\nYour registration has been approved.\n\nYour platform: ${tenantUrl(t)}\n\nWe are preparing your workspace now. It will be fully activated in about ${eta}. You will receive another message with your login details as soon as it is ready.\n\n— Invora`,
+        text: `Good news, ${t.companyName}!\n\nYour registration has been approved.\n\nYour platform: ${tenantUrl(t.slug, t.deploymentUrl)}\n\nWe are preparing your workspace now. It will be fully activated in about ${eta}. You will receive another message with your login details as soon as it is ready.\n\n— Invora`,
       };
     }
     case "WELCOME": {
@@ -62,7 +59,7 @@ function messageFor(n: { type: string; tenant: TenantLike | null; registration: 
       const creds = t.ownerPassword ? `\nEmail: ${t.email}\nPassword: ${t.ownerPassword}\n` : `\nEmail: ${t.email}\n`;
       return {
         subject: "Your Invora workspace is ready",
-        text: `Welcome to Invora!\n\nYour workspace for ${t.companyName} is ready to use.\n\nSign in: ${tenantUrl(t)}\n${creds}\nPlease change your password after your first sign-in (Settings → Security).\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
+        text: `Welcome to Invora!\n\nYour workspace for ${t.companyName} is ready to use.\n\nSign in: ${tenantUrl(t.slug, t.deploymentUrl)}\n${creds}\nPlease change your password after your first sign-in (Settings → Security).\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
       };
     }
     case "SUSPENDED": {

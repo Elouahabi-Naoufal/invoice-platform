@@ -5,7 +5,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-import { tenantDomain } from "@/server/provisioning";
+import { tenantDomain } from "@/server/tenant-domain";
 import { signSupportToken } from "@/server/support-token";
 
 const TOKEN_TTL_MS = 30 * 60_000;

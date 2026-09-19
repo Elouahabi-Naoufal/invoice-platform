@@ -14,6 +14,7 @@ import {
   isDeploymentSettled,
 } from "@/server/dokploy";
 import { enqueueTenantNotification } from "@/server/notifications";
+import { tenantDomain } from "@/server/tenant-domain";
 
 const TENANT_PORT = Number(process.env.TENANT_PORT || 3007);
 
@@ -28,11 +29,6 @@ async function healthCheck(url: string): Promise<boolean> {
 
 function randomKey(bytes = 32): string {
   return crypto.randomBytes(bytes).toString("hex");
-}
-
-export function tenantDomain(slug: string): string {
-  const suffix = process.env.TENANT_DOMAIN_SUFFIX || "invoice.naoufalelouahabi.com";
-  return `${slug}.${suffix}`;
 }
 
 function generatePassword(): string {
