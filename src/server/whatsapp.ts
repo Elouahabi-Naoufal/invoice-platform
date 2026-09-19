@@ -296,6 +296,9 @@ async function startClient(): Promise<void> {
           puppeteer: {
             headless: process.env.WHATSAPP_HEADLESS !== "false",
             executablePath: resolveChromePath(),
+            // WhatsApp Web is heavy; the default protocol timeout is too low and
+            // surfaces as "Runtime.callFunctionOn timed out".
+            protocolTimeout: Number(process.env.WHATSAPP_PROTOCOL_TIMEOUT_MS || 180000),
             args: [
               "--no-sandbox",
               "--disable-setuid-sandbox",
@@ -303,6 +306,8 @@ async function startClient(): Promise<void> {
               "--disable-gpu",
               "--disable-software-rasterizer",
               "--no-first-run",
+              "--disable-extensions",
+              "--disable-default-apps",
               "--disable-background-timer-throttling",
               "--disable-backgrounding-occluded-windows",
               "--disable-renderer-backgrounding",
