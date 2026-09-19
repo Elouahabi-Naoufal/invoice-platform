@@ -79,6 +79,14 @@ export async function createTenantApplication(input: CreateTenantAppInput): Prom
   const applicationId = created.applicationId ?? created.id;
   if (!applicationId) throw new Error("Dokploy did not return an application id");
 
+  // Dokploy defaults new apps to nixpacks, which ignores our Dockerfile and its
+  // ENTRYPOINT (DB init + owner bootstrap). Force the Dockerfile build.
+  await dokployPost("application.saveBuildType", {
+    applicationId,
+    buildType: "dockerfile",
+    dockerfile: "./Dockerfile",
+  });
+
   // GitHub source (reuse the platform repo).
   const owner = process.env.DOKPLOY_GITHUB_OWNER;
   const repository = process.env.DOKPLOY_GITHUB_REPOSITORY;
