@@ -90,13 +90,15 @@ export async function sendTenantNotification(tenantId: string, type: "APPROVED" 
   const { enqueueTenantNotification, sendPendingNotifications } = await import("@/server/notifications");
   // Ensure the records exist, then force a fresh attempt even if one already
   // exists (so the manual button always actually sends).
-  await enqueueTenantNotification(tenantId, type);
+  await enqueueTenantNotification(tenantId, type, { immediate: false });
   await prisma.notification.updateMany({
     where: { tenantId, type },
     data: { status: "PENDING", lastError: null, attempts: 0 },
   });
-  const res = await sendPendingNotifications(tenantId);
-  return { ok: true, processed: res.processed };
+  // Deliver in the background: sending can take a while (WhatsApp init), and
+  // blocking the request makes the reverse proxy time out. The cron also sweeps.
+  void sendPendingNotifications(tenantId).catch(() => undefined);
+  return { ok: true };
 }
 
 export async function saveNotificationTemplate(type: string, data: { subject: string; body: string; enabled: boolean }) {

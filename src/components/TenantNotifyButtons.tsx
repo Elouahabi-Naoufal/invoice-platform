@@ -12,7 +12,7 @@ export default function TenantNotifyButtons({ id }: { id: string }) {
     setBusy(type); setMsg("");
     try {
       await sendTenantNotification(id, type);
-      setMsg(`${type} notification sent`);
+      setMsg(`${type} queued — sending…`);
       r.refresh();
     } catch (e) { setMsg(`Error: ${e instanceof Error ? e.message : "failed"}`); }
     finally { setBusy(null); }

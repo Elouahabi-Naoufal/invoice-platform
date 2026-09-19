@@ -80,7 +80,7 @@ export async function enqueueRegistrationNotification(registrationId: string, ty
 }
 
 /** Create + attempt delivery for a tenant event. */
-export async function enqueueTenantNotification(tenantId: string, type: NotificationType) {
+export async function enqueueTenantNotification(tenantId: string, type: NotificationType, opts?: { immediate?: boolean }) {
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) throw new Error("not found");
   for (const c of channelsFor({ email: tenant.email, phone: tenant.phone })) {
@@ -88,7 +88,9 @@ export async function enqueueTenantNotification(tenantId: string, type: Notifica
     if (existing) continue;
     await prisma.notification.create({ data: { tenantId, type, channel: c.channel, recipient: c.recipient, status: "PENDING" } });
   }
-  void sendPendingNotifications(tenantId).catch(() => undefined);
+  if (opts?.immediate !== false) {
+    void sendPendingNotifications(tenantId).catch(() => undefined);
+  }
 }
 
 async function deliver(notificationId: string): Promise<void> {
