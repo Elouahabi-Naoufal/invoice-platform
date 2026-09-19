@@ -38,8 +38,21 @@ export function normalizeWhatsAppRecipient(phone: unknown): string {
   if (typeof phone !== "string" || !phone.trim()) {
     throw new Error("recipient invalid: a destination phone number is required");
   }
-  const digits = waDigits(phone.trim());
-  if (!digits || !/^\d{8,15}$/.test(digits)) {
+  let digits = waDigits(phone.trim());
+  if (!digits) {
+    throw new Error("recipient invalid: use international digits, e.g. +212661234567");
+  }
+
+  // National/local formats (e.g. 0643213050) are common in registration forms.
+  // Convert them to international using DEFAULT_COUNTRY_CODE (default 212).
+  const cc = (process.env.DEFAULT_COUNTRY_CODE ?? "212").replace(/\D/g, "");
+  if (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith("0") && cc) {
+    digits = cc + digits.replace(/^0+/, "");
+  }
+
+  if (!/^\d{8,15}$/.test(digits)) {
     throw new Error("recipient invalid: use international digits, e.g. +212661234567");
   }
   return digits;
