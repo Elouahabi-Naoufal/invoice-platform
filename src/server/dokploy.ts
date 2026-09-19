@@ -85,6 +85,10 @@ export async function createTenantApplication(input: CreateTenantAppInput): Prom
     applicationId,
     buildType: "dockerfile",
     dockerfile: "./Dockerfile",
+    dockerContextPath: null,
+    dockerBuildStage: null,
+    herokuVersion: null,
+    railpackVersion: null,
   });
 
   // GitHub source (reuse the platform repo).
