@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runDueJobs } from "@/server/automation";
 import { advanceProvisioningJobs } from "@/server/provisioning";
 import { sendPendingNotifications } from "@/server/notifications";
+import { reconcileWhatsApp } from "@/server/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +25,9 @@ export async function GET(req: Request) {
   }
   const result = await runDueJobs();
   const provisioning = await advanceProvisioningJobs().catch((e) => ({ error: String(e) }));
+  const whatsapp = await reconcileWhatsApp().catch((e) => ({ error: String(e) }));
   const notifications = await sendPendingNotifications().catch((e) => ({ error: String(e) }));
-  return NextResponse.json({ ...result, provisioning, notifications });
+  return NextResponse.json({ ...result, provisioning, whatsapp, notifications });
 }
 
 export const POST = GET;

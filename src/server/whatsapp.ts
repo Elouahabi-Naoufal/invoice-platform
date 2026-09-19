@@ -58,6 +58,10 @@ const runtime: Runtime = {
 /** QR codes rotate quickly; keep the UI honest about stale codes. */
 const QR_FRESHNESS_MS = 90 * 1000;
 
+/** Cool-down after a failed start so we never launch several Chromium instances. */
+const START_BACKOFF_MS = Number(process.env.WHATSAPP_START_BACKOFF_MS || 90_000);
+let lastFailureAt = 0;
+
 function log(level: "info" | "error", message: string, extra: string = "") {
   const line = `[whatsapp] ${message}${extra ? ` ${extra}` : ""}`;
   if (level === "error") console.error(line);
@@ -271,6 +275,12 @@ async function startClient(): Promise<void> {
   }
   if (runtime.startPromise) return runtime.startPromise;
 
+  // Cool-down after a failure: rapid retries launch several Chromium instances,
+  // exhaust the container and wedge every browser. One start at a time.
+  if (Date.now() - lastFailureAt < START_BACKOFF_MS) {
+    throw new Error("WhatsApp is cooling down after a failed start");
+  }
+
   // A failed/stopped client must be destroyed before a fresh start.
   if (runtime.client) {
     try {
@@ -327,8 +337,10 @@ async function startClient(): Promise<void> {
       }
       await runtime.client.initialize();
       await waitForReady(runtime.client, readyTimeoutMs());
+      lastFailureAt = 0;
     } catch (error) {
       const message = sanitizeWhatsAppError(error);
+      lastFailureAt = Date.now();
       // A timeout while a QR is displayed is not fatal: the user may still scan it.
       if (runtime.phase !== "qr" && runtime.phase !== "ready") {
         setPhase("failed", { lastError: message });
@@ -350,6 +362,21 @@ async function startClient(): Promise<void> {
   })();
 
   return runtime.startPromise;
+}
+
+/**
+ * Self-healing reconciler (called by the cron worker). Ensures the client is
+ * connected when a saved session exists, without hammering Chromium.
+ */
+export async function reconcileWhatsApp(): Promise<{ phase: WhatsAppPhase; action: string }> {
+  if (runtime.phase === "ready") return { phase: runtime.phase, action: "none" };
+  if (runtime.startPromise) return { phase: runtime.phase, action: "starting" };
+  if (Date.now() - lastFailureAt < START_BACKOFF_MS) return { phase: runtime.phase, action: "cooldown" };
+  if (!(await whatsappSessionExists())) return { phase: runtime.phase, action: "no-session" };
+  void startClient().catch((error: unknown) => {
+    log("error", `reconcile start failed: ${sanitizeWhatsAppError(error)}`);
+  });
+  return { phase: runtime.phase, action: "start" };
 }
 
 async function ensureReadyClient(): Promise<Client> {
