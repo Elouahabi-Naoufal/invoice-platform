@@ -1,9 +1,12 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import AdminLoginForm from "@/components/AdminLoginForm";
+import { adminEnabled, appRole } from "@/server/role";
 
 export const dynamic = "force-dynamic";
 
 export default function AdminLoginPage() {
+  if (!adminEnabled()) redirect(appRole() === "router" ? "/" : "/login");
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}

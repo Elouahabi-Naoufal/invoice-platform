@@ -1,53 +1,59 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
-import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
 import { requireAdmin } from "@/server/admin-session";
-
-const registerSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("A valid email is required"),
-  phone: z.string().optional(),
-  companyName: z.string().min(1, "Company name is required"),
-  requestedSlug: z
-    .string()
-    .min(2, "Slug must be at least 2 characters")
-    .max(40, "Slug must be at most 40 characters")
-    .regex(/^[a-z0-9-]+$/, "Slug may only contain lowercase letters, numbers and hyphens"),
-});
+import { createRegistration } from "@/server/hub-api";
 
 /** Public: a business requests an account. Rate-limited, no auth. */
 export async function registerTenant(raw: unknown): Promise<{ ok?: true; error?: string }> {
-  const obj = (typeof raw === "object" && raw ? { ...(raw as Record<string, unknown>) } : {}) as Record<string, unknown>;
-  if (typeof obj.requestedSlug === "string") obj.requestedSlug = obj.requestedSlug.toLowerCase().trim();
-
-  const parsed = registerSchema.safeParse(obj);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  const d = parsed.data;
+  // Router deployments have no local hub DB; forward to the admin's hub API.
+  if (process.env.APP_ROLE === "router") {
+    const base = process.env.HUB_API_URL?.replace(/\/$/, "");
+    const secret = process.env.HUB_API_SECRET;
+    if (!base || !secret) return { error: "Registration is not configured on this gateway." };
+    try {
+      const res = await fetch(`${base}/api/hub/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-hub-secret": secret },
+        body: JSON.stringify(raw),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      return data.ok ? { ok: true } : { error: data.error ?? "Registration failed." };
+    } catch {
+      return { error: "The registration service is unavailable. Please try again." };
+    }
+  }
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
   const rl = rateLimit(`register:${ip}`, 5, 60 * 60_000);
   if (!rl.ok) return { error: "Too many registration attempts. Please try again later." };
+  const res = await createRegistration(raw);
+  return res.ok ? { ok: true } : { error: res.error };
+}
 
-  const existing = await prisma.registration.findUnique({ where: { requestedSlug: d.requestedSlug } });
-  if (existing) {
-    if (existing.status === "REJECTED") {
-      // A rejected slug may be claimed again: replace the old record.
-      await prisma.registration.delete({ where: { id: existing.id } }).catch(() => undefined);
-    } else {
-      return { error: "That slug is already taken. Please choose another." };
-    }
+/** Router/hub: find the workspace (domain) an email belongs to. */
+export async function lookupWorkspace(email: string): Promise<{ found: boolean; url?: string; companyName?: string; error?: string }> {
+  // Combined hub / legacy full deployments resolve locally.
+  if (process.env.APP_ROLE !== "router") {
+    const { resolveTenantByEmail } = await import("@/server/hub-api");
+    const res = await resolveTenantByEmail(email);
+    return { found: res.found, url: res.url, companyName: res.companyName };
   }
 
+  const base = process.env.HUB_API_URL?.replace(/\/$/, "");
+  const secret = process.env.HUB_API_SECRET;
+  if (!base || !secret) return { found: false, error: "Lookup is not configured on this gateway." };
   try {
-    const reg = await prisma.registration.create({ data: { ...d, status: "PENDING" } });
-    const { enqueueRegistrationNotification } = await import("@/server/notifications");
-    await enqueueRegistrationNotification(reg.id, "REGISTRATION_RECEIVED").catch(() => undefined);
-    return { ok: true };
+    const res = await fetch(`${base}/api/hub/resolve?email=${encodeURIComponent(email)}`, {
+      headers: { "x-hub-secret": secret },
+      cache: "no-store",
+    });
+    const data = (await res.json().catch(() => ({}))) as { found?: boolean; url?: string; companyName?: string };
+    return { found: !!data.found, url: data.url, companyName: data.companyName };
   } catch {
-    return { error: "Could not save your registration. Please try again." };
+    return { found: false, error: "The lookup service is unavailable." };
   }
 }
 

@@ -1,8 +1,12 @@
 import { requireAdmin } from "@/server/admin-session";
 import { redirect } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
+import { adminEnabled, appRole } from "@/server/role";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // The admin console only exists on admin (or full) deployments.
+  if (!adminEnabled()) redirect(appRole() === "router" ? "/" : "/login");
+
   let admin: { id: string; email: string };
   try {
     admin = await requireAdmin();

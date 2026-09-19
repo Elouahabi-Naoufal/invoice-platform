@@ -6,8 +6,10 @@ import { listInvoices } from "@/server/invoice-ops";
 import { listCompanies } from "@/server/companies-clients";
 import { StatusBadge, EmptyState, PageHeader, StatCard, SectionCard } from "@/components/ui";
 import { formatMoney } from "@/domain/invoice";
+import { tenantAppEnabled, appRole } from "@/server/role";
 
 export default async function Dashboard() {
+  if (!tenantAppEnabled()) redirect(appRole() === "admin" ? "/admin" : "/login");
   let ownerId = "";
   try { ownerId = (await requireActor()).ownerId; } catch { redirect("/login"); }
   const companies = await listCompanies();

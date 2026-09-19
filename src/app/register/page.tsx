@@ -1,8 +1,11 @@
+import { redirect } from "next/navigation";
 import RegisterForm from "@/components/RegisterForm";
+import { routerEnabled, appRole } from "@/server/role";
 
 export const dynamic = "force-dynamic";
 
 export default function RegisterPage() {
+  if (!routerEnabled()) redirect(appRole() === "tenant" ? "/login" : "/admin");
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}

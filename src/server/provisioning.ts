@@ -42,6 +42,7 @@ function generatePassword(): string {
 function buildTenantEnv(slug: string, supportKey: string, ownerEmail: string, ownerPassword: string): Record<string, string> {
   const domain = tenantDomain(slug);
   return {
+    APP_ROLE: "tenant",
     DATABASE_URL: "file:/app/data/app.db",
     NEXT_PUBLIC_APP_URL: `https://${domain}`,
     PORT: String(TENANT_PORT),

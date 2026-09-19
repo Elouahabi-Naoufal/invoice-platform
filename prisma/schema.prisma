@@ -482,3 +482,14 @@ model SupportAccess {
   @@index([tenantId])
   @@index([adminId])
 }
+
+// Editable message templates (WhatsApp + email) with {variable} placeholders.
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique // REGISTRATION_RECEIVED | APPROVED | WELCOME | SUSPENDED
+  subject   String?  // used for email
+  body      String   // message body with {variables}
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}

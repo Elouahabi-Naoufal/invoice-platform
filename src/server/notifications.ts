@@ -7,11 +7,12 @@ import { sendEmail, emailConfigured } from "@/server/email";
 import { whatsappGateway } from "@/server/whatsapp";
 import { normalizeWhatsAppRecipient, sanitizeWhatsAppError } from "@/server/whatsapp-message";
 import { tenantUrl } from "@/server/tenant-domain";
+import { getTemplate, renderTemplate, type TemplateType } from "@/server/notification-templates";
 
 const MAX_ATTEMPTS = 5;
 const DELIVER_TIMEOUT_MS = 20_000;
 
-export type NotificationType = "REGISTRATION_RECEIVED" | "APPROVED" | "WELCOME" | "SUSPENDED";
+export type NotificationType = TemplateType;
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -22,10 +23,13 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 interface TenantLike {
   companyName: string;
+  ownerName: string;
   slug: string;
   deploymentUrl: string | null;
   email: string;
+  phone: string | null;
   ownerPassword: string | null;
+  supportKey: string | null;
 }
 
 interface RegistrationLike {
@@ -33,45 +37,27 @@ interface RegistrationLike {
   name: string;
   requestedSlug: string;
   email: string;
+  phone: string | null;
 }
 
-function messageFor(n: { type: string; tenant: TenantLike | null; registration: RegistrationLike | null }): { subject: string; text: string } {
-  switch (n.type) {
-    case "REGISTRATION_RECEIVED": {
-      const r = n.registration;
-      const company = r?.companyName ?? "your business";
-      const slug = r?.requestedSlug ?? "";
-      return {
-        subject: "We received your Invora registration",
-        text: `Thanks for registering ${company}!\n\nWe received your request for the workspace name "${slug}". Our team will review it and contact you as soon as it is approved.\n\n— Invora`,
-      };
-    }
-    case "APPROVED": {
-      const t = n.tenant!;
-      const eta = process.env.TENANT_ACTIVATION_ETA || "30 minutes";
-      return {
-        subject: "Your Invora account was approved",
-        text: `Good news, ${t.companyName}!\n\nYour registration has been approved.\n\nYour platform: ${tenantUrl(t.slug, t.deploymentUrl)}\n\nWe are preparing your workspace now. It will be fully activated in about ${eta}. You will receive another message with your login details as soon as it is ready.\n\n— Invora`,
-      };
-    }
-    case "WELCOME": {
-      const t = n.tenant!;
-      const creds = t.ownerPassword ? `\nEmail: ${t.email}\nPassword: ${t.ownerPassword}\n` : `\nEmail: ${t.email}\n`;
-      return {
-        subject: "Your Invora workspace is ready",
-        text: `Welcome to Invora!\n\nYour workspace for ${t.companyName} is ready to use.\n\nSign in: ${tenantUrl(t.slug, t.deploymentUrl)}\n${creds}\nPlease change your password after your first sign-in (Settings → Security).\n\nIf you need help, share your support key from Settings → Support.\n\n— Invora`,
-      };
-    }
-    case "SUSPENDED": {
-      const t = n.tenant!;
-      return {
-        subject: "Your Invora account has been suspended",
-        text: `Your Invora workspace for ${t.companyName} has been suspended. Please contact support for assistance.\n\n— Invora`,
-      };
-    }
-    default:
-      return { subject: "Invora notification", text: "You have a new notification from Invora." };
-  }
+/** Build the variable map for a notification, then render the stored template. */
+async function renderMessage(n: { type: string; tenant: TenantLike | null; registration: RegistrationLike | null }): Promise<{ subject: string; text: string }> {
+  const t = n.tenant;
+  const r = n.registration;
+  const slug = t?.slug ?? r?.requestedSlug ?? "";
+  const vars: Record<string, string> = {
+    companyName: t?.companyName ?? r?.companyName ?? "your business",
+    ownerName: t?.ownerName ?? r?.name ?? "",
+    email: t?.email ?? r?.email ?? "",
+    phone: t?.phone ?? r?.phone ?? "",
+    slug,
+    url: tenantUrl(slug, t?.deploymentUrl ?? null),
+    password: t?.ownerPassword ?? "",
+    eta: process.env.TENANT_ACTIVATION_ETA || "30 minutes",
+    supportKey: t?.supportKey ?? "",
+  };
+  const tpl = await getTemplate(n.type as TemplateType);
+  return { subject: renderTemplate(tpl.subject, vars), text: renderTemplate(tpl.body, vars) };
 }
 
 function channelsFor(recipient: { email: string; phone: string | null }) {
@@ -111,7 +97,7 @@ async function deliver(notificationId: string): Promise<void> {
     include: { tenant: true, registration: true },
   });
   if (!n) throw new Error("not found");
-  const { subject, text } = messageFor({ type: n.type, tenant: n.tenant, registration: n.registration });
+  const { subject, text } = await renderMessage({ type: n.type, tenant: n.tenant, registration: n.registration });
 
   try {
     if (n.channel === "EMAIL") {

@@ -91,3 +91,19 @@ export async function sendTenantNotification(tenantId: string, type: "APPROVED" 
   await enqueueTenantNotification(tenantId, type);
   return { ok: true };
 }
+
+export async function saveNotificationTemplate(type: string, data: { subject: string; body: string; enabled: boolean }) {
+  await requireAdmin();
+  const { upsertTemplate, TEMPLATE_TYPES } = await import("@/server/notification-templates");
+  if (!TEMPLATE_TYPES.includes(type as (typeof TEMPLATE_TYPES)[number])) throw new Error("invalid template type");
+  await upsertTemplate(type as (typeof TEMPLATE_TYPES)[number], data);
+  return { ok: true };
+}
+
+export async function resetNotificationTemplate(type: string) {
+  await requireAdmin();
+  const { resetTemplate, TEMPLATE_TYPES } = await import("@/server/notification-templates");
+  if (!TEMPLATE_TYPES.includes(type as (typeof TEMPLATE_TYPES)[number])) throw new Error("invalid template type");
+  await resetTemplate(type as (typeof TEMPLATE_TYPES)[number]);
+  return { ok: true };
+}

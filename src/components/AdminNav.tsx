@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, UserPlus, Building2, Rocket, Bell, MessageCircle, ScrollText, LogOut, ExternalLink } from "lucide-react";
+import { LayoutDashboard, UserPlus, Building2, Rocket, Bell, MessageCircle, ScrollText, LogOut, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/components/ui";
 import { adminLogout } from "@/server/admin-auth";
 
@@ -22,6 +22,7 @@ const GROUPS: { label: string; items: { href: string; label: string; icon: typeo
     label: "Communication",
     items: [
       { href: "/admin/notifications", label: "Notifications", icon: Bell },
+      { href: "/admin/templates", label: "Templates", icon: FileText },
       { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle },
     ],
   },
