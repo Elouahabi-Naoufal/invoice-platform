@@ -19,7 +19,7 @@ export default function TenantProvisionActions({ id, status }: { id: string; sta
   return (
     <div className="flex flex-wrap items-center gap-2">
       {(status === "APPROVED" || status === "FAILED") && (
-        <button disabled={busy} onClick={() => run(() => provisionTenant(id), "Provisioning started")} className="btn-primary btn-sm">
+        <button disabled={busy} onClick={() => run(() => provisionTenant(id), "Provisioning started")} className="btn-accent btn-sm">
           {status === "FAILED" ? "Retry provisioning" : "Provision"}
         </button>
       )}

@@ -25,7 +25,7 @@ export default function RegistrationActions({ id, status }: { id: string; status
       <div className="flex gap-1">
         {status === "PENDING" && (
           <>
-            <button onClick={() => run(() => approveRegistration(id))} disabled={busy} className="btn-primary btn-sm">Approve</button>
+            <button onClick={() => run(() => approveRegistration(id))} disabled={busy} className="btn-accent btn-sm">Approve</button>
             <button onClick={() => run(() => rejectRegistration(id))} disabled={busy} className="btn-ghost btn-sm hover:text-red-700">Reject</button>
           </>
         )}

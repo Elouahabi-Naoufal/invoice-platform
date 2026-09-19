@@ -142,4 +142,30 @@
   .dark .scroll-thin::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.15);
   }
+
+  /* ============ Admin console (scoped, affects /admin only) ============ */
+  .adm-tbl {
+    @apply w-full text-[13px];
+  }
+  .adm-tbl thead th {
+    @apply bg-ink-50/80 px-5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500 dark:bg-white/[0.04] dark:text-gray-400;
+  }
+  .adm-tbl tbody td {
+    @apply border-t border-ink-100 px-5 py-3 align-middle dark:border-white/5;
+  }
+  .adm-tbl tbody tr:first-child td {
+    @apply border-t-0;
+  }
+  .adm-tbl tbody tr {
+    @apply transition-colors hover:bg-ink-50/60 dark:hover:bg-white/[0.035];
+  }
+  .adm-tbl .num {
+    @apply text-right tabular-nums;
+  }
+  .adm-dl {
+    @apply divide-y divide-ink-100 dark:divide-white/5;
+  }
+  .adm-dl-row {
+    @apply flex items-center justify-between gap-4 py-2.5;
+  }
 }
