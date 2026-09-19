@@ -221,7 +221,9 @@ function attachHandlers(client: Client): void {
     })();
   });
   client.on("authenticated", () => {
-    setPhase("starting", {});
+    // Only advance qr → starting. Never regress from ready (a late
+    // `authenticated` event after `ready` used to cause a duplicate launch).
+    if (runtime.phase === "qr") setPhase("starting", {});
     log("info", "authenticated");
   });
   client.on("ready", () => {
@@ -244,7 +246,8 @@ function attachHandlers(client: Client): void {
   client.on("disconnected", (reason: unknown) => {
     const detail = typeof reason === "string" && reason ? reason : "disconnected";
     runtime.client = null;
-    runtime.startPromise = null;
+    // Do NOT clear startPromise here: an in-flight start owns it and clears it
+    // in its finally. Clearing it allowed a second Chromium to be launched.
     setPhase("stopped", {
       qr: null,
       qrImage: null,
@@ -259,12 +262,17 @@ function attachHandlers(client: Client): void {
 }
 
 async function startClient(): Promise<void> {
-  if (runtime.client && runtime.phase === "ready") return;
+  // A client that is already up or coming up is reused. whatsapp-web.js
+  // initialize() is NOT idempotent, so we must never initialize it twice —
+  // doing so closes the browser ("Target closed" / protocol timeouts).
+  if (runtime.client && ["ready", "starting", "qr"].includes(runtime.phase)) {
+    if (runtime.startPromise) return runtime.startPromise;
+    return;
+  }
   if (runtime.startPromise) return runtime.startPromise;
 
-  // whatsapp-web.js initialize() is not idempotent: a previously failed/stopped
-  // client must be destroyed and replaced, never re-initialized.
-  if (runtime.client && !["ready", "starting", "qr"].includes(runtime.phase)) {
+  // A failed/stopped client must be destroyed before a fresh start.
+  if (runtime.client) {
     try {
       await runtime.client.destroy();
     } catch {
@@ -273,7 +281,7 @@ async function startClient(): Promise<void> {
     runtime.client = null;
   }
 
-  if (!runtime.client) setPhase("starting", { lastError: null });
+  setPhase("starting", { lastError: null });
   runtime.startPromise = (async () => {
     try {
       await fs.mkdir(whatsappSessionDir(), { recursive: true });
@@ -350,6 +358,33 @@ async function ensureReadyClient(): Promise<Client> {
   if (!client) throw new Error("WhatsApp client unavailable");
   if (runtime.phase !== "ready") await waitForReady(client, readyTimeoutMs());
   return client;
+}
+
+/**
+ * Run an operation against the ready client, retrying once with a fresh client
+ * if the browser is wedged ("Target closed" / protocol timeout).
+ */
+async function withReadyClient<T>(op: (client: Client) => Promise<T>): Promise<T> {
+  const client = await ensureReadyClient();
+  try {
+    return await op(client);
+  } catch (error) {
+    const message = sanitizeWhatsAppError(error).toLowerCase();
+    if (!/target closed|protocol|timed out|detached|session closed|browser is not connected/.test(message)) {
+      throw error;
+    }
+    log("error", `browser wedged (${message}); reconnecting`);
+    try {
+      await runtime.client?.destroy();
+    } catch {
+      // best effort
+    }
+    runtime.client = null;
+    runtime.startPromise = null;
+    setPhase("stopped", { lastError: "reconnecting after a browser error" });
+    const fresh = await ensureReadyClient();
+    return await op(fresh);
+  }
 }
 
 export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
@@ -452,24 +487,26 @@ class WwebjsGateway implements WhatsAppGateway {
   }
 
   async sendDocument(doc: WhatsAppDocument): Promise<{ messageId: string }> {
-    const client = await ensureReadyClient();
     const { MessageMedia } = await loadWwebjs();
     const media = new MessageMedia("application/pdf", doc.pdf.toString("base64"), doc.filename, doc.pdf.length);
-    const message = await client.sendMessage(doc.chatId, media, {
-      sendMediaAsDocument: true,
-      caption: doc.caption,
+    return withReadyClient(async (client) => {
+      const message = await client.sendMessage(doc.chatId, media, {
+        sendMediaAsDocument: true,
+        caption: doc.caption,
+      });
+      const id = message?.id as unknown as { _serialized?: string } | string | undefined;
+      const messageId = typeof id === "string" ? id : (id?._serialized ?? `${doc.chatId}:${Date.now()}`);
+      return { messageId };
     });
-    const id = message?.id as unknown as { _serialized?: string } | string | undefined;
-    const messageId = typeof id === "string" ? id : (id?._serialized ?? `${doc.chatId}:${Date.now()}`);
-    return { messageId };
   }
 
   async sendText(chatId: string, text: string): Promise<{ messageId: string }> {
-    const client = await ensureReadyClient();
-    const message = await client.sendMessage(chatId, text);
-    const id = message?.id as unknown as { _serialized?: string } | string | undefined;
-    const messageId = typeof id === "string" ? id : (id?._serialized ?? `${chatId}:${Date.now()}`);
-    return { messageId };
+    return withReadyClient(async (client) => {
+      const message = await client.sendMessage(chatId, text);
+      const id = message?.id as unknown as { _serialized?: string } | string | undefined;
+      const messageId = typeof id === "string" ? id : (id?._serialized ?? `${chatId}:${Date.now()}`);
+      return { messageId };
+    });
   }
 }
 
