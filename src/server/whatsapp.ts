@@ -73,6 +73,13 @@ const QR_FRESHNESS_MS = 90 * 1000;
 const START_BACKOFF_MS = Number(process.env.WHATSAPP_START_BACKOFF_MS || 90_000);
 let lastFailureAt = 0;
 
+/** Delay before a reconnection attempt after a non-terminal disconnect. */
+function reconnectMs(): number {
+  const parsed = Number(process.env.WHATSAPP_RECONNECT_MS || 15000);
+  if (!Number.isFinite(parsed)) return 15000;
+  return Math.min(300000, Math.max(0, Math.round(parsed)));
+}
+
 /** Silent logger for Baileys (it is very chatty otherwise). */
 const logger = pino({ level: "silent" });
 
@@ -130,52 +137,67 @@ function disconnectCode(error: unknown): number | undefined {
 }
 
 function attachHandlers(sock: WASocket, saveCreds: () => Promise<void>): void {
-  sock.ev.on("creds.update", () => {
-    void saveCreds().catch(() => undefined);
-  });
-  sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect, qr } = update;
-    if (qr) {
-      void (async () => {
-        runtime.qr = qr;
-        runtime.qrImage = await qrImageFor(qr);
-        runtime.qrIssuedAt = Date.now();
-        setPhase("qr", { lastError: null });
-        log("info", "qr issued");
-      })();
-    }
-    if (connection === "open") {
-      const account = sock.user?.id ? jidNormalizedUser(sock.user.id) : null;
-      setPhase("ready", { account, qr: null, qrImage: null, qrIssuedAt: null, lastError: null });
-      log("info", `ready account=${account ?? "unknown"}`);
-    }
-    if (connection === "close") {
-      const code = disconnectCode(lastDisconnect?.error);
-      const loggedOut = code === DisconnectReason.loggedOut;
-      if (runtime.sock === sock) runtime.sock = null;
-      if (loggedOut) {
-        setPhase("failed", { qr: null, qrImage: null, qrIssuedAt: null, lastError: "logged out — connect again to scan the QR" });
-        log("error", "logged out");
-      } else {
-        setPhase("stopped", { qr: null, qrImage: null, qrIssuedAt: null, lastError: `disconnected (${code ?? "?"})` });
-        log("error", `disconnected code=${code ?? "?"} — will reconnect`);
-        scheduleReconnect();
+  sock.ev.process(async (events) => {
+    try {
+      // Persist credentials fully before any close/reconnect is handled so the
+      // post-pairing restart (515) always loads the freshly-paired session.
+      if (events["creds.update"]) {
+        await saveCreds().catch(() => undefined);
       }
+      const update = events["connection.update"];
+      if (update) {
+        const { connection, lastDisconnect, qr } = update;
+        if (qr) {
+          runtime.qr = qr;
+          runtime.qrImage = await qrImageFor(qr);
+          runtime.qrIssuedAt = Date.now();
+          setPhase("qr", { lastError: null });
+          log("info", "qr issued");
+        }
+        if (connection === "open") {
+          const account = sock.user?.id ? jidNormalizedUser(sock.user.id) : null;
+          setPhase("ready", { account, qr: null, qrImage: null, qrIssuedAt: null, lastError: null });
+          log("info", `ready account=${account ?? "unknown"}`);
+        }
+        if (connection === "close") {
+          const code = disconnectCode(lastDisconnect?.error);
+          const loggedOut = code === DisconnectReason.loggedOut;
+          if (runtime.sock === sock) runtime.sock = null;
+          if (loggedOut) {
+            setPhase("failed", { qr: null, qrImage: null, qrIssuedAt: null, lastError: "logged out — connect again to scan the QR" });
+            log("error", "logged out");
+          } else if (code === DisconnectReason.restartRequired) {
+            // Expected right after a successful pairing: WhatsApp asks the client
+            // to reconnect with the freshly-paired credentials. Reconnect
+            // immediately, bypassing the start cooldown, or the link is
+            // invalidated server-side ("Couldn't link device" on the phone).
+            setPhase("starting", { qr: null, qrImage: null, qrIssuedAt: null, lastError: null });
+            log("info", `restart required (${code}) — reconnecting with saved session`);
+            scheduleReconnect(0, true);
+          } else {
+            setPhase("stopped", { qr: null, qrImage: null, qrIssuedAt: null, lastError: `disconnected (${code ?? "?"})` });
+            log("error", `disconnected code=${code ?? "?"} — will reconnect`);
+            scheduleReconnect(reconnectMs());
+          }
+        }
+      }
+    } catch (error) {
+      log("error", `event handler error: ${sanitizeWhatsAppError(error)}`);
     }
   });
 }
 
 let reconnectTimer: NodeJS.Timeout | null = null;
-function scheduleReconnect(): void {
+function scheduleReconnect(delayMs?: number, bypassCooldown = false): void {
   if (reconnectTimer) return;
-  const delay = Number(process.env.WHATSAPP_RECONNECT_MS || 15000);
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     if (runtime.sock || runtime.startPromise) return;
-    void startClient().catch((error: unknown) => {
-      log("error", `reconnect failed: ${sanitizeWhatsAppError(error)}`);
+    startClient(bypassCooldown).catch((error: unknown) => {
+      log("error", `reconnect attempt failed: ${sanitizeWhatsAppError(error)} — retrying`);
+      scheduleReconnect(reconnectMs());
     });
-  }, delay);
+  }, delayMs ?? reconnectMs());
   reconnectTimer.unref?.();
 }
 
@@ -203,14 +225,14 @@ function waitForReady(sock: WASocket, timeoutMs: number): Promise<void> {
   });
 }
 
-async function startClient(): Promise<void> {
+async function startClient(bypassCooldown = false): Promise<void> {
   // A session that is already up or coming up is reused.
   if (runtime.sock && ["ready", "starting", "qr"].includes(runtime.phase)) {
     if (runtime.startPromise) return runtime.startPromise;
     return;
   }
   if (runtime.startPromise) return runtime.startPromise;
-  if (Date.now() - lastFailureAt < START_BACKOFF_MS) {
+  if (!bypassCooldown && Date.now() - lastFailureAt < START_BACKOFF_MS) {
     throw new Error("WhatsApp is cooling down after a failed start");
   }
 
@@ -248,8 +270,12 @@ async function startClient(): Promise<void> {
       lastFailureAt = 0;
     } catch (error) {
       const message = sanitizeWhatsAppError(error);
-      lastFailureAt = Date.now();
-      if (runtime.phase !== "qr" && runtime.phase !== "ready") {
+      const waitingForQr = runtime.phase === "qr";
+      // A QR-scan timeout is not a session failure: it just means the user has
+      // not scanned yet. Don't let it poison lastFailureAt, or the post-pairing
+      // reconnect would be blocked by the start cooldown.
+      if (!waitingForQr) lastFailureAt = Date.now();
+      if (!waitingForQr) {
         setPhase("failed", { lastError: message });
         if (runtime.sock) {
           try {
@@ -271,7 +297,7 @@ async function startClient(): Promise<void> {
 }
 
 async function ensureReadyClient(): Promise<WASocket> {
-  await startClient();
+  await startClient(true);
   const sock = runtime.sock;
   if (!sock) throw new Error("WhatsApp session unavailable");
   if (runtime.phase !== "ready") await waitForReady(sock, readyTimeoutMs());
