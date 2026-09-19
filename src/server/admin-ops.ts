@@ -87,9 +87,16 @@ export async function processNotifications() {
 
 export async function sendTenantNotification(tenantId: string, type: "APPROVED" | "WELCOME") {
   await requireAdmin();
-  const { enqueueTenantNotification } = await import("@/server/notifications");
+  const { enqueueTenantNotification, sendPendingNotifications } = await import("@/server/notifications");
+  // Ensure the records exist, then force a fresh attempt even if one already
+  // exists (so the manual button always actually sends).
   await enqueueTenantNotification(tenantId, type);
-  return { ok: true };
+  await prisma.notification.updateMany({
+    where: { tenantId, type },
+    data: { status: "PENDING", lastError: null, attempts: 0 },
+  });
+  const res = await sendPendingNotifications(tenantId);
+  return { ok: true, processed: res.processed };
 }
 
 export async function saveNotificationTemplate(type: string, data: { subject: string; body: string; enabled: boolean }) {
