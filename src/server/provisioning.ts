@@ -49,6 +49,7 @@ function buildTenantEnv(slug: string, supportKey: string, ownerEmail: string, ow
     NODE_ENV: "production",
     TZ: "Africa/Casablanca",
     SCHEDULER_ENABLED: "true",
+    DEFAULT_COUNTRY_CODE: process.env.DEFAULT_COUNTRY_CODE || "212",
     JWT_SECRET: randomKey(32),
     CRON_SECRET: randomKey(16),
     SUPPORT_KEY: supportKey,
