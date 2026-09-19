@@ -10,7 +10,12 @@ import { tenantUrl } from "@/server/tenant-domain";
 import { getTemplate, renderTemplate, type TemplateType } from "@/server/notification-templates";
 
 const MAX_ATTEMPTS = 5;
-const DELIVER_TIMEOUT_MS = 20_000;
+// A WhatsApp delivery may have to initialize the browser first; allow enough
+// time so the first attempt after a restart doesn't fail spuriously.
+const DELIVER_TIMEOUT_MS = Number(process.env.NOTIFICATION_DELIVER_TIMEOUT_MS || 180_000);
+
+// Prevent concurrent sweeps from delivering the same notification twice.
+let sweeping = false;
 
 export type NotificationType = TemplateType;
 
@@ -128,19 +133,25 @@ async function deliver(notificationId: string): Promise<void> {
 }
 
 export async function sendPendingNotifications(tenantId?: string) {
-  const pending = await prisma.notification.findMany({
-    where: { status: { in: ["PENDING", "FAILED"] }, attempts: { lt: MAX_ATTEMPTS }, ...(tenantId ? { tenantId } : {}) },
-    orderBy: { createdAt: "asc" },
-    take: 25,
-  });
-  for (const n of pending) {
-    await withTimeout(deliver(n.id), DELIVER_TIMEOUT_MS).catch(async (e) => {
-      await prisma.notification
-        .update({ where: { id: n.id }, data: { status: "FAILED", lastError: e instanceof Error ? e.message : "timed out", attempts: { increment: 1 } } })
-        .catch(() => undefined);
+  if (sweeping) return { processed: 0, skipped: true };
+  sweeping = true;
+  try {
+    const pending = await prisma.notification.findMany({
+      where: { status: { in: ["PENDING", "FAILED"] }, attempts: { lt: MAX_ATTEMPTS }, ...(tenantId ? { tenantId } : {}) },
+      orderBy: { createdAt: "asc" },
+      take: 25,
     });
+    for (const n of pending) {
+      await withTimeout(deliver(n.id), DELIVER_TIMEOUT_MS).catch(async (e) => {
+        await prisma.notification
+          .update({ where: { id: n.id }, data: { status: "FAILED", lastError: e instanceof Error ? e.message : "timed out", attempts: { increment: 1 } } })
+          .catch(() => undefined);
+      });
+    }
+    return { processed: pending.length };
+  } finally {
+    sweeping = false;
   }
-  return { processed: pending.length };
 }
 
 export async function retryNotification(id: string) {
