@@ -192,11 +192,19 @@ function scheduleReconnect(delayMs?: number, bypassCooldown = false): void {
   if (reconnectTimer) return;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    if (runtime.sock || runtime.startPromise) return;
-    startClient(bypassCooldown).catch((error: unknown) => {
-      log("error", `reconnect attempt failed: ${sanitizeWhatsAppError(error)} — retrying`);
-      scheduleReconnect(reconnectMs());
-    });
+    if (runtime.sock) return;
+    const run = () => {
+      if (runtime.sock) return;
+      startClient(bypassCooldown).catch((error: unknown) => {
+        log("error", `reconnect attempt failed: ${sanitizeWhatsAppError(error)} — retrying`);
+        scheduleReconnect(reconnectMs());
+      });
+    };
+    // A start that began before the disconnect (e.g. the pairing QR session)
+    // may still be winding down; wait for it before starting a fresh socket.
+    const pending = runtime.startPromise;
+    if (pending) void pending.finally(run);
+    else run();
   }, delayMs ?? reconnectMs());
   reconnectTimer.unref?.();
 }
@@ -207,8 +215,14 @@ function waitForReady(sock: WASocket, timeoutMs: number): Promise<void> {
     let settled = false;
     const onUpdate = (update: { connection?: string; lastDisconnect?: { error?: unknown } }) => {
       if (update.connection === "open") finish(resolve);
-      if (update.connection === "close" && disconnectCode(update.lastDisconnect?.error) === DisconnectReason.loggedOut) {
+      if (update.connection !== "close") return;
+      const code = disconnectCode(update.lastDisconnect?.error);
+      if (code === DisconnectReason.loggedOut) {
         finish(() => reject(new Error("WhatsApp session was logged out")));
+      } else if (code === DisconnectReason.restartRequired) {
+        // Pairing succeeded: WhatsApp asks us to reconnect with the saved
+        // session. Stop waiting here; the close handler reconnects right away.
+        finish(resolve);
       }
     };
     const finish = (fn: () => void) => {
